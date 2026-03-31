@@ -75,6 +75,19 @@ const Settlements: React.FC = () => {
   });
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [selectedDriverForAction, setSelectedDriverForAction] = useState<OutsourceBalance | null>(null);
+  const [isActionModalOpen, setIsActionModalOpen] = useState(false);
+  const [actionForm, setActionForm] = useState({
+    amount: 0,
+    reference_number: '',
+    remark: ''
+  });
+
+  // Utility for precise decimal calculations (avoid floating point issues)
+  const toCents = (amount: number): number => Math.round(amount * 100);
+  const fromCents = (cents: number): number => cents / 100;
+  const addAmounts = (...amounts: number[]): number => fromCents(amounts.reduce((sum, amount) => sum + toCents(amount), 0));
+  const subtractAmounts = (minuend: number, ...subtrahends: number[]): number => fromCents(toCents(minuend) - subtrahends.reduce((sum, amount) => sum + toCents(amount), 0));
 
   // Robust Financial Settlement Calculation
   const calculateDriverSettlement = (driverId: string, timePeriod: 'week' | 'month' | 'quarter'): DriverSettlement | null => {
@@ -116,17 +129,17 @@ const Settlements: React.FC = () => {
         return null; // No orders for this driver in the period
       }
 
-      // Step B: Calculate Total Earned with type coercion
+      // Step B: Calculate Total Earned with precise decimal arithmetic
       const total_earned = driverOrders.reduce((sum, order) => {
         const charge = Number(order.outsource_charge) || 0;
         if (isNaN(charge)) {
           console.warn(`Invalid outsource_charge for order ${order.id}: ${order.outsource_charge}`);
           return sum; // Skip invalid values
         }
-        return sum + charge;
+        return addAmounts(sum, charge);
       }, 0);
 
-      // Step C: Calculate Cash Held (COD/COP only)
+      // Step C: Calculate Cash Held (COD/COP only) with precise decimal arithmetic
       const cash_held_by_driver = driverOrders.reduce((sum, order) => {
         if (order.payment_method === 'COD' || order.payment_method === 'COP') {
           const amount = Number(order.total_order_amount) || 0;
@@ -134,13 +147,13 @@ const Settlements: React.FC = () => {
             console.warn(`Invalid total_order_amount for order ${order.id}: ${order.total_order_amount}`);
             return sum; // Skip invalid values
           }
-          return sum + amount;
+          return addAmounts(sum, amount);
         }
         return sum;
       }, 0);
 
-      // Step D: Calculate Final Balance
-      const net_balance = total_earned - cash_held_by_driver;
+      // Step D: Calculate Final Balance with precise decimal arithmetic
+      const net_balance = subtractAmounts(total_earned, cash_held_by_driver);
 
       // Get driver name
       const driver = outsources.find(o => o.id === driverId);
@@ -372,6 +385,68 @@ const Settlements: React.FC = () => {
     }
   };
 
+  const handleDriverActionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedDriverForAction) return;
+
+    try {
+      const currentBalance = selectedDriverForAction.net_balance || 0;
+      const isPositiveBalance = currentBalance > 0;
+      
+      // Determine action type based on balance
+      const actionType = isPositiveBalance ? 'Collection' : 'Payout';
+      const driverName = selectedDriverForAction.outsource_name;
+      
+      // Save settlement record to database
+      const { error: settlementError } = await supabase
+        .from('settlements')
+        .insert([{
+          type: actionType,
+          outsource_name: driverName,
+          amount: actionForm.amount,
+          payment_date: new Date().toISOString().split('T')[0],
+          reference_number: actionForm.reference_number,
+          remark: actionForm.remark
+        }]);
+
+      if (settlementError) throw settlementError;
+
+      // Calculate new balance with precise decimal arithmetic
+      let newBalance: number;
+      if (isPositiveBalance) {
+        // We're collecting from them, so reduce the positive balance
+        newBalance = subtractAmounts(currentBalance, actionForm.amount);
+      } else {
+        // We're paying them, so reduce the negative balance (move toward zero)
+        newBalance = addAmounts(currentBalance, actionForm.amount);
+      }
+
+      // Update settlement status if balance is zero
+      const isSettled = Math.abs(newBalance) < 0.01; // Account for floating point precision
+      
+      // Show success toast with appropriate message
+      const actionVerb = isPositiveBalance ? 'Collected from' : 'Paid to';
+      const statusMessage = isSettled ? 'Account Settled!' : `New balance: AED ${formatCurrency(Math.abs(newBalance))}`;
+      
+      setToastMessage(`${actionVerb} ${driverName}: AED ${actionForm.amount}. ${statusMessage}`);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+
+      // Close modal and reset form
+      setIsActionModalOpen(false);
+      setSelectedDriverForAction(null);
+      setActionForm({ amount: 0, reference_number: '', remark: '' });
+      
+      // Refresh data to show updated calculations
+      fetchData();
+    } catch (error: any) {
+      console.error('Error in driver action submission:', error);
+      setToastMessage('Failed to record action. Please try again.');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    }
+  };
+
   const filteredBalances = balances.filter(b => 
     b.outsource_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -587,6 +662,34 @@ const Settlements: React.FC = () => {
                           <FileText className="w-3 h-3" />
                           Ledger
                         </button>
+                        
+                        {/* Context-Aware Action Button */}
+                        {(b.net_balance || 0) !== 0 && (
+                          <button
+                            onClick={() => {
+                              setSelectedDriverForAction(b);
+                              setIsActionModalOpen(true);
+                            }}
+                            className={cn(
+                              "flex items-center gap-1 px-2 py-1 text-xs font-bold rounded-lg transition-all",
+                              (b.net_balance || 0) > 0 
+                                ? "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200" 
+                                : "bg-green-50 text-green-600 hover:bg-green-100 border border-green-200"
+                            )}
+                          >
+                            {(b.net_balance || 0) > 0 ? (
+                              <>
+                                <ArrowDownCircle className="w-3 h-3" />
+                                Record Collection
+                              </>
+                            ) : (
+                              <>
+                                <ArrowUpCircle className="w-3 h-3" />
+                                Record Payment
+                              </>
+                            )}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -693,6 +796,107 @@ const Settlements: React.FC = () => {
                   className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 mt-4"
                 >
                   Mark as Settled
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Context-Aware Driver Action Modal */}
+      <AnimatePresence>
+        {isActionModalOpen && selectedDriverForAction && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsActionModalOpen(false)}
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {(selectedDriverForAction.net_balance || 0) > 0 ? 'Record Collection' : 'Record Payment'}
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {selectedDriverForAction.outsource_name} • Current balance: {formatCurrency(Math.abs(selectedDriverForAction.net_balance || 0))}
+                  </p>
+                </div>
+                <button onClick={() => setIsActionModalOpen(false)} className="p-2 hover:bg-white rounded-xl text-gray-400">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <form onSubmit={handleDriverActionSubmit} className="p-6 space-y-4">
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">Action Type:</span>
+                    <span className={cn(
+                      "text-sm font-bold px-3 py-1 rounded-lg",
+                      (selectedDriverForAction.net_balance || 0) > 0 
+                        ? "bg-red-100 text-red-700" 
+                        : "bg-green-100 text-green-700"
+                    )}>
+                      {(selectedDriverForAction.net_balance || 0) > 0 ? 'Collection' : 'Payment'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Amount</label>
+                  <input
+                    type="number"
+                    required
+                    step="0.01"
+                    min="0.01"
+                    max={Math.abs(selectedDriverForAction.net_balance || 0)}
+                    value={actionForm.amount}
+                    onChange={(e) => setActionForm({ ...actionForm, amount: Number(e.target.value) })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    placeholder="0.00"
+                  />
+                  <p className="text-xs text-gray-500">Maximum: {formatCurrency(Math.abs(selectedDriverForAction.net_balance || 0))}</p>
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Reference #</label>
+                  <input
+                    type="text"
+                    value={actionForm.reference_number}
+                    onChange={(e) => setActionForm({ ...actionForm, reference_number: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    placeholder="Transaction ID / Receipt #"
+                  />
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Remark</label>
+                  <textarea
+                    value={actionForm.remark}
+                    onChange={(e) => setActionForm({ ...actionForm, remark: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                    rows={3}
+                    placeholder="Add notes..."
+                  />
+                </div>
+                
+                <button
+                  type="submit"
+                  className={cn(
+                    "w-full py-4 rounded-2xl font-bold text-lg transition-all shadow-lg mt-4",
+                    (selectedDriverForAction.net_balance || 0) > 0 
+                      ? "bg-red-600 hover:bg-red-700 shadow-red-200" 
+                      : "bg-green-600 hover:bg-green-700 shadow-green-200"
+                  )}
+                >
+                  {(selectedDriverForAction.net_balance || 0) > 0 ? 'Record Collection' : 'Record Payment'}
                 </button>
               </form>
             </motion.div>
