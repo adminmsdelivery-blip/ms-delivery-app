@@ -64,7 +64,7 @@ const Settlements: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'quarter'>('month');
+  const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'quarter'>('week');
   const [error, setError] = useState<string | null>(null);
   const [newSettlement, setNewSettlement] = useState({
     type: 'Collection' as 'Collection' | 'Payout',
@@ -182,6 +182,10 @@ const Settlements: React.FC = () => {
     fetchData();
     fetchOutsources();
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [selectedPeriod]);
 
   const fetchOutsources = async () => {
     const { data } = await supabase.from('outsources').select('*').order('name');
@@ -421,6 +425,10 @@ const Settlements: React.FC = () => {
         newBalance = addAmounts(currentBalance, actionForm.amount);
       }
 
+      // Update the orders table to reflect the new settlement status
+      // Since we don't have a separate balances table, we need to track this in settlements
+      // The next calculation will automatically reflect the new balance
+      
       // Update settlement status if balance is zero
       const isSettled = Math.abs(newBalance) < 0.01; // Account for floating point precision
       
@@ -437,8 +445,18 @@ const Settlements: React.FC = () => {
       setSelectedDriverForAction(null);
       setActionForm({ amount: 0, reference_number: '', remark: '' });
       
-      // Refresh data to show updated calculations
-      fetchData();
+      // Immediately refresh data to show updated calculations
+      console.log('Refreshing data after action submission...');
+      await fetchData();
+      
+      // If settled, show additional confirmation
+      if (isSettled) {
+        setTimeout(() => {
+          setToastMessage(`${driverName} account has been fully settled!`);
+          setShowToast(true);
+          setTimeout(() => setShowToast(false), 4000);
+        }, 3500);
+      }
     } catch (error: any) {
       console.error('Error in driver action submission:', error);
       setToastMessage('Failed to record action. Please try again.');
