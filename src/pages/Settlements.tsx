@@ -79,6 +79,8 @@ const Settlements: React.FC = () => {
   // Robust Financial Settlement Calculation
   const calculateDriverSettlement = (driverId: string, timePeriod: 'week' | 'month' | 'quarter'): DriverSettlement | null => {
     try {
+      console.log(`Calculating settlement for driver ${driverId}, period: ${timePeriod}`);
+      
       // Step A: Filter - Get completed orders for driver within time period
       const now = new Date();
       let startDate = new Date();
@@ -95,15 +97,20 @@ const Settlements: React.FC = () => {
           break;
       }
 
+      console.log(`Filtering orders from ${startDate.toISOString()} to ${now.toISOString()}`);
+
       const driverOrders = allOrders.filter(order => {
         const orderDate = new Date(order.created_at);
-        return (
-          order.driver_id === driverId &&
-          order.order_status === 'COMPLETED' &&
-          orderDate >= startDate &&
-          orderDate <= now
-        );
+        const matchesDriver = order.driver_id === driverId;
+        const matchesStatus = order.order_status === 'COMPLETED';
+        const matchesDate = orderDate >= startDate && orderDate <= now;
+        
+        console.log(`Order ${order.id}: driver=${matchesDriver}, status=${matchesStatus}, date=${matchesDate}`);
+        
+        return matchesDriver && matchesStatus && matchesDate;
       });
+
+      console.log(`Found ${driverOrders.length} orders for driver ${driverId}`);
 
       if (driverOrders.length === 0) {
         return null; // No orders for this driver in the period
@@ -178,7 +185,10 @@ const Settlements: React.FC = () => {
         .select('*, clients(name), outsources(name)')
         .order('created_at', { ascending: false });
 
-      if (ordersError) throw ordersError;
+      if (ordersError) {
+        console.error('Orders fetch error:', ordersError);
+        throw ordersError;
+      }
 
       // Fetch manual settlements from database
       const { data: settlements, error: settlementsError } = await supabase
@@ -186,14 +196,20 @@ const Settlements: React.FC = () => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (settlementsError) throw settlementsError;
+      if (settlementsError) {
+        console.error('Settlements fetch error:', settlementsError);
+        throw settlementsError;
+      }
 
-      if (orders) {
+      console.log('Raw orders data:', orders);
+      console.log('Raw settlements data:', settlements);
+
+      if (orders && orders.length > 0) {
         // Convert to Order type with proper field mapping
         const processedOrders: Order[] = orders.map(order => ({
           id: order.id,
           driver_id: order.outsource_id || '',
-          order_status: order.payment_status === 'Settled' ? 'COMPLETED' : 'COMPLETED', // For now, treat all as completed
+          order_status: 'COMPLETED', // Treat all orders as completed for settlement calculation
           payment_method: order.payment_mode === 'Cash on Delivery (COD)' ? 'COD' : 
                          order.payment_mode === 'Cash on Pickup (COP)' ? 'COP' : 'ONLINE',
           total_order_amount: Number(order.delivery_charges) || 0,
@@ -204,14 +220,18 @@ const Settlements: React.FC = () => {
           outsources: order.outsources
         }));
 
+        console.log('Processed orders:', processedOrders);
         setAllOrders(processedOrders);
 
         // Calculate settlements for each driver using the new logic
         const driverSettlements: OutsourceBalance[] = [];
         const uniqueDriverIds = [...new Set(processedOrders.map(order => order.driver_id).filter(Boolean))];
+        
+        console.log('Unique driver IDs:', uniqueDriverIds);
 
         for (const driverId of uniqueDriverIds) {
           const settlement = calculateDriverSettlement(driverId, selectedPeriod);
+          console.log(`Settlement for driver ${driverId}:`, settlement);
           if (settlement) {
             // Calculate manual settlements for this driver
             const driverSettlements = settlements?.filter(s => s.outsource_name === settlement.driver_name) || [];
@@ -229,8 +249,12 @@ const Settlements: React.FC = () => {
             });
           }
         }
-
+        
+        console.log('Final driver settlements:', driverSettlements);
         setBalances(driverSettlements);
+      } else {
+        console.log('No orders found in database');
+        setBalances([]);
       }
     } catch (error: any) {
       console.error('Error fetching settlement data:', error);
