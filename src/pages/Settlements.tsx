@@ -190,19 +190,8 @@ const Settlements: React.FC = () => {
         throw ordersError;
       }
 
-      // Fetch manual settlements from database
-      const { data: settlements, error: settlementsError } = await supabase
-        .from('settlements')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (settlementsError) {
-        console.error('Settlements fetch error:', settlementsError);
-        throw settlementsError;
-      }
-
       console.log('Raw orders data:', orders);
-      console.log('Raw settlements data:', settlements);
+      console.log('Orders count:', orders?.length || 0);
 
       if (orders && orders.length > 0) {
         // Convert to Order type with proper field mapping
@@ -223,28 +212,33 @@ const Settlements: React.FC = () => {
         console.log('Processed orders:', processedOrders);
         setAllOrders(processedOrders);
 
-        // Calculate settlements for each driver using the new logic
-        const driverSettlements: OutsourceBalance[] = [];
-        const uniqueDriverIds = [...new Set(processedOrders.map(order => order.driver_id).filter(Boolean))];
+        // Filter orders that have outsource_id (critical fix)
+        const ordersWithDrivers = processedOrders.filter(order => order.driver_id && order.driver_id !== '');
+        console.log('Orders with drivers:', ordersWithDrivers);
         
+        if (ordersWithDrivers.length === 0) {
+          console.log('No orders with valid drivers found');
+          setBalances([]);
+          return;
+        }
+
+        // Get unique driver IDs from orders that actually have drivers
+        const uniqueDriverIds = [...new Set(ordersWithDrivers.map(order => order.driver_id).filter(Boolean))];
         console.log('Unique driver IDs:', uniqueDriverIds);
 
+        // Calculate settlements for each driver
+        const driverSettlements: OutsourceBalance[] = [];
+        
         for (const driverId of uniqueDriverIds) {
           const settlement = calculateDriverSettlement(driverId, selectedPeriod);
           console.log(`Settlement for driver ${driverId}:`, settlement);
           if (settlement) {
-            // Calculate manual settlements for this driver
-            const driverSettlements = settlements?.filter(s => s.outsource_name === settlement.driver_name) || [];
-            const totalManualSettlements = driverSettlements.reduce((sum, s) => {
-              return sum + (s.type === 'Collection' ? -s.amount : s.amount);
-            }, 0);
-
             driverSettlements.push({
               outsource_id: settlement.driverId,
               outsource_name: settlement.driver_name,
               total_earned: settlement.total_earned,
               cash_held_by_driver: settlement.cash_held_by_driver,
-              net_balance: settlement.net_balance + totalManualSettlements, // Apply manual settlements to net balance
+              net_balance: settlement.net_balance,
               delivery_count: settlement.completed_orders_count
             });
           }
