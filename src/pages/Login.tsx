@@ -1,16 +1,48 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
+
+interface ProfileData {
+  company_name: string;
+  owner_name: string;
+  email: string;
+  logo_url: string;
+}
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [profile, setProfile] = useState<ProfileData>({
+    company_name: '',
+    owner_name: '',
+    email: '',
+    logo_url: ''
+  });
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Load profile from localStorage for public access
+    try {
+      const savedProfile = localStorage.getItem('ms_delivery_profile');
+      if (savedProfile) {
+        const parsed = JSON.parse(savedProfile);
+        setProfile({
+          company_name: parsed.company_name || '',
+          owner_name: parsed.owner_name || '',
+          email: parsed.email || '',
+          logo_url: parsed.logo_url || ''
+        });
+      }
+    } catch (error) {
+      console.error('Error loading profile in Login:', error);
+      // Keep default values if localStorage fails
+    }
+  }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,23 +74,30 @@ const Login: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
-        {/* Logo Section */}
-        <div className="text-center space-y-4">
-          <motion.div 
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 260, damping: 20 }}
-            className="inline-block"
-          >
-            {/* Logo Wrapper */}
-            <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center bg-white shadow-sm flex-shrink-0">
+        {/* Final Dynamic Login Header */}
+        <div className="flex flex-col items-center justify-center mb-8">
+          
+          {/* Logo & Brand Name Container */}
+          <div className="flex flex-row items-center gap-4">
+            
+            {/* Clean Logo Circle - Image Only (Dynamic) */}
+            <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 bg-white border border-gray-100 shadow-sm flex items-center justify-center">
               <img 
-                src="/custom-logo.svg" /* Update this path to match exactly where the new dark blue logo is stored */
-                alt="MS Delivery Logo" 
-                className="w-full h-full object-cover" 
+                src={profile.logo_url || "/custom-logo.svg"} 
+                alt={profile.company_name ? `${profile.company_name} Logo` : "Company Logo"}
+                className="w-full h-full object-cover bg-white" 
               />
             </div>
-          </motion.div>
+
+            {/* Restored Text Block - Company Name Only (Dynamic) */}
+            <div className="flex flex-col justify-center text-left h-16">
+              <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight leading-none truncate max-w-[200px] sm:max-w-xs">
+                {profile.company_name || 'MS DELIVERY'}
+              </h1>
+              {/* Note: Admin/Owner name intentionally omitted for public login security */}
+            </div>
+
+          </div>
         </div>
 
         {/* Form Card */}
