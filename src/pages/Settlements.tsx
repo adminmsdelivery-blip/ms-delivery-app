@@ -37,10 +37,10 @@ interface Order {
 
 interface DriverSettlement {
   driverId: string;
-  driver_name: string;
+  outsource_name: string;
   total_earned: number;
   cash_held_by_driver: number;
-  net_balance: number;
+  base_balance: number;
   completed_orders_count: number;
   billing_period: {
     start_date: string;
@@ -53,7 +53,7 @@ interface OutsourceBalance {
   outsource_name: string;
   total_earned: number;
   cash_held_by_driver: number;
-  net_balance: number;
+  final_balance: number;
   delivery_count: number;
 }
 
@@ -75,25 +75,16 @@ const Settlements: React.FC = () => {
   });
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-  const [selectedDriverForAction, setSelectedDriverForAction] = useState<OutsourceBalance | null>(null);
-  const [isActionModalOpen, setIsActionModalOpen] = useState(false);
-  const [actionForm, setActionForm] = useState({
-    amount: 0,
-    reference_number: '',
-    remark: ''
-  });
+  const [selectedOutsourceForModal, setSelectedOutsourceForModal] = useState<OutsourceBalance | null>(null);
 
-  // Utility for precise decimal calculations (avoid floating point issues)
-  const toCents = (amount: number): number => Math.round(amount * 100);
-  const fromCents = (cents: number): number => cents / 100;
-  const addAmounts = (...amounts: number[]): number => fromCents(amounts.reduce((sum, amount) => sum + toCents(amount), 0));
-  const subtractAmounts = (minuend: number, ...subtrahends: number[]): number => fromCents(toCents(minuend) - subtrahends.reduce((sum, amount) => sum + toCents(amount), 0));
+  // Calculate max allowed amount for input validation
+  const maxAllowed = selectedOutsourceForModal?.final_balance && selectedOutsourceForModal.final_balance > 0 
+    ? selectedOutsourceForModal.final_balance 
+    : Math.abs(selectedOutsourceForModal?.final_balance || 0);
 
   // Robust Financial Settlement Calculation
-  const calculateDriverSettlement = (driverId: string, timePeriod: 'week' | 'month' | 'quarter'): DriverSettlement | null => {
+  const calculateOutsourceSettlement = (outsourceId: string, timePeriod: 'week' | 'month' | 'quarter'): DriverSettlement | null => {
     try {
-      console.log(`Calculating settlement for driver ${driverId}, period: ${timePeriod}`);
-      
       // Step A: Filter - Get completed orders for driver within time period
       const now = new Date();
       let startDate = new Date();
@@ -110,36 +101,31 @@ const Settlements: React.FC = () => {
           break;
       }
 
-      console.log(`Filtering orders from ${startDate.toISOString()} to ${now.toISOString()}`);
-
       const driverOrders = allOrders.filter(order => {
         const orderDate = new Date(order.created_at);
-        const matchesDriver = order.driver_id === driverId;
-        const matchesStatus = order.order_status === 'COMPLETED';
-        const matchesDate = orderDate >= startDate && orderDate <= now;
-        
-        console.log(`Order ${order.id}: driver=${matchesDriver}, status=${matchesStatus}, date=${matchesDate}`);
-        
-        return matchesDriver && matchesStatus && matchesDate;
+        return (
+          order.driver_id === outsourceId &&
+          order.order_status === 'COMPLETED' &&
+          orderDate >= startDate &&
+          orderDate <= now
+        );
       });
-
-      console.log(`Found ${driverOrders.length} orders for driver ${driverId}`);
 
       if (driverOrders.length === 0) {
         return null; // No orders for this driver in the period
       }
 
-      // Step B: Calculate Total Earned with precise decimal arithmetic
+      // Step B: Calculate Total Earned - Sum of outsource_charge for ALL completed orders
       const total_earned = driverOrders.reduce((sum, order) => {
         const charge = Number(order.outsource_charge) || 0;
         if (isNaN(charge)) {
           console.warn(`Invalid outsource_charge for order ${order.id}: ${order.outsource_charge}`);
           return sum; // Skip invalid values
         }
-        return addAmounts(sum, charge);
+        return sum + charge;
       }, 0);
 
-      // Step C: Calculate Cash Held (COD/COP only) with precise decimal arithmetic
+      // Step C: Calculate Cash Held - Sum of total_order_amount ONLY for COD/COP orders
       const cash_held_by_driver = driverOrders.reduce((sum, order) => {
         if (order.payment_method === 'COD' || order.payment_method === 'COP') {
           const amount = Number(order.total_order_amount) || 0;
@@ -147,24 +133,24 @@ const Settlements: React.FC = () => {
             console.warn(`Invalid total_order_amount for order ${order.id}: ${order.total_order_amount}`);
             return sum; // Skip invalid values
           }
-          return addAmounts(sum, amount);
+          return sum + amount;
         }
         return sum;
       }, 0);
 
-      // Step D: Calculate Final Balance with precise decimal arithmetic
-      const net_balance = subtractAmounts(total_earned, cash_held_by_driver);
+      // Step D: Calculate Base Balance
+      const base_balance = total_earned - cash_held_by_driver;
 
-      // Get driver name
-      const driver = outsources.find(o => o.id === driverId);
-      const driver_name = driver?.name || 'Unknown Driver';
+      // Get outsource name
+      const outsource = outsources.find(o => o.id === outsourceId);
+      const partner_name = outsource?.name || 'Unknown Partner';
 
       return {
-        driverId,
-        driver_name,
+        driverId: outsourceId,
+        outsource_name: partner_name,
         total_earned,
         cash_held_by_driver,
-        net_balance,
+        base_balance,
         completed_orders_count: driverOrders.length,
         billing_period: {
           start_date: startDate.toISOString().split('T')[0],
@@ -181,7 +167,7 @@ const Settlements: React.FC = () => {
   useEffect(() => {
     fetchData();
     fetchOutsources();
-  }, []);
+  }, []); // Run on initial mount
 
   useEffect(() => {
     fetchData();
@@ -196,26 +182,32 @@ const Settlements: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      console.log('Fetching settlement data for period:', selectedPeriod);
+      
       // Fetch all orders with client and outsource details
       const { data: orders, error: ordersError } = await supabase
         .from('orders')
         .select('*, clients(name), outsources(name)')
         .order('created_at', { ascending: false });
 
-      if (ordersError) {
-        console.error('Orders fetch error:', ordersError);
-        throw ordersError;
-      }
+      if (ordersError) throw ordersError;
+      console.log('Fetched orders:', orders?.length || 0);
 
-      console.log('Raw orders data:', orders);
-      console.log('Orders count:', orders?.length || 0);
+      // Fetch manual settlements from database
+      const { data: settlements, error: settlementsError } = await supabase
+        .from('settlements')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      if (orders && orders.length > 0) {
+      if (settlementsError) throw settlementsError;
+      console.log('Fetched settlements:', settlements?.length || 0);
+
+      if (orders) {
         // Convert to Order type with proper field mapping
         const processedOrders: Order[] = orders.map(order => ({
           id: order.id,
           driver_id: order.outsource_id || '',
-          order_status: 'COMPLETED', // Treat all orders as completed for settlement calculation
+          order_status: order.payment_status === 'Settled' ? 'COMPLETED' : 'COMPLETED', // For now, treat all as completed
           payment_method: order.payment_mode === 'Cash on Delivery (COD)' ? 'COD' : 
                          order.payment_mode === 'Cash on Pickup (COP)' ? 'COP' : 'ONLINE',
           total_order_amount: Number(order.delivery_charges) || 0,
@@ -226,46 +218,43 @@ const Settlements: React.FC = () => {
           outsources: order.outsources
         }));
 
-        console.log('Processed orders:', processedOrders);
         setAllOrders(processedOrders);
+        console.log('Processed orders:', processedOrders.length);
 
-        // Filter orders that have outsource_id (critical fix)
-        const ordersWithDrivers = processedOrders.filter(order => order.driver_id && order.driver_id !== '');
-        console.log('Orders with drivers:', ordersWithDrivers);
-        
-        if (ordersWithDrivers.length === 0) {
-          console.log('No orders with valid drivers found');
-          setBalances([]);
-          return;
-        }
+        // Calculate settlements for each outsource using the new logic
+        const outsourceSettlements: OutsourceBalance[] = [];
+        const uniqueOutsourceIds = [...new Set(processedOrders.map(order => order.driver_id).filter(Boolean))];
+        console.log('Unique outsource IDs:', uniqueOutsourceIds.length);
 
-        // Get unique driver IDs from orders that actually have drivers
-        const uniqueDriverIds = [...new Set(ordersWithDrivers.map(order => order.driver_id).filter(Boolean))];
-        console.log('Unique driver IDs:', uniqueDriverIds);
+        for (const outsourceId of uniqueOutsourceIds) {
+          const baseSettlement = calculateOutsourceSettlement(outsourceId, selectedPeriod);
+          if (baseSettlement) {
+            console.log(`Base settlement for outsource ${baseSettlement.outsource_name}:`, baseSettlement);
+            
+            // Calculate manual settlements for this outsource
+            const outsourceManualSettlements = settlements?.filter(s => s.outsource_name === baseSettlement.outsource_name) || [];
+            const totalManualSettlements = outsourceManualSettlements.reduce((sum, s) => {
+              return sum + (s.type === 'Collection' ? s.amount : -s.amount);
+            }, 0);
 
-        // Calculate settlements for each driver
-        const driverSettlements: OutsourceBalance[] = [];
-        
-        for (const driverId of uniqueDriverIds) {
-          const settlement = calculateDriverSettlement(driverId, selectedPeriod);
-          console.log(`Settlement for driver ${driverId}:`, settlement);
-          if (settlement) {
-            driverSettlements.push({
-              outsource_id: settlement.driverId,
-              outsource_name: settlement.driver_name,
-              total_earned: settlement.total_earned,
-              cash_held_by_driver: settlement.cash_held_by_driver,
-              net_balance: settlement.net_balance,
-              delivery_count: settlement.completed_orders_count
+            // Calculate FINAL BALANCE: Base Balance + Manual Settlements
+            const final_balance = baseSettlement.base_balance + totalManualSettlements;
+
+            outsourceSettlements.push({
+              outsource_id: baseSettlement.driverId,
+              outsource_name: baseSettlement.outsource_name,
+              total_earned: baseSettlement.total_earned,
+              cash_held_by_driver: baseSettlement.cash_held_by_driver,
+              final_balance,
+              delivery_count: baseSettlement.completed_orders_count
             });
+          } else {
+            console.log(`No settlement data for outsource ID: ${outsourceId}`);
           }
         }
-        
-        console.log('Final driver settlements:', driverSettlements);
-        setBalances(driverSettlements);
-      } else {
-        console.log('No orders found in database');
-        setBalances([]);
+
+        console.log('Final outsource settlements:', outsourceSettlements.length);
+        setBalances(outsourceSettlements);
       }
     } catch (error: any) {
       console.error('Error fetching settlement data:', error);
@@ -315,20 +304,90 @@ const Settlements: React.FC = () => {
   };
 
   const exportDriverLedger = (driverId: string, driverName: string) => {
-    const driverOrders = allOrders.filter(o => o.driver_id === driverId);
+    const driverOrders = allOrders.filter(o => 
+      o.driver_id === driverId && 
+      o.order_status === 'COMPLETED'
+    );
 
-    const dataToExport = driverOrders.map(o => ({
-      'Order Date': new Date(o.created_at).toLocaleDateString(),
-      'Order Number': o.order_number,
-      'Client Name': o.clients?.name || 'N/A',
-      'Payment Method': o.payment_method,
-      'Total Order Amount (AED)': o.total_order_amount,
-      'Outsource Charge (AED)': o.outsource_charge,
-      'Order Status': o.order_status
-    }));
+    // Calculate summary values
+    const totalServiceCharges = driverOrders.reduce((sum, o) => sum + (o.outsource_charge || 0), 0);
+    const totalCashInHand = driverOrders.reduce((sum, o) => {
+      if (o.payment_method === 'COD' || o.payment_method === 'COP') {
+        return sum + (o.total_order_amount || 0);
+      }
+      return sum;
+    }, 0);
+    const previousManualAdjustments = 0; // TODO: Pull from settlement history table
+    const finalStatus = totalServiceCharges - totalCashInHand + previousManualAdjustments;
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    // Create structured worksheet data
+    const wsData = [];
+
+    // Row 1: Title (will be merged later)
+    wsData.push(['SETTLEMENT SUMMARY REPORT']);
+    wsData.push([]); // Empty row 2
+
+    // Row 3: Headers
+    wsData.push([
+      'Total Service Charges',
+      'Total Cash in Hand',
+      'Previous Adjustments',
+      'FINAL STATUS'
+    ]);
+
+    // Row 4: Values
+    wsData.push([
+      totalServiceCharges,
+      totalCashInHand,
+      previousManualAdjustments,
+      finalStatus > 0 
+        ? `PAY TO OUTSOURCE: ${Math.abs(finalStatus)} AED` 
+        : finalStatus < 0 
+          ? `COLLECT FROM OUTSOURCE: ${Math.abs(finalStatus)} AED` 
+          : 'SETTLED: 0 AED'
+    ]);
+
+    wsData.push([]); // Empty row 5
+    wsData.push([]); // Empty row 6
+
+    // Row 7: Order List Headers
+    wsData.push([
+      'Order Date',
+      'Order Number',
+      'Client Name',
+      'Payment Method',
+      'Total Order Amount (AED)',
+      'Outsource Charge (AED)',
+      'Company Owes (A)',
+      'Driver Collected (B)',
+      'Net Per Order (C)',
+      'Order Status'
+    ]);
+
+    // Row 8+: Order Data
+    driverOrders.forEach((order) => {
+      const companyOwes = order.outsource_charge || 0;
+      const driverCollected = (order.payment_method === 'COD' || order.payment_method === 'COP') ? order.total_order_amount || 0 : 0;
+      const netPerOrder = companyOwes - driverCollected;
+
+      wsData.push([
+        new Date(order.created_at).toLocaleDateString(),
+        order.order_number,
+        order.clients?.name || 'N/A',
+        order.payment_method,
+        order.total_order_amount,
+        order.outsource_charge,
+        companyOwes,
+        driverCollected,
+        netPerOrder,
+        order.order_status
+      ]);
+    });
+
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
     
+    // Set column widths
     ws['!cols'] = [
       { wch: 15 }, // Order Date
       { wch: 15 }, // Order Number
@@ -336,41 +395,193 @@ const Settlements: React.FC = () => {
       { wch: 15 }, // Payment Method
       { wch: 20 }, // Total Order Amount
       { wch: 20 }, // Outsource Charge
+      { wch: 18 }, // Company Owes (A)
+      { wch: 18 }, // Driver Collected (B)
+      { wch: 18 }, // Net Per Order (C)
       { wch: 15 }, // Order Status
     ];
 
+    // Merge title row (A1:F1)
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } } // Merge A1:D1
+    ];
+
+    // Apply styling and borders
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    
+    for (let R = 0; R <= range.e.r; R++) {
+      for (let C = 0; C <= range.e.c; C++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+        const cell = ws[cellAddress];
+        if (!cell) continue;
+
+        // Style Row 1 (Title)
+        if (R === 0) {
+          cell.s = {
+            font: { bold: true, sz: 16 },
+            alignment: { horizontal: 'center', vertical: 'center' },
+            fill: { fgColor: { rgb: "FF2F4F4F" }, patternType: "solid" },
+            fontColor: { rgb: "FFFFFFFF" }
+          };
+        }
+        // Style Row 3 (Headers)
+        else if (R === 2) {
+          cell.s = {
+            font: { bold: true, sz: 12 },
+            alignment: { horizontal: 'center' },
+            fill: { fgColor: { rgb: "FFE0E0E0" }, patternType: "solid" },
+            border: {
+              top: { style: "thin", color: { rgb: "FF000000" } },
+              bottom: { style: "thin", color: { rgb: "FF000000" } },
+              left: { style: "thin", color: { rgb: "FF000000" } },
+              right: { style: "thin", color: { rgb: "FF000000" } }
+            }
+          };
+        }
+        // Style Row 4 (Values)
+        else if (R === 3) {
+          cell.s = {
+            font: { bold: true, sz: 11 },
+            alignment: { horizontal: 'center' },
+            fill: { fgColor: { rgb: "FFF8F8F8" }, patternType: "solid" },
+            border: {
+              top: { style: "thin", color: { rgb: "FF000000" } },
+              bottom: { style: "thin", color: { rgb: "FF000000" } },
+              left: { style: "thin", color: { rgb: "FF000000" } },
+              right: { style: "thin", color: { rgb: "FF000000" } }
+            }
+          };
+          // Color fill for FINAL STATUS cell (Column D)
+          if (C === 3) {
+            cell.s.fill = finalStatus > 0 
+              ? { fgColor: { rgb: "FF90EE90" }, patternType: "solid" }  // Light Green
+              : finalStatus < 0 
+                ? { fgColor: { rgb: "FFB0B0B0" }, patternType: "solid" }  // Light Red
+                : { fgColor: { rgb: "FFFFFF" }, patternType: "solid" };  // White
+          }
+        }
+        // Style Row 7 (Order Headers)
+        else if (R === 6) {
+          cell.s = {
+            font: { bold: true, sz: 11 },
+            alignment: { horizontal: 'center' },
+            fill: { fgColor: { rgb: "FFE0E0E0" }, patternType: "solid" },
+            border: {
+              top: { style: "thin", color: { rgb: "FF000000" } },
+              bottom: { style: "thin", color: { rgb: "FF000000" } },
+              left: { style: "thin", color: { rgb: "FF000000" } },
+              right: { style: "thin", color: { rgb: "FF000000" } }
+            }
+          };
+        }
+        // Style Order Data Rows (8+)
+        else if (R >= 7) {
+          cell.s = {
+            font: { sz: 10 },
+            alignment: { horizontal: 'left' },
+            border: {
+              top: { style: "thin", color: { rgb: "FF000000" } },
+              bottom: { style: "thin", color: { rgb: "FF000000" } },
+              left: { style: "thin", color: { rgb: "FF000000" } },
+              right: { style: "thin", color: { rgb: "FF000000" } }
+            }
+          };
+          // Highlight ONLINE payment rows
+          const orderIndex = R - 7;
+          if (orderIndex >= 0 && orderIndex < driverOrders.length) {
+            const order = driverOrders[orderIndex];
+            if (order.payment_method === 'ONLINE') {
+              cell.s.fill = { fgColor: { rgb: "FFE6F3FF" }, patternType: "solid" }; // Light Blue
+            }
+          }
+        }
+      }
+    }
+
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Driver Ledger');
-    XLSX.writeFile(wb, `Ledger_${driverName}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, 'Settlement Report');
+    XLSX.writeFile(wb, `Settlement_Report_${driverName}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
   };
 
   const handleSettlementSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Find the driver
-      const driver = outsources.find(o => o.id === newSettlement.outsource_id);
-      const driverName = driver?.name || 'Unknown Driver';
+      if (!selectedOutsourceForModal) {
+        throw new Error('No outsource partner selected');
+      }
+
+      const partnerName = selectedOutsourceForModal.outsource_name;
+      const currentBalance = selectedOutsourceForModal.final_balance || 0;
+      const settlementAmount = newSettlement.amount;
       
+      // Validate settlement amount
+      if (!settlementAmount || settlementAmount <= 0) {
+        throw new Error('Please enter a valid amount greater than 0');
+      }
+      
+      // For collections (negative balance), allow amount up to absolute value of balance
+      // For payments (positive balance), allow amount up to balance value
+      const maxAllowed = newSettlement.type === 'Payout' ? currentBalance : Math.abs(currentBalance);
+      
+      if (newSettlement.type === 'Payout' && settlementAmount > currentBalance) {
+        throw new Error(`Amount cannot exceed the balance of ${formatCurrency(currentBalance)}`);
+      }
+      if (newSettlement.type === 'Collection' && settlementAmount > Math.abs(currentBalance)) {
+        throw new Error(`Amount cannot exceed the balance of ${formatCurrency(Math.abs(currentBalance))}`);
+      }
+      
+      // Calculate new balance based on transaction type
+      
+      // Calculate new balance based on transaction type
+      let newBalance: number;
+      if (newSettlement.type === 'Payout') {
+        // Business pays out: we owe them money (positive balance), so we reduce what we owe
+        newBalance = currentBalance - settlementAmount;
+      } else {
+        // Business collects: they owe us money (negative balance), so we reduce what they owe
+        newBalance = currentBalance + settlementAmount;
+      }
+
       // Save settlement record to database
+      console.log('Inserting settlement record:', {
+        type: newSettlement.type,
+        outsource_name: partnerName,
+        amount: settlementAmount,
+        payment_date: new Date().toISOString().split('T')[0],
+        reference_number: newSettlement.reference_number,
+        remark: newSettlement.remark
+      });
+
+      // Check if account is now settled
+      const isNowSettled = Math.abs(newBalance) < 0.01;
+
       const { error: settlementError } = await supabase
         .from('settlements')
         .insert([{
           type: newSettlement.type,
-          outsource_name: driverName,
-          amount: newSettlement.amount,
+          outsource_name: partnerName,
+          amount: settlementAmount,
           payment_date: new Date().toISOString().split('T')[0],
-          reference_number: newSettlement.reference_number,
-          remark: newSettlement.remark
+          reference_number: newSettlement.reference_number || '',
+          remark: newSettlement.remark || ''
         }]);
 
-      if (settlementError) throw settlementError;
+      if (settlementError) {
+        console.error('Database insertion error:', settlementError);
+        throw settlementError;
+      }
 
-      // Show success toast
-      setToastMessage(`Settlement recorded successfully! ${newSettlement.type === 'Collection' ? 'Collected from' : 'Paid to'} ${driverName}: AED ${newSettlement.amount}`);
+      // Show success toast with new balance information
+      const actionText = newSettlement.type === 'Payout' ? 'Paid to' : 'Collected from';
+      const balanceStatus = isNowSettled ? 'Account now settled!' : `New balance: ${formatCurrency(Math.abs(newBalance))}`;
+      
+      setToastMessage(`${actionText} ${partnerName}: AED ${settlementAmount}. ${balanceStatus}`);
       setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
+      setTimeout(() => setShowToast(false), 4000);
 
+      // Close modal and reset state
       setIsModalOpen(false);
+      setSelectedOutsourceForModal(null);
       setNewSettlement({
         type: 'Collection',
         outsource_id: '',
@@ -383,85 +594,25 @@ const Settlements: React.FC = () => {
       fetchData();
     } catch (error: any) {
       console.error('Error in settlement submission:', error);
-      setToastMessage('Failed to record settlement. Please try again.');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-    }
-  };
-
-  const handleDriverActionSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedDriverForAction) return;
-
-    try {
-      const currentBalance = selectedDriverForAction.net_balance || 0;
-      const isPositiveBalance = currentBalance > 0;
+      let errorMessage = 'Failed to record settlement. Please try again.';
       
-      // Determine action type based on balance
-      const actionType = isPositiveBalance ? 'Collection' : 'Payout';
-      const driverName = selectedDriverForAction.outsource_name;
-      
-      // Save settlement record to database
-      const { error: settlementError } = await supabase
-        .from('settlements')
-        .insert([{
-          type: actionType,
-          outsource_name: driverName,
-          amount: actionForm.amount,
-          payment_date: new Date().toISOString().split('T')[0],
-          reference_number: actionForm.reference_number,
-          remark: actionForm.remark
-        }]);
-
-      if (settlementError) throw settlementError;
-
-      // Calculate new balance with precise decimal arithmetic
-      let newBalance: number;
-      if (isPositiveBalance) {
-        // We're collecting from them, so reduce the positive balance
-        newBalance = subtractAmounts(currentBalance, actionForm.amount);
-      } else {
-        // We're paying them, so reduce the negative balance (move toward zero)
-        newBalance = addAmounts(currentBalance, actionForm.amount);
+      if (error.message) {
+        if (error.message.includes('No outsource partner selected')) {
+          errorMessage = 'No partner selected. Please try again.';
+        } else if (error.message.includes('duplicate key')) {
+          errorMessage = 'Duplicate reference number. Please use a unique reference.';
+        } else if (error.message.includes('foreign key')) {
+          errorMessage = 'Invalid partner selected. Please try again.';
+        } else if (error.message.includes('null value')) {
+          errorMessage = 'Missing required fields. Please fill all fields.';
+        } else {
+          errorMessage = `Database error: ${error.message}`;
+        }
       }
-
-      // Update the orders table to reflect the new settlement status
-      // Since we don't have a separate balances table, we need to track this in settlements
-      // The next calculation will automatically reflect the new balance
       
-      // Update settlement status if balance is zero
-      const isSettled = Math.abs(newBalance) < 0.01; // Account for floating point precision
-      
-      // Show success toast with appropriate message
-      const actionVerb = isPositiveBalance ? 'Collected from' : 'Paid to';
-      const statusMessage = isSettled ? 'Account Settled!' : `New balance: AED ${formatCurrency(Math.abs(newBalance))}`;
-      
-      setToastMessage(`${actionVerb} ${driverName}: AED ${actionForm.amount}. ${statusMessage}`);
+      setToastMessage(errorMessage);
       setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-
-      // Close modal and reset form
-      setIsActionModalOpen(false);
-      setSelectedDriverForAction(null);
-      setActionForm({ amount: 0, reference_number: '', remark: '' });
-      
-      // Immediately refresh data to show updated calculations
-      console.log('Refreshing data after action submission...');
-      await fetchData();
-      
-      // If settled, show additional confirmation
-      if (isSettled) {
-        setTimeout(() => {
-          setToastMessage(`${driverName} account has been fully settled!`);
-          setShowToast(true);
-          setTimeout(() => setShowToast(false), 4000);
-        }, 3500);
-      }
-    } catch (error: any) {
-      console.error('Error in driver action submission:', error);
-      setToastMessage('Failed to record action. Please try again.');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
+      setTimeout(() => setShowToast(false), 5000);
     }
   };
 
@@ -483,13 +634,6 @@ const Settlements: React.FC = () => {
           >
             <Download className="w-5 h-5 text-indigo-600" />
             Export All Balances
-          </button>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
-          >
-            <Plus className="w-5 h-5" />
-            Record Payment
           </button>
         </div>
       </div>
@@ -623,18 +767,19 @@ const Settlements: React.FC = () => {
             <table className="w-full text-left">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Driver Name</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Outsource Name</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Total Earned</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Cash Held by Driver</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Cash Held by Outsource</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-right">Final Balance</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-center">Settlement Status</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-center">Ledger</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
+                    <td colSpan={7} className="px-6 py-12 text-center text-gray-400">
                       <div className="flex items-center justify-center gap-2">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
                         Calculating settlements...
@@ -648,31 +793,31 @@ const Settlements: React.FC = () => {
                     <td className="px-6 py-4 text-orange-600 font-medium">{formatCurrency(b.cash_held_by_driver || 0)}</td>
                     <td className={cn(
                       "px-6 py-4 text-right font-bold",
-                      (b.net_balance || 0) > 0 ? "text-green-600" : (b.net_balance || 0) < 0 ? "text-red-600" : "text-gray-600"
+                      (b.final_balance || 0) > 0 ? "text-green-600" : (b.final_balance || 0) < 0 ? "text-red-600" : "text-gray-600"
                     )}>
-                      {formatCurrency(Math.abs(b.net_balance || 0))}
+                      {formatCurrency(Math.abs(b.final_balance || 0))}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center">
                         <div className={cn(
                           "px-3 py-1.5 rounded-lg text-xs font-bold",
-                          (b.net_balance || 0) > 0 
-                            ? "bg-green-50 text-green-600 border border-green-200" 
-                            : (b.net_balance || 0) < 0 
-                              ? "bg-red-50 text-red-600 border border-red-200" 
-                              : "bg-gray-50 text-gray-600 border border-gray-200"
+                          (b.final_balance || 0) > 0 
+                            ? "bg-yellow-50 text-yellow-600 border border-yellow-200" 
+                            : (b.final_balance || 0) < 0 
+                              ? "bg-yellow-50 text-yellow-600 border border-yellow-200" 
+                              : "bg-green-50 text-green-600 border border-green-200"
                         )}>
-                          {(b.net_balance || 0) > 0 
-                            ? "You have to pay to outsource" 
-                            : (b.net_balance || 0) < 0 
-                              ? "You have to collect from outsource" 
-                              : "Account Settled"
+                          {(b.final_balance || 0) > 0 
+                            ? "Pending" 
+                            : (b.final_balance || 0) < 0 
+                              ? "Pending" 
+                              : "✓ Settled"
                           }
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center justify-center gap-2">
+                      <div className="flex items-center justify-center">
                         <button
                           onClick={() => exportDriverLedger(b.outsource_id, b.outsource_name)}
                           className="flex items-center gap-1 px-2 py-1 text-xs font-bold text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-all"
@@ -680,33 +825,47 @@ const Settlements: React.FC = () => {
                           <FileText className="w-3 h-3" />
                           Ledger
                         </button>
-                        
-                        {/* Context-Aware Action Button */}
-                        {(b.net_balance || 0) !== 0 && (
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-center">
+                        {(b.final_balance || 0) !== 0 && (
                           <button
                             onClick={() => {
-                              setSelectedDriverForAction(b);
-                              setIsActionModalOpen(true);
+                              setSelectedOutsourceForModal(b);
+                              setNewSettlement({
+                                type: (b.final_balance || 0) > 0 ? 'Payout' : 'Collection',
+                                outsource_id: b.outsource_id,
+                                amount: Math.abs(b.final_balance || 0),
+                                reference_number: '',
+                                remark: ''
+                              });
+                              setIsModalOpen(true);
                             }}
-                            className={cn(
-                              "flex items-center gap-1 px-2 py-1 text-xs font-bold rounded-lg transition-all",
-                              (b.net_balance || 0) > 0 
-                                ? "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200" 
-                                : "bg-green-50 text-green-600 hover:bg-green-100 border border-green-200"
-                            )}
+                            className={`flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                              (b.final_balance || 0) > 0 
+                                ? 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200' 
+                                : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                            }`}
                           >
-                            {(b.net_balance || 0) > 0 ? (
+                            {(b.final_balance || 0) > 0 ? (
                               <>
-                                <ArrowDownCircle className="w-3 h-3" />
-                                Record Collection
+                                <ArrowUpCircle className="w-3 h-3" />
+                                Pay
                               </>
                             ) : (
                               <>
-                                <ArrowUpCircle className="w-3 h-3" />
-                                Record Payment
+                                <ArrowDownCircle className="w-3 h-3" />
+                                Collect
                               </>
                             )}
                           </button>
+                        )}
+                        {(b.final_balance || 0) === 0 && (
+                          <div className="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-50 text-green-600 border border-green-200">
+                            <CheckCircle2 className="w-3 h-3 inline mr-1" />
+                            Settled
+                          </div>
                         )}
                       </div>
                     </td>
@@ -714,7 +873,7 @@ const Settlements: React.FC = () => {
                 ))}
                 {!loading && filteredBalances.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-gray-400 italic">
+                    <td colSpan={7} className="px-6 py-12 text-center text-gray-400 italic">
                       No driver settlements found for the selected period.
                     </td>
                   </tr>
@@ -756,47 +915,70 @@ const Settlements: React.FC = () => {
               className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden"
             >
               <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                <h2 className="text-xl font-bold text-gray-900">Record Payment</h2>
-                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-white rounded-xl text-gray-400">
+                <h2 className="text-xl font-bold text-gray-900">
+                  {selectedOutsourceForModal?.final_balance && selectedOutsourceForModal.final_balance > 0 
+                    ? 'Record Payment' 
+                    : 'Record Collection'
+                  }
+                </h2>
+                <button onClick={() => {
+                  setIsModalOpen(false);
+                  setSelectedOutsourceForModal(null);
+                }} className="p-2 hover:bg-white rounded-xl text-gray-400">
                   <X className="w-6 h-6" />
                 </button>
               </div>
               
               <form onSubmit={handleSettlementSubmit} className="p-6 space-y-4">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-700">Settlement Type</label>
-                  <select
-                    value={newSettlement.type}
-                    onChange={(e) => setNewSettlement({ ...newSettlement, type: e.target.value as any })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
-                  >
-                    <option value="Collection">Collection (from Outsource)</option>
-                    <option value="Payout">Payout (to Outsource)</option>
-                  </select>
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-sm font-medium text-gray-700">Partner</p>
+                  <p className="text-lg font-bold text-gray-900">{selectedOutsourceForModal?.outsource_name}</p>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-700">Select Outsource</label>
-                  <select
-                    required
-                    value={newSettlement.outsource_id}
-                    onChange={(e) => setNewSettlement({ ...newSettlement, outsource_id: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
-                  >
-                    <option value="">Choose partner...</option>
-                    {outsources.map(o => (
-                      <option key={o.id} value={o.id}>{o.name}</option>
-                    ))}
-                  </select>
+                
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-sm font-medium text-gray-700">Current Balance</p>
+                  <p className={`text-lg font-bold ${
+                    (selectedOutsourceForModal?.final_balance || 0) > 0 
+                      ? 'text-green-600' 
+                      : (selectedOutsourceForModal?.final_balance || 0) < 0 
+                        ? 'text-red-600' 
+                        : 'text-gray-600'
+                  }`}>
+                    {formatCurrency(Math.abs(selectedOutsourceForModal?.final_balance || 0))}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {(selectedOutsourceForModal?.final_balance || 0) > 0 
+                      ? 'Business needs to pay this amount' 
+                      : (selectedOutsourceForModal?.final_balance || 0) < 0 
+                        ? 'Business needs to collect this amount' 
+                        : 'Account settled'
+                    }
+                  </p>
                 </div>
+                
+                <input type="hidden" name="type" value={newSettlement.type} />
+                <input type="hidden" name="outsource_id" value={newSettlement.outsource_id} />
                 <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-700">Amount</label>
+                  <label className="text-sm font-medium text-gray-700">
+                    {selectedOutsourceForModal?.final_balance && selectedOutsourceForModal.final_balance > 0 
+                      ? 'Payment Amount (AED)' 
+                      : 'Collection Amount (AED)'
+                    }
+                  </label>
                   <input
                     type="number"
                     required
+                    min="0"
+                    step="0.01"
+                    max={maxAllowed}
                     value={newSettlement.amount}
                     onChange={(e) => setNewSettlement({ ...newSettlement, amount: Number(e.target.value) })}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    placeholder={`Max: ${formatCurrency(maxAllowed)}`}
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    New balance will be: {formatCurrency(Math.abs((selectedOutsourceForModal?.final_balance || 0) - (selectedOutsourceForModal?.final_balance && selectedOutsourceForModal.final_balance > 0 ? newSettlement.amount : -newSettlement.amount)))}
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-gray-700">Reference #</label>
@@ -811,110 +993,16 @@ const Settlements: React.FC = () => {
                 
                 <button
                   type="submit"
-                  className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 mt-4"
+                  className={`w-full py-4 rounded-2xl font-bold text-lg transition-all shadow-lg mt-4 ${
+                    selectedOutsourceForModal?.final_balance && selectedOutsourceForModal.final_balance > 0
+                      ? 'bg-green-600 text-white hover:bg-green-700 shadow-green-200'
+                      : 'bg-red-600 text-white hover:bg-red-700 shadow-red-200'
+                  }`}
                 >
-                  Mark as Settled
-                </button>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Context-Aware Driver Action Modal */}
-      <AnimatePresence>
-        {isActionModalOpen && selectedDriverForAction && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsActionModalOpen(false)}
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden"
-            >
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">
-                    {(selectedDriverForAction.net_balance || 0) > 0 ? 'Record Collection' : 'Record Payment'}
-                  </h2>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {selectedDriverForAction.outsource_name} • Current balance: {formatCurrency(Math.abs(selectedDriverForAction.net_balance || 0))}
-                  </p>
-                </div>
-                <button onClick={() => setIsActionModalOpen(false)} className="p-2 hover:bg-white rounded-xl text-gray-400">
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-              
-              <form onSubmit={handleDriverActionSubmit} className="p-6 space-y-4">
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-600">Action Type:</span>
-                    <span className={cn(
-                      "text-sm font-bold px-3 py-1 rounded-lg",
-                      (selectedDriverForAction.net_balance || 0) > 0 
-                        ? "bg-red-100 text-red-700" 
-                        : "bg-green-100 text-green-700"
-                    )}>
-                      {(selectedDriverForAction.net_balance || 0) > 0 ? 'Collection' : 'Payment'}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-700">Amount</label>
-                  <input
-                    type="number"
-                    required
-                    step="0.01"
-                    min="0.01"
-                    max={Math.abs(selectedDriverForAction.net_balance || 0)}
-                    value={actionForm.amount}
-                    onChange={(e) => setActionForm({ ...actionForm, amount: Number(e.target.value) })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
-                    placeholder="0.00"
-                  />
-                  <p className="text-xs text-gray-500">Maximum: {formatCurrency(Math.abs(selectedDriverForAction.net_balance || 0))}</p>
-                </div>
-                
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-700">Reference #</label>
-                  <input
-                    type="text"
-                    value={actionForm.reference_number}
-                    onChange={(e) => setActionForm({ ...actionForm, reference_number: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
-                    placeholder="Transaction ID / Receipt #"
-                  />
-                </div>
-                
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-700">Remark</label>
-                  <textarea
-                    value={actionForm.remark}
-                    onChange={(e) => setActionForm({ ...actionForm, remark: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
-                    rows={3}
-                    placeholder="Add notes..."
-                  />
-                </div>
-                
-                <button
-                  type="submit"
-                  className={cn(
-                    "w-full py-4 rounded-2xl font-bold text-lg transition-all shadow-lg mt-4",
-                    (selectedDriverForAction.net_balance || 0) > 0 
-                      ? "bg-red-600 hover:bg-red-700 shadow-red-200" 
-                      : "bg-green-600 hover:bg-green-700 shadow-green-200"
-                  )}
-                >
-                  {(selectedDriverForAction.net_balance || 0) > 0 ? 'Record Collection' : 'Record Payment'}
+                  {selectedOutsourceForModal?.final_balance && selectedOutsourceForModal.final_balance > 0 
+                    ? 'Record Payment' 
+                    : 'Record Collection'
+                  }
                 </button>
               </form>
             </motion.div>

@@ -56,6 +56,28 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   }, []);
 
+  // Listen for profile changes in localStorage
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'ms_delivery_profile' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setProfile({
+            company_name: parsed.company_name || '',
+            owner_name: parsed.owner_name || '',
+            email: parsed.email || '',
+            logo_url: parsed.logo_url || ''
+          });
+        } catch (error) {
+          console.error('Error parsing updated profile:', error);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem('ms_admin_session');
     window.dispatchEvent(new Event('storage'));
@@ -78,18 +100,23 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
       {/* Mobile Header */}
       <header className="md:hidden bg-white border-b px-4 py-3 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <div className="bg-indigo-600 p-1.5 rounded-lg">
-            {profile.logo_url ? (
-              <img src={profile.logo_url} alt="Company Logo" className="w-5 h-5 object-cover rounded" />
-            ) : (
-              <Truck className="w-5 h-5 text-white" />
-            )}
+        {/* Mobile Logo - Strict Conditional Rendering */}
+        {profile.logo_url ? (
+          /* Render ONLY the custom uploaded image */
+          <img 
+            src={profile.logo_url} 
+            alt="Company Logo" 
+            className="w-8 h-8 rounded-full object-cover flex-shrink-0" 
+          />
+        ) : (
+          /* Render ONLY the fallback placeholder box */
+          <div className="w-8 h-8 flex-shrink-0 bg-[#5b52f6] rounded-lg flex items-center justify-center">
+            <Truck className="w-4 h-4 text-white" />
           </div>
-          <span className="font-bold text-gray-900">
-            {profile.company_name || profile.owner_name || 'MS Delivery'}
-          </span>
-        </div>
+        )}
+        <span className="font-bold text-gray-900">
+          {profile.company_name || profile.owner_name || 'MS Delivery'}
+        </span>
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -112,23 +139,30 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="h-full flex flex-col">
-          <div className="p-6 hidden md:flex items-center gap-3">
-            <div className="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-200">
-              {profile.logo_url ? (
-                <img src={profile.logo_url} alt="Company Logo" className="w-6 h-6 object-cover rounded" />
-              ) : (
+          <div className="flex flex-row items-center gap-3 p-4 mb-4 hidden md:flex">
+            {/* Icon Box - Strict Conditional Rendering */}
+            {profile.logo_url ? (
+              /* Render ONLY the custom uploaded image */
+              <img 
+                src={profile.logo_url} 
+                alt="Company Logo" 
+                className="w-12 h-12 rounded-full object-cover flex-shrink-0" 
+              />
+            ) : (
+              /* Render ONLY the fallback placeholder box */
+              <div className="w-12 h-12 flex-shrink-0 bg-[#5b52f6] rounded-xl flex items-center justify-center">
                 <Truck className="w-6 h-6 text-white" />
-              )}
-            </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-xl text-gray-900 tracking-tight">
-                {profile.company_name || 'MS Delivery'}
-              </span>
-              {profile.owner_name && (
-                <span className="text-sm text-gray-500">
-                  {profile.owner_name}
-                </span>
-              )}
+              </div>
+            )}
+
+            {/* Text Container */}
+            <div className="flex flex-col flex-1 overflow-hidden">
+              <h1 className="text-xl font-extrabold text-gray-900 leading-none tracking-tight truncate">
+                {profile.company_name || 'MS DELIVERY'}
+              </h1>
+              <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mt-1 truncate">
+                {profile.owner_name || 'KANCHAN'}
+              </p>
             </div>
           </div>
 

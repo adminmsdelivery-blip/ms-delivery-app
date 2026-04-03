@@ -5,11 +5,15 @@ import {
   Package, 
   Users, 
   ArrowUpRight,
-  ChevronRight
+  ChevronRight,
+  Calendar,
+  BarChart3
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatCurrency } from '../lib/utils';
 import { motion } from 'motion/react';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { format, startOfDay, startOfWeek, startOfMonth, subDays, subWeeks, subMonths } from 'date-fns';
 
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState({
@@ -19,6 +23,189 @@ const Dashboard: React.FC = () => {
     activeClients: 0
   });
   const [loading, setLoading] = useState(true);
+  const [salesData, setSalesData] = useState<any[]>([]);
+  const [salesPeriod, setSalesPeriod] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+  const [salesLoading, setSalesLoading] = useState(true);
+  const [previousStats, setPreviousStats] = useState({
+    totalRevenue: 0,
+    netProfit: 0,
+    totalOrders: 0
+  });
+
+  const fetchPreviousPeriodData = async () => {
+    try {
+      const now = new Date();
+      let startDate: Date;
+      
+      switch (salesPeriod) {
+        case 'daily':
+          // Previous day (yesterday)
+          startDate = subDays(now, 1);
+          break;
+        case 'weekly':
+          // Previous week (7-14 days ago)
+          startDate = subDays(now, 14);
+          break;
+        case 'monthly':
+          // Previous month (30-60 days ago)
+          startDate = subDays(now, 60);
+          break;
+      }
+
+      const { data: previousOrders } = await supabase
+        .from('orders')
+        .select('delivery_charges, estimated_profit')
+        .gte('order_date', startDate.toISOString())
+        .lt('order_date', startDate.toISOString())
+        .order('order_date', { ascending: true });
+
+      if (previousOrders) {
+        const prevRevenue = previousOrders.reduce((acc, curr) => acc + (Number(curr.delivery_charges) || 0), 0);
+        const prevProfit = previousOrders.reduce((acc, curr) => acc + (Number(curr.estimated_profit) || 0), 0);
+        const prevOrders = previousOrders.length;
+
+        setPreviousStats({
+          totalRevenue: prevRevenue,
+          netProfit: prevProfit,
+          totalOrders: prevOrders
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching previous period data:', error);
+    }
+  };
+
+  const calculateGrowth = (current: number, previous: number): { percentage: number; isPositive: boolean; display: string } => {
+    const currentValue = Number(current) || 0;
+    const previousValue = Number(previous) || 0;
+    
+    console.log("DEBUG - Current:", currentValue, "Previous:", previousValue);
+    
+    if (previousValue === 0) {
+      return { 
+        percentage: currentValue > 0 ? 100 : 0, 
+        isPositive: currentValue > 0, 
+        display: currentValue > 0 ? 'New' : '0%' 
+      };
+    }
+    
+    const change = currentValue - previousValue;
+    const percentage = previousValue > 0 ? (change / previousValue) * 100 : 100;
+    const isPositive = change >= 0;
+    
+    return {
+      percentage: Math.abs(Math.round(percentage * 10) / 10),
+      isPositive,
+      display: isPositive ? `+${Math.round(percentage * 10) / 10}%` : `-${Math.round(percentage * 10) / 10}%`
+    };
+  };
+
+  const fetchSalesData = async () => {
+    setSalesLoading(true);
+    try {
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('delivery_charges, order_date')
+        .not('delivery_charges', 'is', null)
+        .order('order_date', { ascending: true });
+
+      if (error) throw error;
+
+      console.log("RAW ORDERS:", orders);
+
+      let processedData: any[] = [];
+      const now = new Date();
+
+      if (salesPeriod === 'daily') {
+        // Group by hour for current date
+        const todayOrders = orders?.filter(order => {
+          const orderDate = new Date(order.order_date);
+          console.log("Order date from DB:", order.order_date, "Parsed to:", orderDate);
+          return orderDate.toDateString() === now.toDateString();
+        }) || [];
+
+        const hourlyData = Array.from({ length: 24 }, (_, hour) => {
+          const hourOrders = todayOrders.filter(order => {
+            const orderHour = new Date(order.order_date).getHours();
+            return orderHour === hour;
+          });
+          
+          const totalRevenue = hourOrders.reduce((sum, order) => 
+            sum + (Number(order.delivery_charges) || 0), 0
+          );
+
+          return {
+            label: `${hour.toString().padStart(2, '0')}:00`,
+            value: totalRevenue,
+            hour
+          };
+        });
+
+        processedData = hourlyData.filter(item => item.value > 0 || item.hour === now.getHours());
+      } else if (salesPeriod === 'weekly') {
+        // Group by day for last 7 days
+        const weekAgo = subDays(now, 7);
+        const weekOrders = orders?.filter(order => {
+          const orderDate = new Date(order.order_date);
+          return orderDate >= weekAgo;
+        }) || [];
+
+        const dailyData = Array.from({ length: 7 }, (_, i) => {
+          const date = subDays(now, 6 - i);
+          const dayOrders = weekOrders.filter(order => {
+            const orderDate = new Date(order.order_date);
+            return orderDate.toDateString() === date.toDateString();
+          });
+
+          const totalRevenue = dayOrders.reduce((sum, order) => 
+            sum + (Number(order.delivery_charges) || 0), 0
+          );
+
+          return {
+            label: format(date, 'EEE'),
+            value: totalRevenue,
+            date: format(date, 'MMM dd')
+          };
+        });
+
+        processedData = dailyData;
+      } else {
+        // Group by date for current month
+        const monthStart = startOfMonth(now);
+        const monthOrders = orders?.filter(order => {
+          const orderDate = new Date(order.order_date);
+          return orderDate >= monthStart;
+        }) || [];
+
+        const dailyData = Array.from({ length: now.getDate() }, (_, i) => {
+          const date = new Date(now.getFullYear(), now.getMonth(), i + 1);
+          const dayOrders = monthOrders.filter(order => {
+            const orderDate = new Date(order.order_date);
+            return orderDate.toDateString() === date.toDateString();
+          });
+
+          const totalRevenue = dayOrders.reduce((sum, order) => 
+            sum + (Number(order.delivery_charges) || 0), 0
+          );
+
+          return {
+            label: (i + 1).toString(),
+            value: totalRevenue,
+            date: format(date, 'MMM dd')
+          };
+        });
+
+        processedData = dailyData;
+      }
+
+      console.log("GRAPH DATA:", processedData);
+      setSalesData(processedData);
+    } catch (error) {
+      console.error('Error fetching sales data:', error);
+    } finally {
+      setSalesLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -45,7 +232,14 @@ const Dashboard: React.FC = () => {
     };
 
     fetchStats();
+    fetchSalesData();
+    fetchPreviousPeriodData();
   }, []);
+
+  useEffect(() => {
+    fetchSalesData();
+    fetchPreviousPeriodData();
+  }, [salesPeriod]);
 
   const kpiCards = [
     { 
@@ -53,28 +247,28 @@ const Dashboard: React.FC = () => {
       value: formatCurrency(stats.totalRevenue), 
       icon: DollarSign, 
       color: 'bg-blue-500',
-      trend: '+12.5%'
+      ...calculateGrowth(stats.totalRevenue, previousStats.totalRevenue)
     },
     { 
       title: 'Net Profit', 
       value: formatCurrency(stats.netProfit), 
       icon: TrendingUp, 
       color: 'bg-green-500',
-      trend: '+8.2%'
+      ...calculateGrowth(stats.netProfit, previousStats.netProfit)
     },
     { 
       title: 'Total Orders', 
       value: stats.totalOrders.toString(), 
       icon: Package, 
       color: 'bg-indigo-500',
-      trend: '+24'
+      ...calculateGrowth(stats.totalOrders, previousStats.totalOrders)
     },
     { 
       title: 'Active Clients', 
       value: stats.activeClients.toString(), 
       icon: Users, 
       color: 'bg-purple-500',
-      trend: '+3'
+      ...calculateGrowth(stats.activeClients, previousStats.activeClients)
     },
   ];
 
@@ -107,9 +301,16 @@ const Dashboard: React.FC = () => {
               <div className={cn("p-3 rounded-xl text-white", card.color)}>
                 <card.icon className="w-6 h-6" />
               </div>
-              <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full flex items-center gap-1">
-                <ArrowUpRight className="w-3 h-3" />
-                {card.trend}
+              <span className={cn(
+                "text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1",
+                card.isPositive ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50"
+              )}>
+                {card.isPositive ? (
+                  <ArrowUpRight className="w-3 h-3" />
+                ) : (
+                  <ChevronRight className="w-3 h-3 rotate-180" />
+                )}
+                {card.display}
               </span>
             </div>
             <div className="mt-4">
@@ -120,25 +321,107 @@ const Dashboard: React.FC = () => {
         ))}
       </div>
 
-      {/* Promotional Banner */}
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="relative overflow-hidden bg-indigo-600 rounded-3xl p-8 text-white shadow-xl shadow-indigo-200"
+      {/* Sales Analytics Graph */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"
       >
-        <div className="relative z-10 max-w-lg">
-          <h2 className="text-3xl font-bold mb-4">Ready to scale your logistics?</h2>
-          <p className="text-indigo-100 mb-6">
-            Get advanced insights, automated reporting, and multi-user access with our Premium Plan.
-          </p>
-          <button className="bg-white text-indigo-600 px-6 py-3 rounded-xl font-bold hover:bg-indigo-50 transition-colors flex items-center gap-2">
-            Upgrade Now
-            <ChevronRight className="w-4 h-4" />
-          </button>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-indigo-600" />
+              Sales Analytics
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">Total Sales Revenue by Period</p>
+          </div>
+          
+          {/* Period Toggle */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setSalesPeriod('daily')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                salesPeriod === 'daily'
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Daily
+            </button>
+            <button
+              onClick={() => setSalesPeriod('weekly')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                salesPeriod === 'weekly'
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Weekly
+            </button>
+            <button
+              onClick={() => setSalesPeriod('monthly')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                salesPeriod === 'monthly'
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Monthly
+            </button>
+          </div>
         </div>
-        {/* Decorative elements */}
-        <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 translate-y-1/4 translate-x-1/4 w-64 h-64 bg-indigo-400/20 rounded-full blur-2xl" />
+
+        {/* Chart Container */}
+        <div className="h-80">
+          {salesLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+          ) : salesData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+              <BarChart3 className="w-12 h-12 mb-3" />
+              <p className="text-sm font-medium">No sales recorded for this period</p>
+              <p className="text-xs mt-1">Try selecting a different time period</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={salesData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis 
+                  dataKey="label" 
+                  tick={{ fontSize: 12, fill: '#6b7280' }}
+                  tickLine={{ stroke: '#e5e7eb' }}
+                />
+                <YAxis 
+                  tick={{ fontSize: 12, fill: '#6b7280' }}
+                  tickLine={{ stroke: '#e5e7eb' }}
+                  tickFormatter={(value) => `AED ${value.toLocaleString()}`}
+                />
+                <Tooltip 
+                  formatter={(value: number) => [`AED ${value.toLocaleString()}`, 'Revenue']}
+                  labelFormatter={(label, payload) => {
+                    if (payload && payload[0]) {
+                      return payload[0].payload.date || label;
+                    }
+                    return label;
+                  }}
+                  contentStyle={{
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '12px'
+                  }}
+                />
+                <Bar 
+                  dataKey="value" 
+                  fill="#6366f1" 
+                  radius={[8, 8, 0, 0]}
+                  animationDuration={800}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
       </motion.div>
     </div>
   );
