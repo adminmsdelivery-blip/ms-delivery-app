@@ -304,33 +304,134 @@ const Settlements: React.FC = () => {
   };
 
   const exportDriverLedger = (driverId: string, driverName: string) => {
-    const driverOrders = allOrders.filter(o => o.driver_id === driverId);
+    const driverOrders = allOrders.filter(o => 
+      o.driver_id === driverId && 
+      o.order_status === 'COMPLETED'
+    );
 
-    const dataToExport = driverOrders.map(o => ({
-      'Order Date': new Date(o.created_at).toLocaleDateString(),
-      'Order Number': o.order_number,
-      'Client Name': o.clients?.name || 'N/A',
-      'Payment Method': o.payment_method,
-      'Total Order Amount (AED)': o.total_order_amount,
-      'Outsource Charge (AED)': o.outsource_charge,
-      'Order Status': o.order_status
-    }));
+    // Calculate summary values
+    const totalServiceCharges = driverOrders.reduce((sum, o) => sum + (o.outsource_charge || 0), 0);
+    const totalCashInHand = driverOrders.reduce((sum, o) => {
+      if (o.payment_method === 'COD' || o.payment_method === 'COP') {
+        return sum + (o.total_order_amount || 0);
+      }
+      return sum;
+    }, 0);
+    const previousManualAdjustments = 0; // TODO: Pull from settlement history table
+    const finalStatus = totalServiceCharges - totalCashInHand + previousManualAdjustments;
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    // Enhanced order data with new settlement columns
+    const dataToExport = driverOrders.map((o, index) => {
+      const companyOwes = o.outsource_charge || 0;
+      const driverCollected = (o.payment_method === 'COD' || o.payment_method === 'COP') ? o.total_order_amount || 0 : 0;
+      const netPerOrder = companyOwes - driverCollected;
+
+      return {
+        'Order Date': new Date(o.created_at).toLocaleDateString(),
+        'Order Number': o.order_number,
+        'Client Name': o.clients?.name || 'N/A',
+        'Payment Method': o.payment_method,
+        'Total Order Amount (AED)': o.total_order_amount,
+        'Outsource Charge (AED)': o.outsource_charge,
+        'Company Owes (A)': companyOwes,
+        'Driver Collected (B)': driverCollected,
+        'Net Per Order (C)': netPerOrder,
+        'Order Status': o.order_status
+      };
+    });
+
+    // Create summary section at top (Rows 1-5)
+    const summaryData = [
+      { 'Final Settlement Summary': '' },
+      { '': '' },
+      { 'Total Service Charges': totalServiceCharges },
+      { 'Total Cash in Hand (Driver)': totalCashInHand },
+      { 'Previous Manual Adjustments': previousManualAdjustments },
+      { '': '' },
+      { 
+        'FINAL STATUS': finalStatus > 0 
+          ? `PAY TO OUTSOURCE: ${Math.abs(finalStatus)} AED` 
+          : finalStatus < 0 
+            ? `COLLECT FROM OUTSOURCE: ${Math.abs(finalStatus)} AED` 
+            : 'SETTLED: 0 AED'
+      }
+    ];
+
+    // Combine summary and order data
+    const allData = [...summaryData, { '': '' }, { '': '' }, ...dataToExport];
+
+    const ws = XLSX.utils.json_to_sheet(allData);
     
+    // Set column widths
     ws['!cols'] = [
+      { wch: 25 }, // Summary labels
+      { wch: 20 }, // Summary values
       { wch: 15 }, // Order Date
       { wch: 15 }, // Order Number
       { wch: 25 }, // Client Name
       { wch: 15 }, // Payment Method
       { wch: 20 }, // Total Order Amount
       { wch: 20 }, // Outsource Charge
+      { wch: 20 }, // Company Owes (A)
+      { wch: 20 }, // Driver Collected (B)
+      { wch: 20 }, // Net Per Order (C)
       { wch: 15 }, // Order Status
     ];
 
+    // Apply styling for summary section
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    for (let R = 0; R < 7; R++) {
+      for (let C = 0; C <= 1; C++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!ws[cellAddress]) continue;
+        
+        if (R === 0) {
+          // Summary title row
+          ws[cellAddress].s = {
+            font: { bold: true, sz: 14 },
+            alignment: { horizontal: 'center' },
+            fill: { fgColor: { rgb: "FFFFFFFF" }, patternType: "solid" }
+          };
+        } else if (R === 6) {
+          // Final status row
+          ws[cellAddress].s = {
+            font: { bold: true, sz: 12 },
+            alignment: { horizontal: 'center' },
+            fill: { fgColor: { rgb: finalStatus > 0 ? "FF90EE90" : finalStatus < 0 ? "FFB0B0B0" : "FFFFFF" }, patternType: "solid" }
+          };
+        } else {
+          // Summary data rows
+          ws[cellAddress].s = {
+            font: { bold: true, sz: 11 },
+            alignment: { horizontal: 'left' }
+          };
+        }
+      }
+    }
+
+    // Apply row highlighting for ONLINE payment method
+    const dataStartRow = 9; // After summary section
+    for (let R = dataStartRow; R < dataStartRow + driverOrders.length; R++) {
+      const orderIndex = R - dataStartRow;
+      if (orderIndex >= 0 && orderIndex < driverOrders.length) {
+        const order = driverOrders[orderIndex];
+        if (order.payment_method === 'ONLINE') {
+          // Highlight entire row in light blue for ONLINE orders
+          for (let C = 0; C <= 10; C++) {
+            const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+            if (ws[cellAddress]) {
+              ws[cellAddress].s = {
+                fill: { fgColor: { rgb: "FFE6F3FF" }, patternType: "solid" }
+              };
+            }
+          }
+        }
+      }
+    }
+
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Driver Ledger');
-    XLSX.writeFile(wb, `Ledger_${driverName}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, 'Order Settlement Report');
+    XLSX.writeFile(wb, `Order_Settlement_${driverName}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
   };
 
   const handleSettlementSubmit = async (e: React.FormEvent) => {
