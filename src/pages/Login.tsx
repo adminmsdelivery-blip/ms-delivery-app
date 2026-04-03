@@ -44,115 +44,124 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden px-4 py-8">
+    <div className="min-h-screen flex items-center justify-center bg-[#f6f9fc] px-4 py-8">
       {/* 3D Background */}
       <Suspense fallback={null}>
         <AnimatedBackground />
       </Suspense>
 
-      {/* Gradient orbs */}
-      <div className="glow-orb w-[500px] h-[500px] -top-40 -left-40" style={{ background: 'hsl(250, 85%, 55%)' }} />
-      <div className="glow-orb w-[400px] h-[400px] -bottom-32 -right-32" style={{ background: 'hsl(170, 80%, 45%)' }} />
-
-      {/* Login Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 40, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        className="login-card relative z-10 w-full max-w-[400px] rounded-2xl p-8 sm:p-10"
-      >
-        {/* Logo & Title */}
+      {/* Header Section - Left Aligned */}
+      <div className="w-full max-w-md mb-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.5 }}
-          className="mb-8 text-center"
+          className="text-left"
         >
-          {/* Dynamic Logo Replacement */}
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full overflow-hidden bg-white shadow-sm border border-gray-100">
-            <img src={companyLogoUrl || "/custom-logo.png"} alt="Brand Logo" className="w-full h-full object-cover" />
+          {/* Dynamic Logo */}
+          <div className="mb-6 flex items-center">
+            <div className="w-12 h-12 rounded-lg overflow-hidden bg-white shadow-sm border border-gray-200">
+              <img src={companyLogoUrl || "/custom-logo.png"} alt="Brand Logo" className="w-full h-full object-cover" />
+            </div>
           </div>
           
-          {/* Dynamic Company Name Replacement */}
-          <h1 className="text-2xl font-bold tracking-tight text-foreground truncate px-2" style={{ fontFamily: 'var(--font-display)' }}>
+          {/* Dynamic Company Name */}
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
             {companyName || 'MS Delivery'}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">Admin Console</p>
+          <p className="text-sm text-gray-600">Kanchan</p>
         </motion.div>
+      </div>
 
+      {/* Login Card - Stripe Style */}
+      <motion.div
+        initial={{ opacity: 0, y: 40, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        className="w-full max-w-md bg-white rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.02),_0_4px_12px_rgba(0,0,0,0.04)] p-10"
+      >
         {/* Form */}
         <motion.form
           onSubmit={handleLogin}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35, duration: 0.5 }}
-          className="space-y-5"
+          className="space-y-6"
         >
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Username
-            </label>
-            <div className="relative">
-              <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter username"
-                className="login-input pl-10"
-                required
-              />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                Username
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter username"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#635BFF] focus:border-transparent transition-colors"
+                  required
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Password
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
-                className="login-input pl-10"
-                required
-              />
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#635BFF] focus:border-transparent transition-colors"
+                  required
+                />
+              </div>
             </div>
           </div>
 
           <motion.button
             type="submit"
             disabled={isLoading}
-            className="btn-login flex items-center justify-center gap-2"
+            className="w-full bg-[#635BFF] text-white font-semibold py-3 rounded-lg hover:bg-[#5A52E6] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#635BFF] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             whileTap={{ scale: 0.98 }}
           >
             {isLoading ? (
               <motion.div
-                className="h-5 w-5 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground"
+                className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white mx-auto"
                 animate={{ rotate: 360 }}
                 transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
               />
             ) : (
-              <>
-                Sign In
-                <ArrowRight className="h-4 w-4" />
-              </>
+              'Sign In'
             )}
           </motion.button>
         </motion.form>
 
-        {/* Footer */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.5 }}
-          className="mt-8 text-center text-xs text-muted-foreground"
-        >
-          © 2026 MS Delivery Services. Authorized Personnel Only.
-        </motion.p>
+        {/* Error Display */}
+        {error && (
+          <motion.div 
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="mt-6 p-4 bg-red-50 border border-red-100 rounded-lg flex items-center gap-3 text-red-600 text-sm font-medium"
+          >
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            {error}
+          </motion.div>
+        )}
       </motion.div>
+
+      {/* Footer */}
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.6, duration: 0.5 }}
+        className="mt-8 text-center text-sm text-gray-500"
+      >
+        Authorized Personnel Only
+      </motion.p>
     </div>
   );
 };
