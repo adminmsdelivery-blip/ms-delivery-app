@@ -77,7 +77,11 @@ const Dashboard: React.FC = () => {
 
   const calculateGrowth = (current: number, previous: number): { percentage: number; isPositive: boolean; display: string } => {
     if (previous === 0) {
-      return { percentage: 100, isPositive: true, display: 'New' };
+      return { 
+        percentage: current > 0 ? 100 : 0, 
+        isPositive: current > 0, 
+        display: current > 0 ? 'New' : '0%' 
+      };
     }
     
     const change = current - previous;
