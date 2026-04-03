@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Truck, User, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -11,11 +11,14 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [companyLogoUrl, setCompanyLogoUrl] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const navigate = useNavigate();
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setIsLoading(true);
     setError('');
 
     // --- Hardcoded Admin Credentials ---
@@ -30,68 +33,50 @@ const Login: React.FC = () => {
         // to ensure a clean state reload of Router
         window.location.href = '/'; 
         
-        setLoading(false);
+        setIsLoading(false);
       }, 1000);
     } else {
       setTimeout(() => {
         setError('Invalid username or password. Please try again.');
-        setLoading(false);
+        setIsLoading(false);
       }, 600);
     }
   };
 
   return (
-    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden px-4 py-8">
-      {/* 3D Background - New Lovable UI */}
-      <AnimatedBackground />
+    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#f6f9fc] px-4 py-8">
+      {/* 3D Background */}
+      <Suspense fallback={null}>
+        <AnimatedBackground />
+      </Suspense>
 
-      {/* Gradient orbs - New Lovable UI */}
-      <div className="glow-orb w-[500px] h-[500px] -top-40 -left-40" style={{ background: 'hsl(250, 85%, 55%)' }} />
-      <div className="glow-orb w-[400px] h-[400px] -bottom-32 -right-32" style={{ background: 'hsl(170, 80%, 45%)' }} />
+      {/* Glowing Background Orbs */}
+      <div className="absolute w-[500px] h-[500px] -top-40 -left-40 rounded-full blur-[100px] opacity-50 pointer-events-none" style={{ background: 'hsl(250, 85%, 55%)' }} />
+      <div className="absolute w-[400px] h-[400px] -bottom-32 -right-32 rounded-full blur-[100px] opacity-50 pointer-events-none" style={{ background: 'hsl(170, 80%, 45%)' }} />
 
-      {/* Login Card - New Lovable UI with Real Logic */}
+      {/* Animated Login Card */}
       <motion.div
         initial={{ opacity: 0, y: 40, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        className="login-card relative z-10 w-full max-w-[400px] rounded-2xl p-8 sm:p-10"
+        className="relative z-10 w-full max-w-[400px] rounded-2xl bg-white/80 backdrop-blur-xl p-8 sm:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50"
       >
-        {/* Logo & Title - New Lovable UI */}
+        {/* Dynamic Logo & Title */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.5 }}
-          className="mb-8 text-center"
+          className="mb-8 flex flex-col items-center text-center"
         >
-          <motion.div 
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 260, damping: 20 }}
-            className="inline-block bg-indigo-600 p-4 rounded-3xl shadow-xl shadow-indigo-200"
-          >
-            <Truck className="w-10 h-10 text-white" />
-          </motion.div>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight italic">
-              MS <span className="text-indigo-600 font-black not-italic">DELIVERY</span>
-            </h1>
-            <p className="text-gray-500 mt-1 font-medium">Logistics Management Portal</p>
+          <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 bg-white shadow-sm flex items-center justify-center border border-gray-100 mb-4">
+            <img src={companyLogoUrl || "/custom-logo.png"} alt="Logo" className="w-full h-full object-cover" />
           </div>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 truncate w-full">
+            {companyName || 'MS DELIVERY'}
+          </h1>
         </motion.div>
 
-        {/* Error Display */}
-        {error && (
-          <motion.div 
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm font-medium"
-          >
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            {error}
-          </motion.div>
-        )}
-
-        {/* Form - New Lovable UI with Real Logic */}
+        {/* Form linked to existing state */}
         <motion.form
           onSubmit={handleLogin}
           initial={{ opacity: 0, y: 20 }}
@@ -99,72 +84,60 @@ const Login: React.FC = () => {
           transition={{ delay: 0.35, duration: 0.5 }}
           className="space-y-5"
         >
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
-                Username
-              </label>
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
-                <input
-                  type="text"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
-                  placeholder="Enter admin username"
-                />
-              </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium uppercase tracking-wider text-gray-500">
+              Username
+            </label>
+            <div className="relative">
+              <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter admin username"
+                className="appearance-none block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#635BFF] focus:border-transparent sm:text-sm bg-white/70 backdrop-blur-sm"
+                required
+              />
             </div>
+          </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
-                  placeholder="•••••••"
-                />
-              </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium uppercase tracking-wider text-gray-500">
+              Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••"
+                className="appearance-none block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#635BFF] focus:border-transparent sm:text-sm bg-white/70 backdrop-blur-sm"
+                required
+              />
             </div>
           </div>
 
           <motion.button
             type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-indigo-700 active:scale-[0.98] transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+            disabled={isLoading}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-[#635BFF] hover:bg-[#5A52E6] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#635BFF] transition-colors duration-200"
             whileTap={{ scale: 0.98 }}
           >
-            {loading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Verifying...
-              </>
+            {isLoading ? (
+              <motion.div
+                className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white"
+                animate={{ rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
+              />
             ) : (
               <>
                 Secure Sign In
-                <ArrowRight className="w-5 h-5" />
+                <ArrowRight className="h-4 w-4" />
               </>
             )}
           </motion.button>
         </motion.form>
-
-        {/* Footer - New Lovable UI */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.5 }}
-          className="mt-8 text-center text-xs text-gray-400 font-medium"
-        >
-          © 2026 MS Delivery Services <br/>
-          <span className="opacity-50">Authorized Personnel Only</span>
-        </motion.p>
       </motion.div>
     </div>
   );
