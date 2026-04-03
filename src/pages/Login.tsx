@@ -90,7 +90,7 @@ const Login: React.FC = () => {
             </div>
 
             {/* Restored Text Block - Company Name Only (Dynamic) */}
-            <div className="flex flex-col justify-center text-left h-16">
+            <div className="flex flex-col justify-center text-left">
               <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight leading-none truncate max-w-[200px] sm:max-w-xs">
                 {profile.company_name || 'MS DELIVERY'}
               </h1>
@@ -124,12 +124,14 @@ const Login: React.FC = () => {
                   Username
                 </label>
                 <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="w-5 h-5 text-gray-300" />
+                  </div>
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="appearance-none block w-full px-3 py-2.5 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#635BFF] focus:border-transparent sm:text-sm transition-colors duration-200"
+                    className="appearance-none block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#635BFF] focus:border-transparent sm:text-sm transition-colors duration-200"
                     placeholder="Enter your username"
                     required
                   />
@@ -141,12 +143,14 @@ const Login: React.FC = () => {
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="w-5 h-5 text-gray-300" />
+                  </div>
                   <input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="appearance-none block w-full px-3 py-2.5 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#635BFF] focus:border-transparent sm:text-sm transition-colors duration-200"
+                    className="appearance-none block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#635BFF] focus:border-transparent sm:text-sm transition-colors duration-200"
                     placeholder="Enter your password"
                     required
                   />
