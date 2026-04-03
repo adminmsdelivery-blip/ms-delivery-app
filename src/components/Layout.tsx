@@ -105,17 +105,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="h-full flex flex-col">
-          <div className="p-6 hidden md:flex items-center gap-3">
-            <AppLogo className="w-6 h-6" />
-            <div className="flex flex-col">
-              <span className="font-bold text-xl text-gray-900 tracking-tight">
-                {profile.company_name || 'MS Delivery'}
-              </span>
-              {profile.owner_name && (
-                <span className="text-sm text-gray-500">
-                  {profile.owner_name}
-                </span>
-              )}
+          <div className="flex flex-row items-center gap-3 p-4 mb-4 hidden md:flex">
+            {/* Icon Box */}
+            <div className="w-12 h-12 flex-shrink-0 bg-[#5b52f6] rounded-xl overflow-hidden flex items-center justify-center">
+              <img src="/logo.svg" alt="Logo" className="w-full h-full object-cover" />
+              {/* Note to Windsurf: If the image path is broken, fallback to a text icon temporarily, but KEEP this div strictly w-12 h-12 */}
+            </div>
+
+            {/* Text Container */}
+            <div className="flex flex-col flex-1 overflow-hidden">
+              <h1 className="text-xl font-extrabold text-gray-900 leading-none tracking-tight truncate">
+                MS DELIVERY
+              </h1>
+              <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mt-1 truncate">
+                KANCHAN
+              </p>
+              {/* Note: Removed 'Logistics Management Portal' to keep the UI clean, or place it elsewhere if strictly required */}
             </div>
           </div>
 

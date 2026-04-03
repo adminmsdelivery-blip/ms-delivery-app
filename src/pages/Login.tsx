@@ -51,7 +51,22 @@ const Login: React.FC = () => {
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
             className="inline-block"
           >
-            <AppLogo className="w-12 h-12" />
+            <div className="flex flex-row items-center gap-3">
+              {/* Icon Box */}
+              <div className="w-12 h-12 flex-shrink-0 bg-[#5b52f6] rounded-xl overflow-hidden flex items-center justify-center">
+                <img src="/logo.svg" alt="Logo" className="w-full h-full object-cover" />
+              </div>
+
+              {/* Text Container */}
+              <div className="flex flex-col flex-1 overflow-hidden">
+                <h1 className="text-xl font-extrabold text-gray-900 leading-none tracking-tight truncate">
+                  MS DELIVERY
+                </h1>
+                <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mt-1 truncate">
+                  KANCHAN
+                </p>
+              </div>
+            </div>
           </motion.div>
         </div>
 
