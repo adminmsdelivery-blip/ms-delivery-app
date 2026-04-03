@@ -44,39 +44,43 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#f6f9fc] px-4 py-8">
+    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden px-4 py-8">
       {/* 3D Background */}
       <Suspense fallback={null}>
         <AnimatedBackground />
       </Suspense>
 
-      {/* Glowing Background Orbs */}
-      <div className="absolute w-[500px] h-[500px] -top-40 -left-40 rounded-full blur-[100px] opacity-50 pointer-events-none" style={{ background: 'hsl(250, 85%, 55%)' }} />
-      <div className="absolute w-[400px] h-[400px] -bottom-32 -right-32 rounded-full blur-[100px] opacity-50 pointer-events-none" style={{ background: 'hsl(170, 80%, 45%)' }} />
+      {/* Gradient orbs */}
+      <div className="glow-orb w-[500px] h-[500px] -top-40 -left-40" style={{ background: 'hsl(250, 85%, 55%)' }} />
+      <div className="glow-orb w-[400px] h-[400px] -bottom-32 -right-32" style={{ background: 'hsl(170, 80%, 45%)' }} />
 
-      {/* Animated Login Card */}
+      {/* Login Card */}
       <motion.div
         initial={{ opacity: 0, y: 40, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-10 w-full max-w-[400px] rounded-2xl bg-white/80 backdrop-blur-xl p-8 sm:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50"
+        className="login-card relative z-10 w-full max-w-[400px] rounded-2xl p-8 sm:p-10"
       >
-        {/* Dynamic Logo & Title */}
+        {/* Logo & Title */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.5 }}
-          className="mb-8 flex flex-col items-center text-center"
+          className="mb-8 text-center"
         >
-          <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 bg-white shadow-sm flex items-center justify-center border border-gray-100 mb-4">
-            <img src={companyLogoUrl || "/custom-logo.png"} alt="Logo" className="w-full h-full object-cover" />
+          {/* Dynamic Logo Replacement */}
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full overflow-hidden bg-white shadow-sm border border-gray-100">
+            <img src={companyLogoUrl || "/custom-logo.png"} alt="Brand Logo" className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 truncate w-full">
-            {companyName || 'MS DELIVERY'}
+          
+          {/* Dynamic Company Name Replacement */}
+          <h1 className="text-2xl font-bold tracking-tight text-foreground truncate px-2" style={{ fontFamily: 'var(--font-display)' }}>
+            {companyName || 'MS Delivery'}
           </h1>
+          <p className="mt-1 text-sm text-muted-foreground">Admin Console</p>
         </motion.div>
 
-        {/* Form linked to existing state */}
+        {/* Form */}
         <motion.form
           onSubmit={handleLogin}
           initial={{ opacity: 0, y: 20 }}
@@ -85,34 +89,34 @@ const Login: React.FC = () => {
           className="space-y-5"
         >
           <div className="space-y-1.5">
-            <label className="text-xs font-medium uppercase tracking-wider text-gray-500">
+            <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Username
             </label>
             <div className="relative">
-              <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter admin username"
-                className="appearance-none block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#635BFF] focus:border-transparent sm:text-sm bg-white/70 backdrop-blur-sm"
+                placeholder="Enter username"
+                className="login-input pl-10"
                 required
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium uppercase tracking-wider text-gray-500">
+            <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••"
-                className="appearance-none block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#635BFF] focus:border-transparent sm:text-sm bg-white/70 backdrop-blur-sm"
+                placeholder="Enter password"
+                className="login-input pl-10"
                 required
               />
             </div>
@@ -121,23 +125,33 @@ const Login: React.FC = () => {
           <motion.button
             type="submit"
             disabled={isLoading}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-[#635BFF] hover:bg-[#5A52E6] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#635BFF] transition-colors duration-200"
+            className="btn-login flex items-center justify-center gap-2"
             whileTap={{ scale: 0.98 }}
           >
             {isLoading ? (
               <motion.div
-                className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white"
+                className="h-5 w-5 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground"
                 animate={{ rotate: 360 }}
                 transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
               />
             ) : (
               <>
-                Secure Sign In
+                Sign In
                 <ArrowRight className="h-4 w-4" />
               </>
             )}
           </motion.button>
         </motion.form>
+
+        {/* Footer */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6, duration: 0.5 }}
+          className="mt-8 text-center text-xs text-muted-foreground"
+        >
+          © 2026 MS Delivery Services. Authorized Personnel Only.
+        </motion.p>
       </motion.div>
     </div>
   );
