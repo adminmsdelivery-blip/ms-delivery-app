@@ -2,7 +2,7 @@
 
 import React, { useState, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Truck, User, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { User, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import AnimatedBackground from '../components/AnimatedBackground';
 
@@ -51,10 +51,10 @@ const Login: React.FC = () => {
         {/* 1. Header (Left-aligned above the card) */}
         <div className="mb-6 flex flex-col items-start text-left">
           {/* Dynamic Logo */}
-          <div className="w-14 h-14 rounded-xl overflow-hidden bg-white shadow-sm border border-gray-100 flex items-center justify-center mb-4">
+          <div className="w-14 h-14 rounded-xl overflow-hidden bg-white shadow-sm border border-gray-100 flex items-center justify-center mb-4 flex-shrink-0">
             <img 
               src={companyLogoUrl || "/custom-logo.png"} 
-              alt="Brand" 
+              alt="Brand Logo" 
               className="w-full h-full object-cover" 
             />
           </div>
