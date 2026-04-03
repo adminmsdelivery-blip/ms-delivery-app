@@ -26,6 +26,70 @@ const Dashboard: React.FC = () => {
   const [salesData, setSalesData] = useState<any[]>([]);
   const [salesPeriod, setSalesPeriod] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
   const [salesLoading, setSalesLoading] = useState(true);
+  const [previousStats, setPreviousStats] = useState({
+    totalRevenue: 0,
+    netProfit: 0,
+    totalOrders: 0
+  });
+
+  const fetchPreviousPeriodData = async () => {
+    try {
+      const now = new Date();
+      let startDate: Date;
+      
+      switch (salesPeriod) {
+        case 'daily':
+          // Previous day (yesterday)
+          startDate = subDays(now, 1);
+          break;
+        case 'weekly':
+          // Previous week (7-14 days ago)
+          startDate = subDays(now, 14);
+          break;
+        case 'monthly':
+          // Previous month (30-60 days ago)
+          startDate = subDays(now, 60);
+          break;
+      }
+
+      const { data: previousOrders } = await supabase
+        .from('orders')
+        .select('delivery_charges, estimated_profit')
+        .gte('order_date', startDate.toISOString())
+        .lt('order_date', startDate.toISOString())
+        .order('order_date', { ascending: true });
+
+      if (previousOrders) {
+        const prevRevenue = previousOrders.reduce((acc, curr) => acc + (Number(curr.delivery_charges) || 0), 0);
+        const prevProfit = previousOrders.reduce((acc, curr) => acc + (Number(curr.estimated_profit) || 0), 0);
+        const prevOrders = previousOrders.length;
+
+        setPreviousStats({
+          totalRevenue: prevRevenue,
+          netProfit: prevProfit,
+          totalOrders: prevOrders
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching previous period data:', error);
+    }
+  };
+
+  const calculateGrowth = (current: number, previous: number): { percentage: number; isPositive: boolean; display: string } => {
+    if (previous === 0) {
+      return { percentage: 100, isPositive: true, display: 'New' };
+    }
+    
+    const change = current - previous;
+    const percentage = previous > 0 ? (change / previous) * 100 : 100;
+    const isPositive = change >= 0;
+    
+    return {
+      percentage: Math.abs(Math.round(percentage * 10) / 10),
+      isPositive,
+      display: isPositive ? `+${Math.round(percentage * 10) / 10}%` : `-${Math.round(percentage * 10) / 10}%`
+    };
+  };
 
   const fetchSalesData = async () => {
     setSalesLoading(true);
@@ -160,10 +224,12 @@ const Dashboard: React.FC = () => {
 
     fetchStats();
     fetchSalesData();
+    fetchPreviousPeriodData();
   }, []);
 
   useEffect(() => {
     fetchSalesData();
+    fetchPreviousPeriodData();
   }, [salesPeriod]);
 
   const kpiCards = [
@@ -172,28 +238,28 @@ const Dashboard: React.FC = () => {
       value: formatCurrency(stats.totalRevenue), 
       icon: DollarSign, 
       color: 'bg-blue-500',
-      trend: '+12.5%'
+      ...calculateGrowth(stats.totalRevenue, previousStats.totalRevenue)
     },
     { 
       title: 'Net Profit', 
       value: formatCurrency(stats.netProfit), 
       icon: TrendingUp, 
       color: 'bg-green-500',
-      trend: '+8.2%'
+      ...calculateGrowth(stats.netProfit, previousStats.netProfit)
     },
     { 
       title: 'Total Orders', 
       value: stats.totalOrders.toString(), 
       icon: Package, 
       color: 'bg-indigo-500',
-      trend: '+24'
+      ...calculateGrowth(stats.totalOrders, previousStats.totalOrders)
     },
     { 
       title: 'Active Clients', 
       value: stats.activeClients.toString(), 
       icon: Users, 
       color: 'bg-purple-500',
-      trend: '+3'
+      ...calculateGrowth(stats.activeClients, previousStats.activeClients)
     },
   ];
 
@@ -226,9 +292,16 @@ const Dashboard: React.FC = () => {
               <div className={cn("p-3 rounded-xl text-white", card.color)}>
                 <card.icon className="w-6 h-6" />
               </div>
-              <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full flex items-center gap-1">
-                <ArrowUpRight className="w-3 h-3" />
-                {card.trend}
+              <span className={cn(
+                "text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1",
+                card.isPositive ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50"
+              )}>
+                {card.isPositive ? (
+                  <ArrowUpRight className="w-3 h-3" />
+                ) : (
+                  <ChevronRight className="w-3 h-3 rotate-180" />
+                )}
+                {card.display}
               </span>
             </div>
             <div className="mt-4">
