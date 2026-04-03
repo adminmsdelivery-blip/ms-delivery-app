@@ -2,9 +2,8 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Truck, User, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { User, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
-import AppLogo from '../components/AppLogo';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -51,21 +50,13 @@ const Login: React.FC = () => {
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
             className="inline-block"
           >
-            <div className="flex flex-row items-center gap-3">
-              {/* Icon Box */}
-              <div className="w-12 h-12 flex-shrink-0 overflow-hidden flex items-center justify-center rounded-full">
-                <img src="/custom-logo.svg" alt="Logo" className="w-full h-full object-cover" />
-              </div>
-
-              {/* Text Container */}
-              <div className="flex flex-col flex-1 overflow-hidden">
-                <h1 className="text-xl font-extrabold text-gray-900 leading-none tracking-tight truncate">
-                  MS DELIVERY
-                </h1>
-                <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mt-1 truncate">
-                  KANCHAN
-                </p>
-              </div>
+            {/* Logo Wrapper */}
+            <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center bg-white shadow-sm flex-shrink-0">
+              <img 
+                src="/custom-logo.svg" /* Update this path to match exactly where the new dark blue logo is stored */
+                alt="MS Delivery Logo" 
+                className="w-full h-full object-cover" 
+              />
             </div>
           </motion.div>
         </div>
