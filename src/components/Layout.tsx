@@ -100,16 +100,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
       {/* Mobile Header */}
       <header className="md:hidden bg-white border-b px-4 py-3 flex items-center justify-between sticky top-0 z-50">
-        <div className={cn(
-          "w-8 h-8 flex-shrink-0 overflow-hidden flex items-center justify-center",
-          profile.logo_url ? "rounded-full" : "bg-[#5b52f6] rounded-lg"
-        )}>
+        {/* Mobile Logo - Strict Conditional Rendering */}
+        {profile.logo_url ? (
+          /* Render ONLY the custom uploaded image */
           <img 
-            src={profile.logo_url || '/logo.svg'} 
-            alt="Logo" 
-            className="w-full h-full object-cover" 
+            src={profile.logo_url} 
+            alt="Company Logo" 
+            className="w-8 h-8 rounded-full object-cover flex-shrink-0" 
           />
-        </div>
+        ) : (
+          /* Render ONLY the fallback placeholder box */
+          <div className="w-8 h-8 flex-shrink-0 bg-[#5b52f6] rounded-lg flex items-center justify-center">
+            <Truck className="w-4 h-4 text-white" />
+          </div>
+        )}
         <span className="font-bold text-gray-900">
           {profile.company_name || profile.owner_name || 'MS Delivery'}
         </span>
@@ -136,18 +140,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       )}>
         <div className="h-full flex flex-col">
           <div className="flex flex-row items-center gap-3 p-4 mb-4 hidden md:flex">
-            {/* Icon Box */}
-            <div className={cn(
-              "w-12 h-12 flex-shrink-0 overflow-hidden flex items-center justify-center",
-              profile.logo_url ? "rounded-full" : "bg-[#5b52f6] rounded-xl"
-            )}>
+            {/* Icon Box - Strict Conditional Rendering */}
+            {profile.logo_url ? (
+              /* Render ONLY the custom uploaded image */
               <img 
-                src={profile.logo_url || '/logo.svg'} 
-                alt="Logo" 
-                className="w-full h-full object-cover" 
+                src={profile.logo_url} 
+                alt="Company Logo" 
+                className="w-12 h-12 rounded-full object-cover flex-shrink-0" 
               />
-              {/* Note to Windsurf: If the image path is broken, fallback to a text icon temporarily, but KEEP this div strictly w-12 h-12 */}
-            </div>
+            ) : (
+              /* Render ONLY the fallback placeholder box */
+              <div className="w-12 h-12 flex-shrink-0 bg-[#5b52f6] rounded-xl flex items-center justify-center">
+                <Truck className="w-6 h-6 text-white" />
+              </div>
+            )}
 
             {/* Text Container */}
             <div className="flex flex-col flex-1 overflow-hidden">
@@ -157,7 +163,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mt-1 truncate">
                 {profile.owner_name || 'KANCHAN'}
               </p>
-              {/* Note: Removed 'Logistics Management Portal' to keep the UI clean, or place it elsewhere if strictly required */}
             </div>
           </div>
 
