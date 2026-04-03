@@ -10,11 +10,12 @@ interface AppLogoProps {
 const AppLogo: React.FC<AppLogoProps> = ({ className = "", showText = true }) => {
   return (
     <div className={cn("flex items-center gap-3", className)}>
+      {/* Icon Box - Fixed dimensions, no shrinking, proper object containment */}
       <div className="bg-indigo-600 w-12 h-12 rounded-xl shadow-lg shadow-indigo-200 flex-shrink-0 overflow-hidden">
         <img 
           src="/logo.svg" 
           alt="MS Delivery Logo" 
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
           onError={(e) => {
             // Fallback to Truck icon if image fails to load
             const target = e.target as HTMLImageElement;
@@ -29,8 +30,10 @@ const AppLogo: React.FC<AppLogoProps> = ({ className = "", showText = true }) =>
           }}
         />
       </div>
+      
+      {/* Text Group - Separate div, no absolute positioning, tight leading */}
       {showText && (
-        <div className="flex flex-col">
+        <div className="flex flex-col leading-tight">
           <span className="font-bold text-xl text-gray-900 tracking-tight">
             MS <span className="text-indigo-600 font-black">DELIVERY</span>
           </span>
