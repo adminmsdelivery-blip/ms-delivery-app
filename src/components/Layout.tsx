@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
+import AppLogo from './AppLogo';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -78,18 +79,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
       {/* Mobile Header */}
       <header className="md:hidden bg-white border-b px-4 py-3 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <div className="bg-indigo-600 p-1.5 rounded-lg">
-            {profile.logo_url ? (
-              <img src={profile.logo_url} alt="Company Logo" className="w-5 h-5 object-cover rounded" />
-            ) : (
-              <Truck className="w-5 h-5 text-white" />
-            )}
-          </div>
-          <span className="font-bold text-gray-900">
-            {profile.company_name || profile.owner_name || 'MS Delivery'}
-          </span>
-        </div>
+        <AppLogo className="w-8 h-8" showText={false} />
+        <span className="font-bold text-gray-900">
+          {profile.company_name || profile.owner_name || 'MS Delivery'}
+        </span>
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -113,13 +106,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       )}>
         <div className="h-full flex flex-col">
           <div className="p-6 hidden md:flex items-center gap-3">
-            <div className="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-200">
-              {profile.logo_url ? (
-                <img src={profile.logo_url} alt="Company Logo" className="w-6 h-6 object-cover rounded" />
-              ) : (
-                <Truck className="w-6 h-6 text-white" />
-              )}
-            </div>
+            <AppLogo className="w-6 h-6" />
             <div className="flex flex-col">
               <span className="font-bold text-xl text-gray-900 tracking-tight">
                 {profile.company_name || 'MS Delivery'}

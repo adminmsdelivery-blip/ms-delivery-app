@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Truck, User, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
+import AppLogo from '../components/AppLogo';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -48,16 +49,10 @@ const Login: React.FC = () => {
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
-            className="inline-block bg-indigo-600 p-4 rounded-3xl shadow-xl shadow-indigo-200"
+            className="inline-block"
           >
-            <Truck className="w-10 h-10 text-white" />
+            <AppLogo className="w-12 h-12" />
           </motion.div>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight italic">
-              MS <span className="text-indigo-600 font-black not-italic">DELIVERY</span>
-            </h1>
-            <p className="text-gray-500 mt-1 font-medium">Logistics Management Portal</p>
-          </div>
         </div>
 
         {/* Form Card */}
