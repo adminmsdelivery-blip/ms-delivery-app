@@ -53,8 +53,8 @@ const Login: React.FC = () => {
           >
             <div className="flex flex-row items-center gap-3">
               {/* Icon Box */}
-              <div className="w-12 h-12 flex-shrink-0 bg-[#5b52f6] rounded-xl overflow-hidden flex items-center justify-center">
-                <img src="/logo.svg" alt="Logo" className="w-full h-full object-cover" />
+              <div className="w-12 h-12 flex-shrink-0 overflow-hidden flex items-center justify-center rounded-full">
+                <img src="/custom-logo.svg" alt="Logo" className="w-full h-full object-cover" />
               </div>
 
               {/* Text Container */}

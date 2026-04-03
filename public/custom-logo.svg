@@ -1,0 +1,12 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="24" cy="24" r="24" fill="#1e3a8a"/>
+  <text x="24" y="18" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="8" font-weight="bold">MS</text>
+  <text x="24" y="32" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="7" font-weight="600">DELIVERY</text>
+  <path d="M12 20C12 18.8954 12.8954 18 14 18H34C35.1046 18 36 18.8954 36 20V28C36 29.1046 35.1046 30 34 30H14C12.8954 30 12 29.1046 12 28V20Z" fill="white" opacity="0.2"/>
+  <path d="M15 22H19V26H15V22Z" fill="#1e3a8a"/>
+  <path d="M21 22H25V26H21V22Z" fill="#1e3a8a"/>
+  <path d="M27 22H31V26H27V22Z" fill="#1e3a8a"/>
+  <path d="M16 32H32L30 36H18L16 32Z" fill="white" opacity="0.2"/>
+  <circle cx="18" cy="36" r="2" fill="#1e3a8a"/>
+  <circle cx="30" cy="36" r="2" fill="#1e3a8a"/>
+</svg>
