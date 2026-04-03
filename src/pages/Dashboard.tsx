@@ -32,9 +32,9 @@ const Dashboard: React.FC = () => {
     try {
       const { data: orders, error } = await supabase
         .from('orders')
-        .select('total_order_amount, created_at')
-        .not('total_order_amount', 'is', null)
-        .order('created_at', { ascending: true });
+        .select('delivery_charges, order_date')
+        .not('delivery_charges', 'is', null)
+        .order('order_date', { ascending: true });
 
       if (error) throw error;
 
@@ -46,19 +46,19 @@ const Dashboard: React.FC = () => {
       if (salesPeriod === 'daily') {
         // Group by hour for current date
         const todayOrders = orders?.filter(order => {
-          const orderDate = new Date(order.created_at);
-          console.log("Order date from DB:", order.created_at, "Parsed to:", orderDate);
+          const orderDate = new Date(order.order_date);
+          console.log("Order date from DB:", order.order_date, "Parsed to:", orderDate);
           return orderDate.toDateString() === now.toDateString();
         }) || [];
 
         const hourlyData = Array.from({ length: 24 }, (_, hour) => {
           const hourOrders = todayOrders.filter(order => {
-            const orderHour = new Date(order.created_at).getHours();
+            const orderHour = new Date(order.order_date).getHours();
             return orderHour === hour;
           });
           
           const totalRevenue = hourOrders.reduce((sum, order) => 
-            sum + (Number(order.total_order_amount) || 0), 0
+            sum + (Number(order.delivery_charges) || 0), 0
           );
 
           return {
@@ -73,19 +73,19 @@ const Dashboard: React.FC = () => {
         // Group by day for last 7 days
         const weekAgo = subDays(now, 7);
         const weekOrders = orders?.filter(order => {
-          const orderDate = new Date(order.created_at);
+          const orderDate = new Date(order.order_date);
           return orderDate >= weekAgo;
         }) || [];
 
         const dailyData = Array.from({ length: 7 }, (_, i) => {
           const date = subDays(now, 6 - i);
           const dayOrders = weekOrders.filter(order => {
-            const orderDate = new Date(order.created_at);
+            const orderDate = new Date(order.order_date);
             return orderDate.toDateString() === date.toDateString();
           });
 
           const totalRevenue = dayOrders.reduce((sum, order) => 
-            sum + (Number(order.total_order_amount) || 0), 0
+            sum + (Number(order.delivery_charges) || 0), 0
           );
 
           return {
@@ -100,19 +100,19 @@ const Dashboard: React.FC = () => {
         // Group by date for current month
         const monthStart = startOfMonth(now);
         const monthOrders = orders?.filter(order => {
-          const orderDate = new Date(order.created_at);
+          const orderDate = new Date(order.order_date);
           return orderDate >= monthStart;
         }) || [];
 
         const dailyData = Array.from({ length: now.getDate() }, (_, i) => {
           const date = new Date(now.getFullYear(), now.getMonth(), i + 1);
           const dayOrders = monthOrders.filter(order => {
-            const orderDate = new Date(order.created_at);
+            const orderDate = new Date(order.order_date);
             return orderDate.toDateString() === date.toDateString();
           });
 
           const totalRevenue = dayOrders.reduce((sum, order) => 
-            sum + (Number(order.total_order_amount) || 0), 0
+            sum + (Number(order.delivery_charges) || 0), 0
           );
 
           return {
