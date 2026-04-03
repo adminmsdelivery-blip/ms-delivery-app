@@ -38,6 +38,8 @@ const Dashboard: React.FC = () => {
 
       if (error) throw error;
 
+      console.log("RAW ORDERS:", orders);
+
       let processedData: any[] = [];
       const now = new Date();
 
@@ -45,6 +47,7 @@ const Dashboard: React.FC = () => {
         // Group by hour for current date
         const todayOrders = orders?.filter(order => {
           const orderDate = new Date(order.created_at);
+          console.log("Order date from DB:", order.created_at, "Parsed to:", orderDate);
           return orderDate.toDateString() === now.toDateString();
         }) || [];
 
@@ -122,6 +125,7 @@ const Dashboard: React.FC = () => {
         processedData = dailyData;
       }
 
+      console.log("GRAPH DATA:", processedData);
       setSalesData(processedData);
     } catch (error) {
       console.error('Error fetching sales data:', error);
