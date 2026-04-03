@@ -72,10 +72,10 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen bg-[#f6f9fc] flex flex-col justify-center sm:py-12">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
         {/* Final Dynamic Login Header */}
-        <div className="flex flex-col items-center justify-center mb-8">
+        <div className="mb-8 text-left">
           
           {/* Logo & Brand Name Container */}
           <div className="flex flex-row items-center gap-4">
@@ -100,11 +100,11 @@ const Login: React.FC = () => {
           </div>
         </div>
 
-        {/* Form Card */}
+        {/* Main Form Card */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-2xl shadow-gray-200/50"
+          className="bg-white py-8 px-4 shadow-[0_2px_4px_rgba(0,0,0,0.02),_0_4px_12px_rgba(0,0,0,0.04)] sm:rounded-xl border border-gray-100 sm:px-10"
         >
           {error && (
             <motion.div 
@@ -120,35 +120,35 @@ const Login: React.FC = () => {
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Username
                 </label>
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
                   <input
                     type="text"
-                    required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
-                    placeholder="Enter admin username"
+                    className="appearance-none block w-full px-3 py-2.5 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#635BFF] focus:border-transparent sm:text-sm transition-colors duration-200"
+                    placeholder="Enter your username"
+                    required
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Password
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
                   <input
                     type="password"
-                    required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
-                    placeholder="••••••••"
+                    className="appearance-none block w-full px-3 py-2.5 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#635BFF] focus:border-transparent sm:text-sm transition-colors duration-200"
+                    placeholder="Enter your password"
+                    required
                   />
                 </div>
               </div>
@@ -157,7 +157,7 @@ const Login: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-indigo-700 active:scale-[0.98] transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-[#635BFF] hover:bg-[#5A52E6] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#635BFF] transition-colors duration-200"
             >
               {loading ? (
                 <>
@@ -166,7 +166,7 @@ const Login: React.FC = () => {
                 </>
               ) : (
                 <>
-                  Secure Sign In
+                  Sign In
                   <ArrowRight className="w-5 h-5" />
                 </>
               )}
@@ -174,9 +174,8 @@ const Login: React.FC = () => {
           </form>
         </motion.div>
 
-        <p className="text-center text-xs text-gray-400 font-medium">
-          &copy; 2026 MS Delivery Services <br/>
-          <span className="opacity-50">Authorized Personnel Only</span>
+        <p className="mt-6 text-center text-xs text-gray-500">
+          &copy; 2026 MS Delivery Services. Authorized Personnel Only.
         </p>
       </div>
     </div>
