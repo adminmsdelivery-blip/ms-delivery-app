@@ -51,11 +51,12 @@ const Login: React.FC = () => {
         {/* 1. Header (Left-aligned above the card) */}
         <div className="mb-6 flex flex-col items-start text-left">
           {/* Dynamic Logo */}
-          <div className="w-14 h-14 rounded-xl overflow-hidden bg-white shadow-sm border border-gray-100 flex items-center justify-center mb-4 flex-shrink-0">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full overflow-hidden bg-white shadow-sm border border-gray-100 relative z-10">
             <img 
               src={companyLogoUrl || "/custom-logo.png"} 
-              alt="Brand Logo" 
-              className="w-full h-full object-cover" 
+              alt="Logo" 
+              className="w-full h-full object-cover relative z-20" 
+              style={{ backgroundColor: 'white', backgroundImage: 'none' }} 
             />
           </div>
           {/* Dynamic Text */}
