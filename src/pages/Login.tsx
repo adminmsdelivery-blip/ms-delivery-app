@@ -5,15 +5,15 @@ import { useNavigate } from 'react-router-dom';
 import { User, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import AnimatedBackground from '../components/AnimatedBackground';
+import { useProfile } from '../hooks/useProfile';
 
 const Login: React.FC = () => {
+  const { profile, loading: profileLoading } = useProfile();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [companyLogoUrl, setCompanyLogoUrl] = useState('');
-  const [companyName, setCompanyName] = useState('');
   const navigate = useNavigate();
 
   const handleLogin = (e: React.FormEvent) => {
@@ -43,6 +43,14 @@ const Login: React.FC = () => {
     }
   };
 
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f6f9fc]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#f6f9fc] p-4 sm:p-8">
       {/* Central Column Constraint */}
@@ -53,7 +61,7 @@ const Login: React.FC = () => {
           {/* Dynamic Logo */}
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full overflow-hidden bg-white shadow-sm border border-gray-100 relative z-10">
             <img 
-              src={companyLogoUrl || "/custom-logo.png"} 
+              src={profile.logo_url || "/custom-logo.png"} 
               alt="Logo" 
               className="w-full h-full object-cover relative z-20" 
               style={{ backgroundColor: 'white', backgroundImage: 'none' }} 
@@ -61,9 +69,9 @@ const Login: React.FC = () => {
           </div>
           {/* Dynamic Text */}
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-            {companyName || 'MS Delivery'}
+            {profile.login_heading}
           </h1>
-          <p className="text-sm font-medium text-gray-500 mt-1">Kanchan</p>
+          <p className="text-sm font-medium text-gray-500 mt-1">{profile.login_subheading}</p>
         </div>
 
         {/* 2. The Form Card */}

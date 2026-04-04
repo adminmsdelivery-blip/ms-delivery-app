@@ -18,6 +18,8 @@ interface ProfileData {
   owner_name: string;
   email: string;
   logo_url: string;
+  login_heading: string;
+  login_subheading: string;
 }
 
 const Profile: React.FC = () => {
@@ -27,7 +29,9 @@ const Profile: React.FC = () => {
     company_name: '',
     owner_name: '',
     email: '',
-    logo_url: ''
+    logo_url: '',
+    login_heading: '',
+    login_subheading: ''
   });
   const [showSuccess, setShowSuccess] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -46,7 +50,9 @@ const Profile: React.FC = () => {
           company_name: parsed.company_name || '',
           owner_name: parsed.owner_name || '',
           email: parsed.email || '',
-          logo_url: parsed.logo_url || ''
+          logo_url: parsed.logo_url || '',
+          login_heading: parsed.login_heading || 'MS Delivery',
+          login_subheading: parsed.login_subheading || 'Logistics Management Portal'
         });
       }
     } catch (error) {
@@ -56,7 +62,9 @@ const Profile: React.FC = () => {
         company_name: '',
         owner_name: '',
         email: '',
-        logo_url: ''
+        logo_url: '',
+        login_heading: 'MS Delivery',
+        login_subheading: 'Logistics Management Portal'
       });
     } finally {
       setLoading(false);
@@ -203,6 +211,34 @@ const Profile: React.FC = () => {
                 onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                 placeholder="contact@company.com"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <Building className="w-4 h-4 text-gray-400" />
+                Login Page Heading
+              </label>
+              <input
+                type="text"
+                value={profile.login_heading}
+                onChange={(e) => setProfile({ ...profile, login_heading: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                placeholder="e.g. MS Delivery"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <Building className="w-4 h-4 text-gray-400" />
+                Login Page Subheading
+              </label>
+              <input
+                type="text"
+                value={profile.login_subheading}
+                onChange={(e) => setProfile({ ...profile, login_subheading: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                placeholder="e.g. Logistics Management Portal"
               />
             </div>
           </div>
