@@ -52,38 +52,70 @@ const Login: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#f6f9fc] p-4 sm:p-8">
-      {/* Central Column Constraint */}
-      <div className="w-full max-w-[400px] flex flex-col">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 sm:p-8">
+      {/* 3D Animated Background */}
+      <div className="fixed inset-0 -z-10 overflow-hidden">
+        {/* Animated Orbs */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: 0.3, scale: 1 }}
+          transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }}
+          className="absolute top-20 left-20 w-96 h-96 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full blur-3xl"
+        />
+        <motion.div
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: 0.3, scale: 1 }}
+          transition={{ duration: 2, repeat: Infinity, repeatType: "reverse", delay: 0.5 }}
+          className="absolute bottom-20 right-20 w-96 h-96 bg-gradient-to-r from-indigo-400 to-pink-400 rounded-full blur-3xl"
+        />
+        <motion.div
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: 0.2, scale: 1 }}
+          transition={{ duration: 2, repeat: Infinity, repeatType: "reverse", delay: 1 }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full blur-3xl"
+        />
+      </div>
+
+      {/* Main Content Container */}
+      <div className="w-full max-w-md flex flex-col items-center space-y-8">
         
-        {/* 1. Header (Left-aligned above the card) */}
-        <div className="mb-6 flex flex-col items-start text-left">
+        {/* Header Section */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="text-center space-y-4"
+        >
           {/* Dynamic Logo */}
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full overflow-hidden bg-white shadow-sm border border-gray-100 relative z-10">
+          <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white/80 backdrop-blur-sm shadow-lg border border-white/20 flex items-center justify-center mx-auto">
             <img 
               src={profile.logo_url || "/custom-logo.png"} 
               alt="Logo" 
-              className="w-full h-full object-cover relative z-20" 
-              style={{ backgroundColor: 'white', backgroundImage: 'none' }} 
+              className="w-full h-full object-cover" 
             />
           </div>
-          {/* Dynamic Text */}
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-            {profile.login_heading}
-          </h1>
-          <p className="text-sm font-medium text-gray-500 mt-1">{profile.login_subheading}</p>
-        </div>
-
-        {/* 2. The Form Card */}
-        <div className="bg-white rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.02),_0_4px_12px_rgba(0,0,0,0.04)] border border-gray-100 p-8">
           
-          {/* !!! WINDSURF NOTE: Keep the existing <form> here. Do not rewrite the inputs or button logic. Just ensure the inputs have clean borders and padding. !!! */}
+          {/* Dynamic Heading */}
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+            {profile.login_heading || 'MS Delivery'}
+          </h1>
+          
+          {/* Dynamic Subheading */}
+          <p className="text-gray-600 text-lg">
+            {profile.login_subheading || 'Delivery Management System'}
+          </p>
+        </motion.div>
+
+        {/* Glass Login Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="w-full bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl rounded-2xl p-8"
+        >
           <motion.form
             onSubmit={handleLogin}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35, duration: 0.5 }}
-            className="space-y-5"
+            className="space-y-6"
           >
             <div className="space-y-4">
               <div className="space-y-2">
@@ -96,7 +128,7 @@ const Login: React.FC = () => {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Enter username"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#635BFF] focus:border-transparent transition-colors"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white/50 backdrop-blur-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     required
                   />
                 </div>
@@ -112,7 +144,7 @@ const Login: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter password"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#635BFF] focus:border-transparent transition-colors"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white/50 backdrop-blur-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     required
                   />
                 </div>
@@ -122,7 +154,7 @@ const Login: React.FC = () => {
             <motion.button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#635BFF] text-white font-semibold py-3 rounded-lg hover:bg-[#5A52E6] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#635BFF] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               whileTap={{ scale: 0.98 }}
             >
               {isLoading ? (
@@ -142,19 +174,28 @@ const Login: React.FC = () => {
             <motion.div 
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              className="mt-6 p-4 bg-red-50 border border-red-100 rounded-lg flex items-center gap-3 text-red-600 text-sm font-medium"
+              className="mt-6 p-4 bg-red-50/80 backdrop-blur-sm border border-red-100/50 rounded-xl flex items-center gap-3 text-red-600 text-sm font-medium"
             >
               <AlertCircle className="w-5 h-5 shrink-0" />
               {error}
             </motion.div>
           )}
-        </div>
+        </motion.div>
 
-        {/* 3. Footer */}
-        <div className="mt-8 text-center text-xs text-gray-500">
-          © 2026 MS Delivery Services. Authorized Personnel Only.
-        </div>
-
+        {/* Footer */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+          className="text-center space-y-1"
+        >
+          <p className="text-gray-500 text-sm">
+            © 2026 MS Delivery Services
+          </p>
+          <p className="text-gray-400 text-xs">
+            Authorized Personnel Only
+          </p>
+        </motion.div>
       </div>
     </div>
   );
