@@ -63,14 +63,11 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
     // Profit (N)
     ws[`N${r}`] = { t: 'n', f: `J${r}-M${r}` };
     
-    // Outsource Holding (P)
-    ws[`P${r}`] = { t: 'n', f: `IF(OR(H${r}="COD", H${r}="COP"), J${r}, 0)` };
-    
-    // My Holding (Q)
-    ws[`Q${r}`] = { t: 'n', f: `M${r}` };
-    
     // Net Settlement Helper (O)
-    ws[`O${r}`] = { t: 'n', f: `IF(OR(H${r}="COD", H${r}="COP"), J${r}-M${r}, 0-M${r})` };
+    ws[`O${r}`] = { t: 'n', f: `IF(OR(H${r}="COD", H${r}="COP"), J${r}, 0)` };
+    
+    // My Holding (P)
+    ws[`P${r}`] = { t: 'n', f: `M${r}` };
   }
 
   // Set column widths for better readability (A-Q)
@@ -105,7 +102,7 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
   // Add summary header using sheet_add_aoa
   XLSX.utils.sheet_add_aoa(ws, [
     ['Settlement Summary'],
-    ['Outsource Name', 'Outsource holding(Amt)', 'My holding(Amt)', 'Final Amount', 'Remark']
+    ['Outsource name', 'Total amount hold by outsource', 'Total amount hold by us', 'NET AMOUNT PAYBLE OR RECIVABLE', 'Remark']
   ], { origin: summaryStartRow });
   
   // Add summary rows with static data first
@@ -124,17 +121,19 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
     const sumRow = summaryStartRow + 2 + index; // Excel row number for this summary row
     const outsourceName = summary['Outsource Name'];
     
-    // Outsource Holding Sum (Col B of summary)
-    ws[XLSX.utils.encode_cell({ r: sumRow - 1, c: 1 })] = { t: 'n', f: `SUMIF(L2:L${lastRow}, "${outsourceName}", P2:P${lastRow})` };
+    // Column A (Outsource name): Static string already added
     
-    // My Holding Sum (Col C of summary)
-    ws[XLSX.utils.encode_cell({ r: sumRow - 1, c: 2 })] = { t: 'n', f: `SUMIF(L2:L${lastRow}, "${outsourceName}", Q2:Q${lastRow})` };
+    // Column B (Total amount hold by outsource) - Column O in main table
+    ws[XLSX.utils.encode_cell({ r: sumRow - 1, c: 1 })] = { t: 'n', f: `SUMIF(L2:L${lastRow}, "${outsourceName}", O2:O${lastRow})` };
     
-    // Final Amount (Col D of summary)
+    // Column C (Total amount hold by us) - Column P in main table
+    ws[XLSX.utils.encode_cell({ r: sumRow - 1, c: 2 })] = { t: 'n', f: `SUMIF(L2:L${lastRow}, "${outsourceName}", P2:P${lastRow})` };
+    
+    // Column D (NET AMOUNT PAYBLE OR RECIVABLE)
     ws[XLSX.utils.encode_cell({ r: sumRow - 1, c: 3 })] = { t: 'n', f: `ABS(B${sumRow} - C${sumRow})` };
     
-    // Remark (Col E of summary)
-    ws[XLSX.utils.encode_cell({ r: sumRow - 1, c: 4 })] = { t: 's', f: `IF(B${sumRow} > C${sumRow}, "Collect from Outsource", IF(B${sumRow} < C${sumRow}, "Pay to Outsource", "Settled"))` };
+    // Column E (Remark)
+    ws[XLSX.utils.encode_cell({ r: sumRow - 1, c: 4 })] = { t: 's', f: `IF(B${sumRow} > C${sumRow}, "You have to collect", IF(B${sumRow} < C${sumRow}, "You have to pay", "Settled"))` };
   });
 
   // Add the worksheet to the workbook
