@@ -58,8 +58,9 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
     const r = i + 2; // Excel row number
     const row = mainData[i]; // Get current row data for calculations
     
-    // JS Calculations for initial render
-    const pMode = String(row['Payment Mode'] || '').toUpperCase().trim();
+    // JS Calculations for initial render - Bulletproof key extraction
+    const rawMode = row['Payment Mode'] || '';
+    const pMode = String(rawMode).toUpperCase().trim();
     const isCodOrCop = pMode === 'COD' || pMode === 'COP';
     const isOnline = pMode === 'ONLINE';
     
@@ -138,11 +139,19 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
 
     const excelSumRow = currentRow + 1; // 1-indexed for Excel formulas
 
-    // Pre-calculate values for cached 'v' parameter
+    // Pre-calculate values for cached 'v' parameter - Bulletproof key extraction
     const driverOrders = mainData.filter(d => d['Outsource Name'] === outsourceName);
-    const outHoldSum = driverOrders.reduce((sum, d) => sum + (['COD','COP'].includes(String(d['Payment Mode']).toUpperCase().trim()) ? (Number(d['Total Amount Received']||0) - Number(d['Item Charge']||0)) : 0), 0);
+    const outHoldSum = driverOrders.reduce((sum, d) => {
+      const rawMode = d['Payment Mode'] || '';
+      const pMode = String(rawMode).toUpperCase().trim();
+      return sum + (['COD','COP'].includes(pMode) ? (Number(d['Total Amount Received']||0) - Number(d['Item Charge']||0)) : 0);
+    }, 0);
     const outShareSum = driverOrders.reduce((sum, d) => sum + Number(d['Outsource Charges']||0), 0);
-    const usHoldSum = driverOrders.reduce((sum, d) => sum + (String(d['Payment Mode']).toUpperCase().trim() === 'ONLINE' ? (Number(d['Total Amount Received']||0) - Number(d['Item Charge']||0)) : 0), 0);
+    const usHoldSum = driverOrders.reduce((sum, d) => {
+      const rawMode = d['Payment Mode'] || '';
+      const pMode = String(rawMode).toUpperCase().trim();
+      return sum + (pMode === 'ONLINE' ? (Number(d['Total Amount Received']||0) - Number(d['Item Charge']||0)) : 0);
+    }, 0);
     const usShareSum = driverOrders.reduce((sum, d) => sum + ((Number(d['Total Amount Received']||0) - Number(d['Item Charge']||0)) - Number(d['Outsource Charges']||0)), 0);
     
     const netAmt = Math.abs(outHoldSum - outShareSum);
