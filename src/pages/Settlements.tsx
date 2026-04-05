@@ -295,8 +295,8 @@ const Settlements: React.FC = () => {
       // Map orders to Excel format
       const excelData = mapOrdersToExcelData(ordersToExport);
       
-      // Export to Excel
-      exportToExcel(excelData, filename);
+      // Export to Excel with summary
+      exportToExcel(excelData, filename, ordersToExport);
       
       // Show info message about what was exported
       if (completedOrders.length === 0) {
@@ -342,8 +342,8 @@ const Settlements: React.FC = () => {
       // Map orders to Excel format
       const excelData = mapOrdersToExcelData(ordersToExport);
       
-      // Export to Excel
-      exportToExcel(excelData, filename);
+      // Export to Excel with summary
+      exportToExcel(excelData, filename, ordersToExport);
       
       // Show info message about what was exported
       if (completedOrders.length === 0) {

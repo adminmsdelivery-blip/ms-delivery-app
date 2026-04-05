@@ -15,15 +15,14 @@ export interface ExcelRowData {
   'Outsource Name': string;
   'Outsource Charges': number;
   'Profit': number;
-  'Receivable or Payable': string;
   'Order Status': string;
 }
 
-export const exportToExcel = (data: ExcelRowData[], filename: string) => {
+export const exportToExcel = (data: ExcelRowData[], filename: string, orders: any[]) => {
   // Create a new workbook
   const wb = XLSX.utils.book_new();
 
-  // Convert data to worksheet
+  // Convert main data to worksheet
   const ws = XLSX.utils.json_to_sheet(data);
 
   // Set column widths for better readability
@@ -42,10 +41,33 @@ export const exportToExcel = (data: ExcelRowData[], filename: string) => {
     { wch: 20 }, // Outsource Name
     { wch: 16 }, // Outsource Charges
     { wch: 10 }, // Profit
-    { wch: 25 }, // Receivable or Payable
     { wch: 12 }, // Order Status
   ];
   ws['!cols'] = colWidths;
+
+  // Calculate settlement summary
+  const summaryData = calculateSettlementSummary(orders);
+  
+  // Add blank rows to separate main data from summary
+  const startRow = data.length + 3; // Add 3 blank rows after main data
+  
+  // Add summary header
+  const summaryHeader = ['Settlement Summary', '', ''];
+  XLSX.utils.sheet_add_aoa(ws, [summaryHeader], { origin: startRow });
+  
+  // Add column headers for summary
+  const columnHeaders = ['Outsource Name', 'Final Amount', 'Remark'];
+  XLSX.utils.sheet_add_aoa(ws, [columnHeaders], { origin: startRow + 1 });
+  
+  // Add summary data rows
+  if (summaryData.length > 0) {
+    const summaryRows = summaryData.map(row => [
+      row['Outsource Name'],
+      row['Final Amount'],
+      row['Remark']
+    ]);
+    XLSX.utils.sheet_add_aoa(ws, summaryRows, { origin: startRow + 2 });
+  }
 
   // Add the worksheet to the workbook
   XLSX.utils.book_append_sheet(wb, ws, 'Settlement Report');
@@ -122,6 +144,62 @@ export const filterCompletedOrders = (orders: any[]): any[] => {
   );
 };
 
+export interface SettlementSummary {
+  'Outsource Name': string;
+  'Final Amount': number;
+  'Remark': string;
+}
+
+export const calculateSettlementSummary = (orders: any[]): SettlementSummary[] => {
+  // Group orders by outsource name and calculate net balance
+  const outsourceBalances = orders.reduce((acc: any, order: any) => {
+    const outsourceName = order.outsources?.name || 'Unassigned';
+    
+    // Calculate Driver Cash Held
+    let driverCashHeld = 0;
+    if (order.payment_mode === 'Cash on Delivery (COD)' || order.payment_mode === 'Cash on Pickup (COP)') {
+      driverCashHeld = (order.total_amount_received || 0) - (order.item_charge || 0);
+    } else if (order.payment_mode === 'Online Payment') {
+      driverCashHeld = 0;
+    }
+    
+    // Calculate Order Net
+    const orderNet = driverCashHeld - (order.outsource_charges || 0);
+    
+    // Accumulate balance for this outsource
+    if (!acc[outsourceName]) {
+      acc[outsourceName] = 0;
+    }
+    acc[outsourceName] += orderNet;
+    
+    return acc;
+  }, {});
+  
+  // Convert to summary format
+  return Object.entries(outsourceBalances).map(([outsourceName, totalNet]) => {
+    const net = totalNet as number;
+    let finalAmount = 0;
+    let remark = '';
+    
+    if (net > 0) {
+      finalAmount = net;
+      remark = 'Collect from Outsource';
+    } else if (net < 0) {
+      finalAmount = Math.abs(net);
+      remark = 'Pay to Outsource';
+    } else {
+      finalAmount = 0;
+      remark = 'Settled';
+    }
+    
+    return {
+      'Outsource Name': outsourceName,
+      'Final Amount': finalAmount,
+      'Remark': remark
+    };
+  });
+};
+
 export const mapOrdersToExcelData = (orders: any[]): ExcelRowData[] => {
   return orders.map(order => {
     const financials = calculateFinancials(order);
@@ -141,7 +219,6 @@ export const mapOrdersToExcelData = (orders: any[]): ExcelRowData[] => {
       'Outsource Name': order.outsources?.name || '',
       'Outsource Charges': order.outsource_charges || 0,
       'Profit': financials.profit,
-      'Receivable or Payable': financials.receivablePayable,
       'Order Status': order.order_status || 'PENDING'
     };
   });
