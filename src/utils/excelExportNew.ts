@@ -15,78 +15,112 @@ export interface ExcelRowData {
   'Outsource Name': string;
   'Outsource Charges': number;
   'Profit': number;
-  'Order Status': string;
+  'Net Settlement (Helper)': number;
 }
 
 export const exportToExcel = (data: ExcelRowData[], filename: string, orders: any[]) => {
   // Create a new workbook
   const wb = XLSX.utils.book_new();
 
-  // Convert main data to worksheet
-  const ws = XLSX.utils.json_to_sheet(data);
+  // Create worksheet with Excel formulas using aoa_to_sheet
+  // Headers (Row 1)
+  const headers = [
+    'Order Date',
+    'Order Number', 
+    'Client Name',
+    'Pickup Location',
+    'Customer Name',
+    'Delivery Location',
+    'Customer Contact Number',
+    'Payment Mode',
+    'Total Amount Received',
+    'Delivery Charge',
+    'Item Charge',
+    'Outsource Name',
+    'Outsource Charges',
+    'Profit',
+    'Net Settlement (Helper)'
+  ];
 
-  // Set column widths for better readability
+  // Data rows with formulas (starting from Row 2)
+  const wsData = [headers];
+  
+  orders.forEach((order, index) => {
+    const row = index + 2; // Excel row number (starting from 2)
+    
+    wsData.push([
+      order.order_date || '',
+      order.order_number || '',
+      order.clients?.name || 'Unknown Client',
+      order.pickup_location || '',
+      order.customer_name || '',
+      order.delivery_location || '',
+      order.customer_contact_number || '',
+      order.payment_mode || '',
+      order.total_amount_received || 0,
+      { t: 'n', f: `I${row}-K${row}` }, // Delivery Charge = Total Amount - Item Charge
+      order.item_charge || 0,
+      order.outsources?.name || '',
+      order.outsource_charges || 0,
+      { t: 'n', f: `J${row}-M${row}` }, // Profit = Delivery Charge - Outsource Charges
+      { t: 'n', f: `IF(OR(H${row}="COD", H${row}="COP"), J${row}-M${row}, 0-M${row})` } // Net Settlement
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Set column widths for better readability (A-O)
   const colWidths = [
-    { wch: 12 }, // Order Date
-    { wch: 15 }, // Order Number
-    { wch: 20 }, // Client Name
-    { wch: 25 }, // Pickup Location
-    { wch: 20 }, // Customer Name
-    { wch: 25 }, // Delivery Location
-    { wch: 18 }, // Customer Contact Number
-    { wch: 15 }, // Payment Mode
-    { wch: 18 }, // Total Amount Received
-    { wch: 15 }, // Delivery Charge
-    { wch: 12 }, // Item Charge
-    { wch: 20 }, // Outsource Name
-    { wch: 16 }, // Outsource Charges
-    { wch: 10 }, // Profit
-    { wch: 12 }, // Order Status
+    { wch: 12 }, // A: Order Date
+    { wch: 15 }, // B: Order Number
+    { wch: 20 }, // C: Client Name
+    { wch: 25 }, // D: Pickup Location
+    { wch: 20 }, // E: Customer Name
+    { wch: 25 }, // F: Delivery Location
+    { wch: 18 }, // G: Customer Contact Number
+    { wch: 15 }, // H: Payment Mode
+    { wch: 18 }, // I: Total Amount Received
+    { wch: 15 }, // J: Delivery Charge
+    { wch: 12 }, // K: Item Charge
+    { wch: 20 }, // L: Outsource Name
+    { wch: 16 }, // M: Outsource Charges
+    { wch: 10 }, // N: Profit
+    { wch: 18 }, // O: Net Settlement (Helper)
   ];
   ws['!cols'] = colWidths;
 
-  // Calculate settlement summary
+  // Calculate settlement summary with dynamic formulas
   const summaryData = calculateSettlementSummary(orders);
   
   // Add blank rows to separate main data from summary
-  const startRow = data.length + 3; // Add 3 blank rows after main data
+  const lastRow = orders.length + 1; // Last row of main data
+  const summaryStartRow = lastRow + 4; // Start summary 4 rows below
   
   // Add summary header
-  const summaryHeader = ['Settlement Summary', '', ''];
-  XLSX.utils.sheet_add_aoa(ws, [summaryHeader], { origin: startRow });
+  XLSX.utils.sheet_add_aoa(ws, [
+    ['Settlement Summary'],
+    ['Outsource Name', 'Final Amount', 'Remark']
+  ], { origin: summaryStartRow });
   
-  // Add column headers for summary
-  const columnHeaders = ['Outsource Name', 'Final Amount', 'Remark'];
-  XLSX.utils.sheet_add_aoa(ws, [columnHeaders], { origin: startRow + 1 });
+  // Add summary rows with dynamic formulas
+  const summaryRows = summaryData.map((summary, index) => {
+    const currentRow = summaryStartRow + 2 + index;
+    const outsourceName = summary['Outsource Name'];
+    
+    return [
+      outsourceName,
+      { t: 'n', f: `ABS(SUMIF(L2:L${lastRow}, "${outsourceName}", O2:O${lastRow}))` },
+      { t: 's', f: `IF(SUMIF(L2:L${lastRow}, "${outsourceName}", O2:O${lastRow}) > 0, "Collect from Outsource", IF(SUMIF(L2:L${lastRow}, "${outsourceName}", O2:O${lastRow}) < 0, "Pay to Outsource", "Settled"))` }
+    ];
+  });
   
-  // Add summary data rows
-  if (summaryData.length > 0) {
-    const summaryRows = summaryData.map(row => [
-      row['Outsource Name'],
-      row['Final Amount'],
-      row['Remark']
-    ]);
-    XLSX.utils.sheet_add_aoa(ws, summaryRows, { origin: startRow + 2 });
-  }
+  XLSX.utils.sheet_add_aoa(ws, summaryRows, { origin: summaryStartRow + 2 });
 
   // Add the worksheet to the workbook
-  XLSX.utils.book_append_sheet(wb, ws, 'Settlement Report');
+  XLSX.utils.book_append_sheet(wb, ws, "Settlement Report");
 
-  // Generate the Excel file
-  const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-
-  // Create a Blob from the buffer
-  const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-
-  // Create a download link and trigger the download
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${filename}.xlsx`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  window.URL.revokeObjectURL(url);
+  // Write the file
+  XLSX.writeFile(wb, `${filename}.xlsx`);
 };
 
 export const calculateFinancials = (order: any): {
@@ -219,7 +253,7 @@ export const mapOrdersToExcelData = (orders: any[]): ExcelRowData[] => {
       'Outsource Name': order.outsources?.name || '',
       'Outsource Charges': order.outsource_charges || 0,
       'Profit': financials.profit,
-      'Order Status': order.order_status || 'PENDING'
+      'Net Settlement (Helper)': 0 // Placeholder - will be calculated by Excel formula
     };
   });
 };
