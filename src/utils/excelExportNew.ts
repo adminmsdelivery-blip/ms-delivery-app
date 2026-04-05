@@ -56,6 +56,16 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
   // Assuming data starts on row 2
   for (let i = 0; i < mainData.length; i++) {
     const r = i + 2; // Excel row number
+    const row = mainData[i]; // Get current row data for calculations
+    
+    // JS Calculations for initial render
+    const pMode = String(row['Payment Mode'] || '').toUpperCase().trim();
+    const isCodOrCop = pMode === 'COD' || pMode === 'COP';
+    const isOnline = pMode === 'ONLINE';
+    
+    const delCharge = Number(row['Total Amount Received'] || 0) - Number(row['Item Charge'] || 0);
+    const outCharge = Number(row['Outsource Charges'] || 0);
+    const myShare = delCharge - outCharge; // Profit
     
     // Delivery Charge (J)
     ws[`J${r}`] = { t: 'n', f: `I${r}-K${r}` };
@@ -63,14 +73,20 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
     // Profit (N)
     ws[`N${r}`] = { t: 'n', f: `J${r}-M${r}` };
     
-    // Col O (Driver Cash Held): Cash driver collected from COD/COP delivery charges
-    ws[`O${r}`] = { t: 'n', f: `IF(OR(UPPER(H${r})="COD", UPPER(H${r})="COP"), J${r}, 0)` };
+    // Col O: Outsource Held (Cash collected on COD/COP)
+    ws[`O${r}`] = { t: 'n', f: `IF(OR(TRIM(H${r})="COD", TRIM(H${r})="COP"), J${r}, 0)`, v: isCodOrCop ? delCharge : 0 };
     
-    // Col P (Driver Earnings/Our Liability): Outsource charges we owe the driver
-    ws[`P${r}`] = { t: 'n', f: `M${r}` };
+    // Col P: Outsource Share (What they actually earned)
+    ws[`P${r}`] = { t: 'n', f: `M${r}`, v: outCharge };
+    
+    // Col Q: Us Held (Cash collected by us via Online payment)
+    ws[`Q${r}`] = { t: 'n', f: `IF(TRIM(H${r})="ONLINE", J${r}, 0)`, v: isOnline ? delCharge : 0 };
+    
+    // Col R: Our Share (Our profit)
+    ws[`R${r}`] = { t: 'n', f: `J${r}-M${r}`, v: myShare };
   }
 
-  // Set column widths for better readability (A-Q)
+  // Set column widths for better readability (A-R)
   const colWidths = [
     { wch: 12 }, // A: Order Date
     { wch: 15 }, // B: Order Number
@@ -89,6 +105,7 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
     { wch: 18 }, // O: Net Settlement (Helper)
     { wch: 20 }, // P: Outsource holding(Amt)
     { wch: 16 }, // Q: My holding(Amt)
+    { wch: 16 }, // R: Our Share
   ];
   ws['!cols'] = colWidths;
 
@@ -101,44 +118,50 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
 
   // Calculate where to start the summary
   const lastDataRow = mainData.length + 1; // Assuming row 1 is main headers
-  const summaryStartRow = lastDataRow + 2; // Leave a blank row
+  const summaryStartRow = lastDataRow + 2; 
 
-  // 1. Write the Summary Title and Headers manually
+  // 1. Summary Headers
   ws[XLSX.utils.encode_cell({ r: summaryStartRow, c: 0 })] = { t: 's', v: "Settlement Summary" };
-  ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 0 })] = { t: 's', v: "Outsource name" };
-  ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 1 })] = { t: 's', v: "Total amount hold by outsource" };
-  ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 2 })] = { t: 's', v: "Total amount hold by us" };
-  ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 3 })] = { t: 's', v: "NET AMOUNT PAYABLE OR RECEIVABLE" };
-  ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 4 })] = { t: 's', v: "Remark" };
+  ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 0 })] = { t: 's', v: "Outsource Name" };
+  ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 1 })] = { t: 's', v: "Delivery Charges Held by Outsource" };
+  ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 2 })] = { t: 's', v: "Outsource's Actual Share" };
+  ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 3 })] = { t: 's', v: "Delivery Charges Held by Us" };
+  ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 4 })] = { t: 's', v: "Our Actual Share" };
+  ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 5 })] = { t: 's', v: "NET PAYABLE / RECEIVABLE" };
+  ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 6 })] = { t: 's', v: "Remark" };
 
-  // 2. Loop through unique drivers
+  // 2. Summary Data Loop
   let currentRow = summaryStartRow + 2; 
 
   uniqueOutsources.forEach(outsourceName => {
-    // Skip empty names or accidental header strings
     if (!outsourceName || outsourceName.toLowerCase().includes("outsource name")) return; 
 
     const excelSumRow = currentRow + 1; // 1-indexed for Excel formulas
 
-    // Col A: Driver Name
+    // Pre-calculate values for cached 'v' parameter
+    const driverOrders = mainData.filter(d => d['Outsource Name'] === outsourceName);
+    const outHoldSum = driverOrders.reduce((sum, d) => sum + (['COD','COP'].includes(String(d['Payment Mode']).toUpperCase().trim()) ? (Number(d['Total Amount Received']||0) - Number(d['Item Charge']||0)) : 0), 0);
+    const outShareSum = driverOrders.reduce((sum, d) => sum + Number(d['Outsource Charges']||0), 0);
+    const usHoldSum = driverOrders.reduce((sum, d) => sum + (String(d['Payment Mode']).toUpperCase().trim() === 'ONLINE' ? (Number(d['Total Amount Received']||0) - Number(d['Item Charge']||0)) : 0), 0);
+    const usShareSum = driverOrders.reduce((sum, d) => sum + ((Number(d['Total Amount Received']||0) - Number(d['Item Charge']||0)) - Number(d['Outsource Charges']||0)), 0);
+    
+    const netAmt = Math.abs(outHoldSum - outShareSum);
+    const remarkStr = outHoldSum > outShareSum ? "You have to collect" : (outHoldSum < outShareSum ? "You have to pay" : "Settled");
+
+    // Write Cells (Combining Formula 'f' and Cache Value 'v')
     ws[XLSX.utils.encode_cell({ r: currentRow, c: 0 })] = { t: 's', v: outsourceName };
-    // Col B: Hold by Outsource (Sum Column O)
-    ws[XLSX.utils.encode_cell({ r: currentRow, c: 1 })] = { t: 'n', f: `SUMIF(L2:L${lastDataRow}, A${excelSumRow}, O2:O${lastDataRow})` };
-    // Col C: Hold by Us (Sum Column P)
-    ws[XLSX.utils.encode_cell({ r: currentRow, c: 2 })] = { t: 'n', f: `SUMIF(L2:L${lastDataRow}, A${excelSumRow}, P2:P${lastDataRow})` };
-    // Col D: Net Amount
-    ws[XLSX.utils.encode_cell({ r: currentRow, c: 3 })] = { t: 'n', f: `ABS(B${excelSumRow} - C${excelSumRow})` };
-    // Col E: Remark
-    ws[XLSX.utils.encode_cell({ r: currentRow, c: 4 })] = { t: 's', f: `IF(B${excelSumRow} > C${excelSumRow}, "You have to collect", IF(B${excelSumRow} < C${excelSumRow}, "You have to pay", "Settled"))` };
+    ws[XLSX.utils.encode_cell({ r: currentRow, c: 1 })] = { t: 'n', f: `SUMIF(L2:L${lastDataRow}, A${excelSumRow}, O2:O${lastDataRow})`, v: outHoldSum };
+    ws[XLSX.utils.encode_cell({ r: currentRow, c: 2 })] = { t: 'n', f: `SUMIF(L2:L${lastDataRow}, A${excelSumRow}, P2:P${lastDataRow})`, v: outShareSum };
+    ws[XLSX.utils.encode_cell({ r: currentRow, c: 3 })] = { t: 'n', f: `SUMIF(L2:L${lastDataRow}, A${excelSumRow}, Q2:Q${lastDataRow})`, v: usHoldSum };
+    ws[XLSX.utils.encode_cell({ r: currentRow, c: 4 })] = { t: 'n', f: `SUMIF(L2:L${lastDataRow}, A${excelSumRow}, R2:R${lastDataRow})`, v: usShareSum };
+    ws[XLSX.utils.encode_cell({ r: currentRow, c: 5 })] = { t: 'n', f: `ABS(B${excelSumRow} - C${excelSumRow})`, v: netAmt };
+    ws[XLSX.utils.encode_cell({ r: currentRow, c: 6 })] = { t: 's', f: `IF(B${excelSumRow} > C${excelSumRow}, "You have to collect", IF(B${excelSumRow} < C${excelSumRow}, "You have to pay", "Settled"))`, v: remarkStr };
 
     currentRow++;
   });
 
-  // 3. CRITICAL: Expand the worksheet range so it doesn't get cut off
-  ws['!ref'] = XLSX.utils.encode_range({
-    s: { r: 0, c: 0 },
-    e: { r: currentRow, c: 20 }
-  });
+  // 3. Ensure rendering range is wide enough to show summary
+  ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: currentRow, c: 20 } });
 
   // Add the worksheet to the workbook
   XLSX.utils.book_append_sheet(wb, ws, "Settlement Report");
