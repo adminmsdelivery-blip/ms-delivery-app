@@ -63,10 +63,10 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
     // Profit (N)
     ws[`N${r}`] = { t: 'n', f: `J${r}-M${r}` };
     
-    // Net Settlement Helper (O)
+    // Col O (Driver Cash Held): Cash driver collected from COD/COP delivery charges
     ws[`O${r}`] = { t: 'n', f: `IF(OR(UPPER(H${r})="COD", UPPER(H${r})="COP"), J${r}, 0)` };
     
-    // My Holding (P)
+    // Col P (Driver Earnings/Our Liability): Outsource charges we owe the driver
     ws[`P${r}`] = { t: 'n', f: `M${r}` };
   }
 
@@ -102,8 +102,8 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
   // Calculate where to start the summary
   const lastDataRow = mainData.length + 1; // Assuming row 1 is main headers
   const summaryStartRow = lastDataRow + 2; // Leave a blank row
-  
-  // 1. Write the Summary Title and Headers manually using encode_cell (0-indexed)
+
+  // 1. Write the Summary Title and Headers manually
   ws[XLSX.utils.encode_cell({ r: summaryStartRow, c: 0 })] = { t: 's', v: "Settlement Summary" };
   ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 0 })] = { t: 's', v: "Outsource name" };
   ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 1 })] = { t: 's', v: "Total amount hold by outsource" };
@@ -111,32 +111,33 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
   ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 3 })] = { t: 's', v: "NET AMOUNT PAYABLE OR RECEIVABLE" };
   ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 4 })] = { t: 's', v: "Remark" };
 
-  // 2. Loop through the unique drivers
+  // 2. Loop through unique drivers
   let currentRow = summaryStartRow + 2; 
 
   uniqueOutsources.forEach(outsourceName => {
-    if (!outsourceName) return; // skip empties
+    // Skip empty names or accidental header strings
+    if (!outsourceName || outsourceName.toLowerCase().includes("outsource name")) return; 
 
-    const excelSumRow = currentRow + 1; // Excel formulas are 1-indexed
+    const excelSumRow = currentRow + 1; // 1-indexed for Excel formulas
 
-    // Driver Name
+    // Col A: Driver Name
     ws[XLSX.utils.encode_cell({ r: currentRow, c: 0 })] = { t: 's', v: outsourceName };
-    // Hold by Outsource (Sum Column O)
+    // Col B: Hold by Outsource (Sum Column O)
     ws[XLSX.utils.encode_cell({ r: currentRow, c: 1 })] = { t: 'n', f: `SUMIF(L2:L${lastDataRow}, A${excelSumRow}, O2:O${lastDataRow})` };
-    // Hold by Us (Sum Column P)
+    // Col C: Hold by Us (Sum Column P)
     ws[XLSX.utils.encode_cell({ r: currentRow, c: 2 })] = { t: 'n', f: `SUMIF(L2:L${lastDataRow}, A${excelSumRow}, P2:P${lastDataRow})` };
-    // Net Amount
+    // Col D: Net Amount
     ws[XLSX.utils.encode_cell({ r: currentRow, c: 3 })] = { t: 'n', f: `ABS(B${excelSumRow} - C${excelSumRow})` };
-    // Remark
+    // Col E: Remark
     ws[XLSX.utils.encode_cell({ r: currentRow, c: 4 })] = { t: 's', f: `IF(B${excelSumRow} > C${excelSumRow}, "You have to collect", IF(B${excelSumRow} < C${excelSumRow}, "You have to pay", "Settled"))` };
 
     currentRow++;
   });
 
-  // 3. CRITICAL: Expand the worksheet range so the library renders the new rows
+  // 3. CRITICAL: Expand the worksheet range so it doesn't get cut off
   ws['!ref'] = XLSX.utils.encode_range({
     s: { r: 0, c: 0 },
-    e: { r: currentRow, c: 20 } // Ensures all summary columns are rendered
+    e: { r: currentRow, c: 20 }
   });
 
   // Add the worksheet to the workbook
