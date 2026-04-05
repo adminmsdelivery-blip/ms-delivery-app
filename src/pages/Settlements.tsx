@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
-import * as XLSX from 'xlsx';
+import { exportToExcel, mapOrdersToExcelData } from '../utils/excelExport';
 
 // Strict Type Enforcement for Order Data
 interface Order {
@@ -264,243 +264,65 @@ const Settlements: React.FC = () => {
     }
   };
 
-  const exportMasterReport = () => {
-    const dataToExport = balances.map(b => ({
-      'Driver Name': b.outsource_name,
-      'Total Deliveries': b.delivery_count,
-      'Total Earned (AED)': b.total_earned,
-      'Cash Held by Driver (AED)': b.cash_held_by_driver,
-      'Final Settlement Balance (AED)': b.net_balance,
-      'Settlement Status': b.net_balance > 0 
-        ? 'You have to pay to outsource' 
-        : b.net_balance < 0 
-          ? 'You have to collect from outsource' 
-          : 'Account Settled',
-      'Action Amount (AED)': Math.abs(b.net_balance),
-      'Action Required': b.net_balance > 0 
-        ? `Pay AED ${Math.abs(b.net_balance)} to ${b.outsource_name}` 
-        : b.net_balance < 0 
-          ? `Collect AED ${Math.abs(b.net_balance)} from ${b.outsource_name}` 
-          : 'No action needed'
-    }));
+  const exportMasterReport = async () => {
+    try {
+      // Fetch all orders with client and outsource details
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          clients(name),
+          outsources(name)
+        `)
+        .eq('order_status', 'COMPLETED')
+        .order('created_at', { ascending: false });
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    
-    // Set column widths
-    ws['!cols'] = [
-      { wch: 25 }, // Driver Name
-      { wch: 15 }, // Total Deliveries
-      { wch: 20 }, // Total Earned
-      { wch: 25 }, // Cash Held by Driver
-      { wch: 25 }, // Final Settlement Balance
-      { wch: 25 }, // Settlement Status
-      { wch: 20 }, // Action Amount
-      { wch: 40 }, // Action Required
-    ];
+      if (error) throw error;
+      if (!orders || orders.length === 0) {
+        alert('No completed orders found to export');
+        return;
+      }
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Driver Settlements');
-    XLSX.writeFile(wb, `MS_Driver_Settlements_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+      // Map orders to Excel format
+      const excelData = mapOrdersToExcelData(orders);
+      
+      // Export to Excel
+      exportToExcel(excelData, `MS_Delivery_Settlements_${format(new Date(), 'yyyy-MM-dd')}`);
+    } catch (error: any) {
+      console.error('Error exporting master report:', error);
+      alert('Failed to export report: ' + error.message);
+    }
   };
 
-  const exportDriverLedger = (driverId: string, driverName: string) => {
-    const driverOrders = allOrders.filter(o => 
-      o.driver_id === driverId && 
-      o.order_status === 'COMPLETED'
-    );
+  const exportDriverLedger = async (driverId: string, driverName: string) => {
+    try {
+      // Fetch driver's orders with client and outsource details
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          clients(name),
+          outsources(name)
+        `)
+        .eq('outsource_id', driverId)
+        .eq('order_status', 'COMPLETED')
+        .order('created_at', { ascending: false });
 
-    // Calculate summary values
-    const totalServiceCharges = driverOrders.reduce((sum, o) => sum + (o.outsource_charge || 0), 0);
-    const totalCashInHand = driverOrders.reduce((sum, o) => {
-      if (o.payment_method === 'COD' || o.payment_method === 'COP') {
-        return sum + (o.total_order_amount || 0);
+      if (error) throw error;
+      if (!orders || orders.length === 0) {
+        alert(`No completed orders found for ${driverName}`);
+        return;
       }
-      return sum;
-    }, 0);
-    const previousManualAdjustments = 0; // TODO: Pull from settlement history table
-    const finalStatus = totalServiceCharges - totalCashInHand + previousManualAdjustments;
 
-    // Create structured worksheet data
-    const wsData = [];
-
-    // Row 1: Title (will be merged later)
-    wsData.push(['SETTLEMENT SUMMARY REPORT']);
-    wsData.push([]); // Empty row 2
-
-    // Row 3: Headers
-    wsData.push([
-      'Total Service Charges',
-      'Total Cash in Hand',
-      'Previous Adjustments',
-      'FINAL STATUS'
-    ]);
-
-    // Row 4: Values
-    wsData.push([
-      totalServiceCharges,
-      totalCashInHand,
-      previousManualAdjustments,
-      finalStatus > 0 
-        ? `PAY TO OUTSOURCE: ${Math.abs(finalStatus)} AED` 
-        : finalStatus < 0 
-          ? `COLLECT FROM OUTSOURCE: ${Math.abs(finalStatus)} AED` 
-          : 'SETTLED: 0 AED'
-    ]);
-
-    wsData.push([]); // Empty row 5
-    wsData.push([]); // Empty row 6
-
-    // Row 7: Order List Headers
-    wsData.push([
-      'Order Date',
-      'Order Number',
-      'Client Name',
-      'Payment Method',
-      'Total Order Amount (AED)',
-      'Outsource Charge (AED)',
-      'Company Owes (A)',
-      'Driver Collected (B)',
-      'Net Per Order (C)',
-      'Order Status'
-    ]);
-
-    // Row 8+: Order Data
-    driverOrders.forEach((order) => {
-      const companyOwes = order.outsource_charge || 0;
-      const driverCollected = (order.payment_method === 'COD' || order.payment_method === 'COP') ? order.total_order_amount || 0 : 0;
-      const netPerOrder = companyOwes - driverCollected;
-
-      wsData.push([
-        new Date(order.created_at).toLocaleDateString(),
-        order.order_number,
-        order.clients?.name || 'N/A',
-        order.payment_method,
-        order.total_order_amount,
-        order.outsource_charge,
-        companyOwes,
-        driverCollected,
-        netPerOrder,
-        order.order_status
-      ]);
-    });
-
-    // Create worksheet
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    
-    // Set column widths
-    ws['!cols'] = [
-      { wch: 15 }, // Order Date
-      { wch: 15 }, // Order Number
-      { wch: 25 }, // Client Name
-      { wch: 15 }, // Payment Method
-      { wch: 20 }, // Total Order Amount
-      { wch: 20 }, // Outsource Charge
-      { wch: 18 }, // Company Owes (A)
-      { wch: 18 }, // Driver Collected (B)
-      { wch: 18 }, // Net Per Order (C)
-      { wch: 15 }, // Order Status
-    ];
-
-    // Merge title row (A1:F1)
-    ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } } // Merge A1:D1
-    ];
-
-    // Apply styling and borders
-    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-    
-    for (let R = 0; R <= range.e.r; R++) {
-      for (let C = 0; C <= range.e.c; C++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-        const cell = ws[cellAddress];
-        if (!cell) continue;
-
-        // Style Row 1 (Title)
-        if (R === 0) {
-          cell.s = {
-            font: { bold: true, sz: 16 },
-            alignment: { horizontal: 'center', vertical: 'center' },
-            fill: { fgColor: { rgb: "FF2F4F4F" }, patternType: "solid" },
-            fontColor: { rgb: "FFFFFFFF" }
-          };
-        }
-        // Style Row 3 (Headers)
-        else if (R === 2) {
-          cell.s = {
-            font: { bold: true, sz: 12 },
-            alignment: { horizontal: 'center' },
-            fill: { fgColor: { rgb: "FFE0E0E0" }, patternType: "solid" },
-            border: {
-              top: { style: "thin", color: { rgb: "FF000000" } },
-              bottom: { style: "thin", color: { rgb: "FF000000" } },
-              left: { style: "thin", color: { rgb: "FF000000" } },
-              right: { style: "thin", color: { rgb: "FF000000" } }
-            }
-          };
-        }
-        // Style Row 4 (Values)
-        else if (R === 3) {
-          cell.s = {
-            font: { bold: true, sz: 11 },
-            alignment: { horizontal: 'center' },
-            fill: { fgColor: { rgb: "FFF8F8F8" }, patternType: "solid" },
-            border: {
-              top: { style: "thin", color: { rgb: "FF000000" } },
-              bottom: { style: "thin", color: { rgb: "FF000000" } },
-              left: { style: "thin", color: { rgb: "FF000000" } },
-              right: { style: "thin", color: { rgb: "FF000000" } }
-            }
-          };
-          // Color fill for FINAL STATUS cell (Column D)
-          if (C === 3) {
-            cell.s.fill = finalStatus > 0 
-              ? { fgColor: { rgb: "FF90EE90" }, patternType: "solid" }  // Light Green
-              : finalStatus < 0 
-                ? { fgColor: { rgb: "FFB0B0B0" }, patternType: "solid" }  // Light Red
-                : { fgColor: { rgb: "FFFFFF" }, patternType: "solid" };  // White
-          }
-        }
-        // Style Row 7 (Order Headers)
-        else if (R === 6) {
-          cell.s = {
-            font: { bold: true, sz: 11 },
-            alignment: { horizontal: 'center' },
-            fill: { fgColor: { rgb: "FFE0E0E0" }, patternType: "solid" },
-            border: {
-              top: { style: "thin", color: { rgb: "FF000000" } },
-              bottom: { style: "thin", color: { rgb: "FF000000" } },
-              left: { style: "thin", color: { rgb: "FF000000" } },
-              right: { style: "thin", color: { rgb: "FF000000" } }
-            }
-          };
-        }
-        // Style Order Data Rows (8+)
-        else if (R >= 7) {
-          cell.s = {
-            font: { sz: 10 },
-            alignment: { horizontal: 'left' },
-            border: {
-              top: { style: "thin", color: { rgb: "FF000000" } },
-              bottom: { style: "thin", color: { rgb: "FF000000" } },
-              left: { style: "thin", color: { rgb: "FF000000" } },
-              right: { style: "thin", color: { rgb: "FF000000" } }
-            }
-          };
-          // Highlight ONLINE payment rows
-          const orderIndex = R - 7;
-          if (orderIndex >= 0 && orderIndex < driverOrders.length) {
-            const order = driverOrders[orderIndex];
-            if (order.payment_method === 'ONLINE') {
-              cell.s.fill = { fgColor: { rgb: "FFE6F3FF" }, patternType: "solid" }; // Light Blue
-            }
-          }
-        }
-      }
+      // Map orders to Excel format
+      const excelData = mapOrdersToExcelData(orders);
+      
+      // Export to Excel
+      exportToExcel(excelData, `Settlement_Report_${driverName}_${format(new Date(), 'yyyy-MM-dd')}`);
+    } catch (error: any) {
+      console.error('Error exporting driver ledger:', error);
+      alert('Failed to export driver report: ' + error.message);
     }
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Settlement Report');
-    XLSX.writeFile(wb, `Settlement_Report_${driverName}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
   };
 
   const handleSettlementSubmit = async (e: React.FormEvent) => {

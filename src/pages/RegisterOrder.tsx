@@ -24,12 +24,14 @@ const RegisterOrder: React.FC = () => {
     client_id: '',
     pickup_location: '',
     customer_name: '',
-    customer_contact: '',
+    customer_contact_number: '',
     drop_location: '',
     map_pin_url: '',
     outsource_id: '',
     outsource_charges: 0,
     delivery_charges: 0,
+    item_charge: 0,
+    total_amount_received: 0,
     units: 1,
     payment_mode: 'Cash on Delivery (COD)',
     payment_status: 'Pending',
@@ -71,7 +73,7 @@ const RegisterOrder: React.FC = () => {
       client_id: clientId,
       // Auto-fill pickup location from client address and contact from client phone
       pickup_location: selectedClient?.address || prev.pickup_location,
-      customer_contact: selectedClient?.phone || prev.customer_contact
+      customer_contact_number: selectedClient?.phone || prev.customer_contact_number
     }));
   };
 
@@ -107,12 +109,14 @@ const RegisterOrder: React.FC = () => {
         client_id: '',
         pickup_location: '',
         customer_name: '',
-        customer_contact: '',
+        customer_contact_number: '',
         drop_location: '',
         map_pin_url: '',
         outsource_id: '',
         outsource_charges: 0,
         delivery_charges: 0,
+        item_charge: 0,
+        total_amount_received: 0,
         units: 1,
         payment_mode: 'Cash on Delivery (COD)',
         payment_status: 'Pending',
@@ -206,8 +210,8 @@ const RegisterOrder: React.FC = () => {
                 <label className="text-sm font-medium text-gray-700">Contact Number</label>
                 <input
                   type="text"
-                  name="customer_contact"
-                  value={formData.customer_contact}
+                  name="customer_contact_number"
+                  value={formData.customer_contact_number}
                   onChange={handleChange}
                   placeholder="+1 234 567 890"
                   className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
@@ -256,7 +260,7 @@ const RegisterOrder: React.FC = () => {
               <DollarSign className="w-5 h-5" />
               <h2>Financials & Logistics</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-1">
                 <label className="text-sm font-medium text-gray-700">Select Outsource</label>
                 <select
@@ -283,6 +287,17 @@ const RegisterOrder: React.FC = () => {
                 />
               </div>
               <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-700">Item Charge</label>
+                <input
+                  type="number"
+                  name="item_charge"
+                  value={formData.item_charge}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-1">
                 <label className="text-sm font-medium text-gray-700">Delivery Charges</label>
                 <input
                   type="number"
@@ -290,6 +305,17 @@ const RegisterOrder: React.FC = () => {
                   value={formData.delivery_charges}
                   onChange={handleChange}
                   className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-700">Total Amount Received</label>
+                <input
+                  type="number"
+                  name="total_amount_received"
+                  value={formData.total_amount_received}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                  placeholder="0"
                 />
               </div>
               <div className="space-y-1">
