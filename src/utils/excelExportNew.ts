@@ -16,6 +16,8 @@ export interface ExcelRowData {
   'Outsource Charges': number;
   'Profit': number;
   'Net Settlement (Helper)': number;
+  'Outsource holding(Amt)': number;
+  'My holding(Amt)': number;
 }
 
 export const exportToExcel = (data: ExcelRowData[], filename: string, orders: any[]) => {
@@ -39,7 +41,9 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
     'Outsource Name',
     'Outsource Charges',
     'Profit',
-    'Net Settlement (Helper)'
+    'Net Settlement (Helper)',
+    'Outsource holding(Amt)',
+    'My holding(Amt)'
   ];
 
   // Data rows with formulas (starting from Row 2)
@@ -63,13 +67,15 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
       order.outsources?.name || '',
       order.outsource_charges || 0,
       { t: 'n', f: `J${row}-M${row}` }, // Profit = Delivery Charge - Outsource Charges
-      { t: 'n', f: `IF(OR(H${row}="COD", H${row}="COP"), J${row}-M${row}, 0-M${row})` } // Net Settlement
+      { t: 'n', f: `IF(OR(H${row}="COD", H${row}="COP"), J${row}-M${row}, 0-M${row})` }, // Net Settlement
+      { t: 'n', f: `IF(OR(H${row}="COD", H${row}="COP"), J${row}, 0)` }, // Outsource holding(Amt)
+      { t: 'n', f: `M${row}` } // My holding(Amt)
     ]);
   });
 
   const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-  // Set column widths for better readability (A-O)
+  // Set column widths for better readability (A-Q)
   const colWidths = [
     { wch: 12 }, // A: Order Date
     { wch: 15 }, // B: Order Number
@@ -86,6 +92,8 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
     { wch: 16 }, // M: Outsource Charges
     { wch: 10 }, // N: Profit
     { wch: 18 }, // O: Net Settlement (Helper)
+    { wch: 20 }, // P: Outsource holding(Amt)
+    { wch: 16 }, // Q: My holding(Amt)
   ];
   ws['!cols'] = colWidths;
 
@@ -99,18 +107,20 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
   // Add summary header
   XLSX.utils.sheet_add_aoa(ws, [
     ['Settlement Summary'],
-    ['Outsource Name', 'Final Amount', 'Remark']
+    ['Outsource Name', 'Outsource holding(Amt)', 'My holding(Amt)', 'Final Amount', 'Remark']
   ], { origin: summaryStartRow });
   
   // Add summary rows with dynamic formulas
   const summaryRows = summaryData.map((summary, index) => {
-    const currentRow = summaryStartRow + 2 + index;
+    const sumRow = summaryStartRow + 2 + index;
     const outsourceName = summary['Outsource Name'];
     
     return [
       outsourceName,
-      { t: 'n', f: `ABS(SUMIF(L2:L${lastRow}, "${outsourceName}", O2:O${lastRow}))` },
-      { t: 's', f: `IF(SUMIF(L2:L${lastRow}, "${outsourceName}", O2:O${lastRow}) > 0, "Collect from Outsource", IF(SUMIF(L2:L${lastRow}, "${outsourceName}", O2:O${lastRow}) < 0, "Pay to Outsource", "Settled"))` }
+      { t: 'n', f: `SUMIF(L2:L${lastRow}, "${outsourceName}", P2:P${lastRow})` }, // Outsource holding(Amt)
+      { t: 'n', f: `SUMIF(L2:L${lastRow}, "${outsourceName}", Q2:Q${lastRow})` }, // My holding(Amt)
+      { t: 'n', f: `ABS(B${sumRow} - C${sumRow})` }, // Final Amount
+      { t: 's', f: `IF(B${sumRow} > C${sumRow}, "Collect from Outsource", IF(B${sumRow} < C${sumRow}, "Pay to Outsource", "Settled"))` } // Remark
     ];
   });
   
@@ -253,7 +263,9 @@ export const mapOrdersToExcelData = (orders: any[]): ExcelRowData[] => {
       'Outsource Name': order.outsources?.name || '',
       'Outsource Charges': order.outsource_charges || 0,
       'Profit': financials.profit,
-      'Net Settlement (Helper)': 0 // Placeholder - will be calculated by Excel formula
+      'Net Settlement (Helper)': 0, // Placeholder - will be calculated by Excel formula
+      'Outsource holding(Amt)': 0, // Placeholder - will be calculated by Excel formula
+      'My holding(Amt)': 0 // Placeholder - will be calculated by Excel formula
     };
   });
 };
