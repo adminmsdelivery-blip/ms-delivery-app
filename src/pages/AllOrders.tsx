@@ -137,10 +137,12 @@ export default function AllOrders() {
   const handleUpdateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Create payload and remove generated columns
+    // Create payload and remove generated columns and relational data
     const { 
       delivery_charges,
       estimated_profit,
+      clients,
+      outsources,
       ...payload
     } = editingOrder;
     
