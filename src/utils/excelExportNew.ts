@@ -64,7 +64,7 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
     ws[`N${r}`] = { t: 'n', f: `J${r}-M${r}` };
     
     // Net Settlement Helper (O)
-    ws[`O${r}`] = { t: 'n', f: `IF(OR(H${r}="COD", H${r}="COP"), J${r}, 0)` };
+    ws[`O${r}`] = { t: 'n', f: `IF(OR(UPPER(H${r})="COD", UPPER(H${r})="COP"), J${r}, 0)` };
     
     // My Holding (P)
     ws[`P${r}`] = { t: 'n', f: `M${r}` };
@@ -92,48 +92,51 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
   ];
   ws['!cols'] = colWidths;
 
-  // Calculate settlement summary data
-  const summaryData = calculateSettlementSummary(orders);
+  // Get unique outsource names correctly from data payload
+  const uniqueOutsources = [...new Set(
+    mainData
+      .map(row => row['Outsource Name'])
+      .filter(name => name && name !== 'Outsource name' && name.trim() !== '')
+  )];
+
+  // Calculate where to start the summary
+  const lastDataRow = mainData.length + 1; // Assuming row 1 is main headers
+  const summaryStartRow = lastDataRow + 2; // Leave a blank row
   
-  // Add blank rows to separate main data from summary
-  const lastRow = mainData.length + 1; // Last row of main data
-  const summaryStartRow = lastRow + 4; // Start summary 4 rows below
-  
-  // Add summary header using sheet_add_aoa
-  XLSX.utils.sheet_add_aoa(ws, [
-    ['Settlement Summary'],
-    ['Outsource name', 'Total amount hold by outsource', 'Total amount hold by us', 'NET AMOUNT PAYBLE OR RECIVABLE', 'Remark']
-  ], { origin: summaryStartRow });
-  
-  // Add summary rows with static data first
-  const summaryStaticData = summaryData.map(summary => [
-    summary['Outsource Name'],
-    0, // Outsource holding placeholder
-    0, // My holding placeholder
-    0, // Final Amount placeholder
-    '' // Remark placeholder
-  ]);
-  
-  XLSX.utils.sheet_add_aoa(ws, summaryStaticData, { origin: summaryStartRow + 2 });
-  
-  // Inject formulas directly into summary cells
-  summaryData.forEach((summary, index) => {
-    const sumRow = summaryStartRow + 2 + index; // Excel row number for this summary row
-    const outsourceName = summary['Outsource Name'];
-    
-    // Column A (Outsource name): Static string already added
-    
-    // Column B (Total amount hold by outsource) - Column O in main table
-    ws[XLSX.utils.encode_cell({ r: sumRow - 1, c: 1 })] = { t: 'n', f: `SUMIF(L2:L${lastRow}, "${outsourceName}", O2:O${lastRow})` };
-    
-    // Column C (Total amount hold by us) - Column P in main table
-    ws[XLSX.utils.encode_cell({ r: sumRow - 1, c: 2 })] = { t: 'n', f: `SUMIF(L2:L${lastRow}, "${outsourceName}", P2:P${lastRow})` };
-    
-    // Column D (NET AMOUNT PAYBLE OR RECIVABLE)
-    ws[XLSX.utils.encode_cell({ r: sumRow - 1, c: 3 })] = { t: 'n', f: `ABS(B${sumRow} - C${sumRow})` };
-    
-    // Column E (Remark)
-    ws[XLSX.utils.encode_cell({ r: sumRow - 1, c: 4 })] = { t: 's', f: `IF(B${sumRow} > C${sumRow}, "You have to collect", IF(B${sumRow} < C${sumRow}, "You have to pay", "Settled"))` };
+  // 1. Write the Summary Title and Headers manually using encode_cell (0-indexed)
+  ws[XLSX.utils.encode_cell({ r: summaryStartRow, c: 0 })] = { t: 's', v: "Settlement Summary" };
+  ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 0 })] = { t: 's', v: "Outsource name" };
+  ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 1 })] = { t: 's', v: "Total amount hold by outsource" };
+  ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 2 })] = { t: 's', v: "Total amount hold by us" };
+  ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 3 })] = { t: 's', v: "NET AMOUNT PAYABLE OR RECEIVABLE" };
+  ws[XLSX.utils.encode_cell({ r: summaryStartRow + 1, c: 4 })] = { t: 's', v: "Remark" };
+
+  // 2. Loop through the unique drivers
+  let currentRow = summaryStartRow + 2; 
+
+  uniqueOutsources.forEach(outsourceName => {
+    if (!outsourceName) return; // skip empties
+
+    const excelSumRow = currentRow + 1; // Excel formulas are 1-indexed
+
+    // Driver Name
+    ws[XLSX.utils.encode_cell({ r: currentRow, c: 0 })] = { t: 's', v: outsourceName };
+    // Hold by Outsource (Sum Column O)
+    ws[XLSX.utils.encode_cell({ r: currentRow, c: 1 })] = { t: 'n', f: `SUMIF(L2:L${lastDataRow}, A${excelSumRow}, O2:O${lastDataRow})` };
+    // Hold by Us (Sum Column P)
+    ws[XLSX.utils.encode_cell({ r: currentRow, c: 2 })] = { t: 'n', f: `SUMIF(L2:L${lastDataRow}, A${excelSumRow}, P2:P${lastDataRow})` };
+    // Net Amount
+    ws[XLSX.utils.encode_cell({ r: currentRow, c: 3 })] = { t: 'n', f: `ABS(B${excelSumRow} - C${excelSumRow})` };
+    // Remark
+    ws[XLSX.utils.encode_cell({ r: currentRow, c: 4 })] = { t: 's', f: `IF(B${excelSumRow} > C${excelSumRow}, "You have to collect", IF(B${excelSumRow} < C${excelSumRow}, "You have to pay", "Settled"))` };
+
+    currentRow++;
+  });
+
+  // 3. CRITICAL: Expand the worksheet range so the library renders the new rows
+  ws['!ref'] = XLSX.utils.encode_range({
+    s: { r: 0, c: 0 },
+    e: { r: currentRow, c: 20 } // Ensures all summary columns are rendered
   });
 
   // Add the worksheet to the workbook
