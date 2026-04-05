@@ -24,56 +24,54 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
   // Create a new workbook
   const wb = XLSX.utils.book_new();
 
-  // Create worksheet with Excel formulas using aoa_to_sheet
-  // Headers (Row 1)
-  const headers = [
-    'Order Date',
-    'Order Number', 
-    'Client Name',
-    'Pickup Location',
-    'Customer Name',
-    'Delivery Location',
-    'Customer Contact Number',
-    'Payment Mode',
-    'Total Amount Received',
-    'Delivery Charge',
-    'Item Charge',
-    'Outsource Name',
-    'Outsource Charges',
-    'Profit',
-    'Net Settlement (Helper)',
-    'Outsource holding(Amt)',
-    'My holding(Amt)'
-  ];
-
-  // Data rows with formulas (starting from Row 2)
-  const wsData = [headers];
-  
-  orders.forEach((order, index) => {
-    const row = index + 2; // Excel row number (starting from 2)
+  // Build main data with static values for json_to_sheet
+  const mainData = orders.map((order, index) => {
+    const financials = calculateFinancials(order);
     
-    wsData.push([
-      order.order_date || '',
-      order.order_number || '',
-      order.clients?.name || 'Unknown Client',
-      order.pickup_location || '',
-      order.customer_name || '',
-      order.delivery_location || '',
-      order.customer_contact_number || '',
-      order.payment_mode || '',
-      order.total_amount_received || 0,
-      { t: 'n', f: `I${row}-K${row}` }, // Delivery Charge = Total Amount - Item Charge
-      order.item_charge || 0,
-      order.outsources?.name || '',
-      order.outsource_charges || 0,
-      { t: 'n', f: `J${row}-M${row}` }, // Profit = Delivery Charge - Outsource Charges
-      { t: 'n', f: `IF(OR(H${row}="COD", H${row}="COP"), J${row}-M${row}, 0-M${row})` }, // Net Settlement
-      { t: 'n', f: `IF(OR(H${row}="COD", H${row}="COP"), J${row}, 0)` }, // Outsource holding(Amt)
-      { t: 'n', f: `M${row}` } // My holding(Amt)
-    ]);
+    return {
+      'Order Date': order.order_date || '',
+      'Order Number': order.order_number || '',
+      'Client Name': order.clients?.name || 'Unknown Client',
+      'Pickup Location': order.pickup_location || '',
+      'Customer Name': order.customer_name || '',
+      'Delivery Location': order.delivery_location || '',
+      'Customer Contact Number': order.customer_contact_number || '',
+      'Payment Mode': order.payment_mode || '',
+      'Total Amount Received': order.total_amount_received || 0,
+      'Delivery Charge': financials.deliveryCharge, // Static value for now
+      'Item Charge': order.item_charge || 0,
+      'Outsource Name': order.outsources?.name || '',
+      'Outsource Charges': order.outsource_charges || 0,
+      'Profit': financials.profit, // Static value for now
+      'Net Settlement (Helper)': 0, // Static placeholder
+      'Outsource holding(Amt)': 0, // Static placeholder
+      'My holding(Amt)': order.outsource_charges || 0 // Static value for now
+    };
   });
 
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  // Create worksheet with static data
+  const ws = XLSX.utils.json_to_sheet(mainData);
+
+  // Inject formulas directly into worksheet cells
+  // Assuming data starts on row 2
+  for (let i = 0; i < mainData.length; i++) {
+    const r = i + 2; // Excel row number
+    
+    // Delivery Charge (J)
+    ws[`J${r}`] = { t: 'n', f: `I${r}-K${r}` };
+    
+    // Profit (N)
+    ws[`N${r}`] = { t: 'n', f: `J${r}-M${r}` };
+    
+    // Outsource Holding (P)
+    ws[`P${r}`] = { t: 'n', f: `IF(OR(H${r}="COD", H${r}="COP"), J${r}, 0)` };
+    
+    // My Holding (Q)
+    ws[`Q${r}`] = { t: 'n', f: `M${r}` };
+    
+    // Net Settlement Helper (O)
+    ws[`O${r}`] = { t: 'n', f: `IF(OR(H${r}="COD", H${r}="COP"), J${r}-M${r}, 0-M${r})` };
+  }
 
   // Set column widths for better readability (A-Q)
   const colWidths = [
@@ -97,34 +95,47 @@ export const exportToExcel = (data: ExcelRowData[], filename: string, orders: an
   ];
   ws['!cols'] = colWidths;
 
-  // Calculate settlement summary with dynamic formulas
+  // Calculate settlement summary data
   const summaryData = calculateSettlementSummary(orders);
   
   // Add blank rows to separate main data from summary
-  const lastRow = orders.length + 1; // Last row of main data
+  const lastRow = mainData.length + 1; // Last row of main data
   const summaryStartRow = lastRow + 4; // Start summary 4 rows below
   
-  // Add summary header
+  // Add summary header using sheet_add_aoa
   XLSX.utils.sheet_add_aoa(ws, [
     ['Settlement Summary'],
     ['Outsource Name', 'Outsource holding(Amt)', 'My holding(Amt)', 'Final Amount', 'Remark']
   ], { origin: summaryStartRow });
   
-  // Add summary rows with dynamic formulas
-  const summaryRows = summaryData.map((summary, index) => {
-    const sumRow = summaryStartRow + 2 + index;
+  // Add summary rows with static data first
+  const summaryStaticData = summaryData.map(summary => [
+    summary['Outsource Name'],
+    0, // Outsource holding placeholder
+    0, // My holding placeholder
+    0, // Final Amount placeholder
+    '' // Remark placeholder
+  ]);
+  
+  XLSX.utils.sheet_add_aoa(ws, summaryStaticData, { origin: summaryStartRow + 2 });
+  
+  // Inject formulas directly into summary cells
+  summaryData.forEach((summary, index) => {
+    const sumRow = summaryStartRow + 2 + index; // Excel row number for this summary row
     const outsourceName = summary['Outsource Name'];
     
-    return [
-      outsourceName,
-      { t: 'n', f: `SUMIF(L2:L${lastRow}, "${outsourceName}", P2:P${lastRow})` }, // Outsource holding(Amt)
-      { t: 'n', f: `SUMIF(L2:L${lastRow}, "${outsourceName}", Q2:Q${lastRow})` }, // My holding(Amt)
-      { t: 'n', f: `ABS(B${sumRow} - C${sumRow})` }, // Final Amount
-      { t: 's', f: `IF(B${sumRow} > C${sumRow}, "Collect from Outsource", IF(B${sumRow} < C${sumRow}, "Pay to Outsource", "Settled"))` } // Remark
-    ];
+    // Outsource Holding Sum (Col B of summary)
+    ws[XLSX.utils.encode_cell({ r: sumRow - 1, c: 1 })] = { t: 'n', f: `SUMIF(L2:L${lastRow}, "${outsourceName}", P2:P${lastRow})` };
+    
+    // My Holding Sum (Col C of summary)
+    ws[XLSX.utils.encode_cell({ r: sumRow - 1, c: 2 })] = { t: 'n', f: `SUMIF(L2:L${lastRow}, "${outsourceName}", Q2:Q${lastRow})` };
+    
+    // Final Amount (Col D of summary)
+    ws[XLSX.utils.encode_cell({ r: sumRow - 1, c: 3 })] = { t: 'n', f: `ABS(B${sumRow} - C${sumRow})` };
+    
+    // Remark (Col E of summary)
+    ws[XLSX.utils.encode_cell({ r: sumRow - 1, c: 4 })] = { t: 's', f: `IF(B${sumRow} > C${sumRow}, "Collect from Outsource", IF(B${sumRow} < C${sumRow}, "Pay to Outsource", "Settled"))` };
   });
-  
-  XLSX.utils.sheet_add_aoa(ws, summaryRows, { origin: summaryStartRow + 2 });
 
   // Add the worksheet to the workbook
   XLSX.utils.book_append_sheet(wb, ws, "Settlement Report");
