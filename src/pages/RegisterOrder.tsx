@@ -9,7 +9,9 @@ import {
   Phone, 
   DollarSign,
   Info,
-  ChevronRight
+  Package,
+  CreditCard,
+  Truck
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -25,7 +27,7 @@ const RegisterOrder: React.FC = () => {
     pickup_location: '',
     customer_name: '',
     customer_contact_number: '',
-    drop_location: '',
+    delivery_location: '',
     map_pin_url: '',
     outsource_id: '',
     outsource_charges: 0,
@@ -39,7 +41,9 @@ const RegisterOrder: React.FC = () => {
     remark: ''
   });
 
-  const estimatedProfit = formData.delivery_charges - formData.outsource_charges;
+  // Auto-calculated values for summary section
+  const deliveryCharge = formData.total_amount_received - formData.item_charge;
+  const profit = deliveryCharge - formData.outsource_charges;
 
   useEffect(() => {
     fetchClients();
@@ -87,7 +91,7 @@ const RegisterOrder: React.FC = () => {
 
     setFormData(prev => ({
       ...prev,
-      [name]: name.includes('charges') || name === 'units' ? Number(value) : value
+      [name]: name.includes('charges') || name === 'units' || name === 'item_charge' || name === 'total_amount_received' ? Number(value) : value
     }));
   };
 
@@ -110,7 +114,7 @@ const RegisterOrder: React.FC = () => {
         pickup_location: '',
         customer_name: '',
         customer_contact_number: '',
-        drop_location: '',
+        delivery_location: '',
         map_pin_url: '',
         outsource_id: '',
         outsource_charges: 0,
@@ -132,290 +136,263 @@ const RegisterOrder: React.FC = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      {/* Form Section */}
-      <div className="lg:col-span-2 space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Register New Order</h1>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Info */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 text-indigo-600 font-semibold mb-2">
-              <Info className="w-5 h-5" />
-              <h2>Basic Information</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Order Number</label>
-                <input
-                  type="text"
-                  name="order_number"
-                  value={formData.order_number}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                  required
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Order Date</label>
-                <input
-                  type="date"
-                  name="order_date"
-                  value={formData.order_date}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                  required
-                />
-              </div>
-              <div className="space-y-1 md:col-span-2">
-                <label className="text-sm font-medium text-gray-700">Select Client</label>
-                <select
-                  name="client_id"
-                  value={formData.client_id}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                  required
-                >
-                  <option value="">Choose a client...</option>
-                  {clients.map(client => (
-                    <option key={client.id} value={client.id}>{client.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6 lg:p-8">
+      <div className="max-w-4xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8"
+        >
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Register Order</h1>
+            <p className="text-gray-600">Enter comprehensive order details for tracking and settlement</p>
           </div>
 
-          {/* Customer Details */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 text-indigo-600 font-semibold mb-2">
-              <User className="w-5 h-5" />
-              <h2>Customer Details</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Customer Name</label>
-                <input
-                  type="text"
-                  name="customer_name"
-                  value={formData.customer_name}
-                  onChange={handleChange}
-                  placeholder="e.g. John Doe"
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                  required
-                />
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Section 1: Order Information */}
+            <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Clock className="w-5 h-5 text-blue-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Order Information</h2>
               </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Contact Number</label>
-                <input
-                  type="text"
-                  name="customer_contact_number"
-                  value={formData.customer_contact_number}
-                  onChange={handleChange}
-                  placeholder="+1 234 567 890"
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                  required
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Pickup Location</label>
-                <input
-                  type="text"
-                  name="pickup_location"
-                  value={formData.pickup_location}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                  required
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Drop Location</label>
-                <input
-                  type="text"
-                  name="drop_location"
-                  value={formData.drop_location}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                  required
-                />
-              </div>
-              <div className="space-y-1 md:col-span-2">
-                <label className="text-sm font-medium text-gray-700">Map Pin URL (Optional)</label>
-                <input
-                  type="url"
-                  name="map_pin_url"
-                  value={formData.map_pin_url}
-                  onChange={handleChange}
-                  placeholder="https://maps.google.com/..."
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Financials & Logistics */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 text-indigo-600 font-semibold mb-2">
-              <DollarSign className="w-5 h-5" />
-              <h2>Financials & Logistics</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Select Outsource</label>
-                <select
-                  name="outsource_id"
-                  value={formData.outsource_id}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                  required
-                >
-                  <option value="">Choose partner...</option>
-                  {outsources.map(o => (
-                    <option key={o.id} value={o.id}>{o.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Outsource Charges</label>
-                <input
-                  type="number"
-                  name="outsource_charges"
-                  value={formData.outsource_charges}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Item Charge</label>
-                <input
-                  type="number"
-                  name="item_charge"
-                  value={formData.item_charge}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                  placeholder="0"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Delivery Charges</label>
-                <input
-                  type="number"
-                  name="delivery_charges"
-                  value={formData.delivery_charges}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Total Amount Received</label>
-                <input
-                  type="number"
-                  name="total_amount_received"
-                  value={formData.total_amount_received}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                  placeholder="0"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Units</label>
-                <input
-                  type="number"
-                  name="units"
-                  value={formData.units}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Payment Mode</label>
-                <select
-                  name="payment_mode"
-                  value={formData.payment_mode}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                >
-                  <option value="Cash on Delivery (COD)">Cash on Delivery (COD)</option>
-                  <option value="Cash on Pickup (COP)">Cash on Pickup (COP)</option>
-                  <option value="Online Payment">Online Payment</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Estimated Profit</label>
-                <div className={cn(
-                  "w-full px-4 py-2 rounded-xl border font-bold flex items-center justify-center",
-                  estimatedProfit >= 0 ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-700"
-                )}>
-                  {formatCurrency(estimatedProfit)}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Order Date</label>
+                  <input
+                    type="date"
+                    name="order_date"
+                    value={formData.order_date}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Order Number</label>
+                  <input
+                    type="text"
+                    name="order_number"
+                    value={formData.order_number}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-100 text-gray-600"
+                    readOnly
+                  />
                 </div>
               </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700">Remark</label>
-              <textarea
-                name="remark"
-                value={formData.remark}
-                onChange={handleChange}
-                rows={3}
-                className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-              />
-            </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Registering...' : (
-              <>
+            {/* Section 2: Pickup Details */}
+            <div className="bg-blue-50 rounded-xl border border-blue-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <MapPin className="w-5 h-5 text-blue-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Pickup Details</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Client Name</label>
+                  <select
+                    name="client_id"
+                    value={formData.client_id}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                    required
+                  >
+                    <option value="">Select a client...</option>
+                    {clients.map(client => (
+                      <option key={client.id} value={client.id}>{client.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Pickup Location</label>
+                  <input
+                    type="text"
+                    name="pickup_location"
+                    value={formData.pickup_location}
+                    onChange={handleChange}
+                    placeholder="Enter pickup address"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Delivery Details */}
+            <div className="bg-green-50 rounded-xl border border-green-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Package className="w-5 h-5 text-green-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Delivery Details</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Customer Name</label>
+                  <input
+                    type="text"
+                    name="customer_name"
+                    value={formData.customer_name}
+                    onChange={handleChange}
+                    placeholder="Enter customer name"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Customer Contact Number</label>
+                  <input
+                    type="text"
+                    name="customer_contact_number"
+                    value={formData.customer_contact_number}
+                    onChange={handleChange}
+                    placeholder="Enter contact number"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Delivery Location</label>
+                  <input
+                    type="text"
+                    name="delivery_location"
+                    value={formData.delivery_location}
+                    onChange={handleChange}
+                    placeholder="Enter delivery address"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Section 4: Payment & Item Details */}
+            <div className="bg-purple-50 rounded-xl border border-purple-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <CreditCard className="w-5 h-5 text-purple-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Payment & Item Details</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Payment Mode</label>
+                  <select
+                    name="payment_mode"
+                    value={formData.payment_mode}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                    required
+                  >
+                    <option value="Cash on Delivery (COD)">Cash on Delivery (COD)</option>
+                    <option value="Cash on Pickup (COP)">Cash on Pickup (COP)</option>
+                    <option value="Online Payment">Online Payment</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Total Amount Received</label>
+                  <input
+                    type="number"
+                    name="total_amount_received"
+                    value={formData.total_amount_received}
+                    onChange={handleChange}
+                    placeholder="0"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Item Charge</label>
+                  <input
+                    type="number"
+                    name="item_charge"
+                    value={formData.item_charge}
+                    onChange={handleChange}
+                    placeholder="0"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Section 5: Outsource Details */}
+            <div className="bg-orange-50 rounded-xl border border-orange-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Truck className="w-5 h-5 text-orange-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Outsource Details</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Outsource Name</label>
+                  <select
+                    name="outsource_id"
+                    value={formData.outsource_id}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all"
+                    required
+                  >
+                    <option value="">Select outsource partner...</option>
+                    {outsources.map(o => (
+                      <option key={o.id} value={o.id}>{o.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Outsource Charges</label>
+                  <input
+                    type="number"
+                    name="outsource_charges"
+                    value={formData.outsource_charges}
+                    onChange={handleChange}
+                    placeholder="0"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Section 6: Auto-Calculated Summary */}
+            <div className="bg-indigo-50 rounded-xl border border-indigo-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <DollarSign className="w-5 h-5 text-indigo-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Auto-Calculated Summary</h2>
+                <Info className="w-4 h-4 text-indigo-400 ml-2" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Delivery Charge</label>
+                  <div className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-100 text-gray-700 font-semibold">
+                    {formatCurrency(deliveryCharge)}
+                  </div>
+                  <p className="text-xs text-gray-500">Calculated: Total Amount Received - Item Charge</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Profit</label>
+                  <div className={cn(
+                    "w-full px-4 py-2 rounded-lg border font-semibold",
+                    profit >= 0 
+                      ? "bg-green-100 border-green-300 text-green-700" 
+                      : "bg-red-100 border-red-300 text-red-700"
+                  )}>
+                    {formatCurrency(profit)}
+                  </div>
+                  <p className="text-xs text-gray-500">Calculated: Delivery Charge - Outsource Charges</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <div className="pt-6">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <Save className="w-5 h-5" />
-                Register Order
-              </>
-            )}
-          </button>
-        </form>
-      </div>
-
-      {/* Latest Orders Sidebar */}
-      <div className="space-y-6">
-        <div className="flex items-center gap-2 text-gray-900 font-bold">
-          <Clock className="w-5 h-5 text-indigo-600" />
-          <h2>Latest 15 Orders</h2>
-        </div>
-        <div className="space-y-4">
-          {latestOrders.map((order, index) => (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
-              key={order.id}
-              className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 transition-colors group"
-            >
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <p className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                    {order.customer_name}
-                  </p>
-                  <p className="text-xs text-gray-500">{order.order_number}</p>
-                </div>
-                <span className="text-sm font-bold text-indigo-600">
-                  {formatCurrency(order.delivery_charges)}
-                </span>
-              </div>
-              <div className="flex items-center gap-1 text-xs text-gray-500">
-                <MapPin className="w-3 h-3" />
-                <span className="truncate">{order.drop_location}</span>
-              </div>
-            </motion.div>
-          ))}
-          {latestOrders.length === 0 && (
-            <div className="text-center py-8 text-gray-400 italic">
-              No orders registered yet.
+                {loading ? 'Registering Order...' : 'Save / Register Order'}
+              </button>
             </div>
-          )}
-        </div>
+          </form>
+        </motion.div>
       </div>
     </div>
   );

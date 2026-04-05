@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
-import { exportToExcel, mapOrdersToExcelData } from '../utils/excelExport';
+import { exportToExcel, mapOrdersToExcelData } from '../utils/excelExportNew';
 
 // Strict Type Enforcement for Order Data
 interface Order {
