@@ -103,14 +103,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* Mobile Logo - Strict Conditional Rendering */}
         {profile.logo_url ? (
           /* Render ONLY the custom uploaded image */
-          <img 
-            src={profile.logo_url} 
-            alt="Company Logo" 
-            className="w-8 h-8 rounded-full object-cover flex-shrink-0" 
-          />
+          <div className="w-8 h-8 rounded-xl overflow-hidden bg-white shadow-sm border border-gray-100 flex items-center justify-center flex-shrink-0">
+            <img 
+              src={profile.logo_url} 
+              alt="Company Logo" 
+              className="w-full h-full object-cover" 
+            />
+          </div>
         ) : (
           /* Render ONLY the fallback placeholder box */
-          <div className="w-8 h-8 flex-shrink-0 bg-[#5b52f6] rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 flex-shrink-0 bg-[#5b52f6] rounded-xl flex items-center justify-center">
             <Truck className="w-4 h-4 text-white" />
           </div>
         )}
@@ -143,11 +145,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* Icon Box - Strict Conditional Rendering */}
             {profile.logo_url ? (
               /* Render ONLY the custom uploaded image */
-              <img 
-                src={profile.logo_url} 
-                alt="Company Logo" 
-                className="w-12 h-12 rounded-full object-cover flex-shrink-0" 
-              />
+              <div className="w-12 h-12 rounded-xl overflow-hidden bg-white shadow-sm border border-gray-100 flex items-center justify-center flex-shrink-0">
+                <img 
+                  src={profile.logo_url} 
+                  alt="Company Logo" 
+                  className="w-full h-full object-cover" 
+                />
+              </div>
             ) : (
               /* Render ONLY the fallback placeholder box */
               <div className="w-12 h-12 flex-shrink-0 bg-[#5b52f6] rounded-xl flex items-center justify-center">
