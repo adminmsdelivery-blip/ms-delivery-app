@@ -99,8 +99,8 @@ const RegisterOrder: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Remove estimated_profit from submission as it's calculated by database DEFAULT constraint
-      const { estimated_profit, ...orderData } = formData;
+      // Remove generated columns from submission as they're calculated by database DEFAULT constraints
+      const { estimated_profit, delivery_charges, ...orderData } = formData;
 
       const { error } = await supabase.from('orders').insert([orderData]);
 

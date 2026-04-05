@@ -137,22 +137,16 @@ export default function AllOrders() {
   const handleUpdateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Create payload and remove generated columns
+    const { 
+      delivery_charges,
+      estimated_profit,
+      ...payload
+    } = editingOrder;
+    
     const { error } = await supabase
       .from('orders')
-      .update({
-        customer_name: editingOrder.customer_name,
-        customer_contact_number: editingOrder.customer_contact_number,
-        pickup_location: editingOrder.pickup_location,
-        delivery_location: editingOrder.delivery_location,
-        item_charge: editingOrder.item_charge,
-        total_amount_received: editingOrder.total_amount_received,
-        delivery_charges: editingOrder.delivery_charges,
-        outsource_charges: editingOrder.outsource_charges,
-        estimated_profit: editingOrder.estimated_profit,
-        payment_mode: editingOrder.payment_mode,
-        payment_status: editingOrder.payment_status,
-        remark: editingOrder.remark
-      })
+      .update(payload)
       .eq('id', editingOrder.id);
 
     if (error) {
