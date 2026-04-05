@@ -112,6 +112,28 @@ export default function AllOrders() {
     setIsEditModalOpen(true);
   };
 
+  // Calculate delivery charge and profit when form values change
+  useEffect(() => {
+    if (editingOrder) {
+      const totalAmount = editingOrder.total_amount_received || 0;
+      const itemCharge = editingOrder.item_charge || 0;
+      const outsourceCharges = editingOrder.outsource_charges || 0;
+      
+      // Calculate Delivery Charge = Total Amount Received - Item Charge
+      const calculatedDeliveryCharge = totalAmount - itemCharge;
+      
+      // Calculate Estimated Profit = Delivery Charge - Outsource Charges
+      const calculatedProfit = calculatedDeliveryCharge - outsourceCharges;
+      
+      // Update the form state with calculated values
+      setEditingOrder(prev => ({
+        ...prev,
+        delivery_charges: calculatedDeliveryCharge,
+        estimated_profit: calculatedProfit
+      }));
+    }
+  }, [editingOrder?.total_amount_received, editingOrder?.item_charge, editingOrder?.outsource_charges]);
+
   const handleUpdateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -374,12 +396,13 @@ export default function AllOrders() {
                     <input
                       type="number"
                       value={editingOrder.delivery_charges || ''}
-                      onChange={(e) => setEditingOrder({...editingOrder, delivery_charges: Number(e.target.value)})}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      readOnly
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-medium"
                       placeholder="0.00"
                       min="0"
                       step="0.01"
                     />
+                    <p className="text-xs text-gray-500 mt-1">Auto-calculated: Total Amount - Item Charge</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Outsource Charges (AED)</label>
@@ -398,12 +421,13 @@ export default function AllOrders() {
                     <input
                       type="number"
                       value={editingOrder.estimated_profit || ''}
-                      onChange={(e) => setEditingOrder({...editingOrder, estimated_profit: Number(e.target.value)})}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      readOnly
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-medium"
                       placeholder="0.00"
                       min="0"
                       step="0.01"
                     />
+                    <p className="text-xs text-gray-500 mt-1">Auto-calculated: Delivery Charge - Outsource Charges</p>
                   </div>
                 </div>
               </div>

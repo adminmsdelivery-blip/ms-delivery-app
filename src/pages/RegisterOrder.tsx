@@ -75,9 +75,9 @@ const RegisterOrder: React.FC = () => {
     setFormData(prev => ({
       ...prev,
       client_id: clientId,
-      // Auto-fill pickup location from client address and contact from client phone
-      pickup_location: selectedClient?.address || prev.pickup_location,
-      customer_contact_number: selectedClient?.phone || prev.customer_contact_number
+      // Auto-fill pickup location from client address only
+      pickup_location: selectedClient?.address || prev.pickup_location
+      // Remove autofill for customer_contact_number - let dispatcher enter manually
     }));
   };
 
