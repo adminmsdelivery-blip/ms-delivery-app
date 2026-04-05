@@ -76,20 +76,35 @@ export const calculateFinancials = (order: any): {
   // Calculate Profit: Delivery Charge - Outsource Charges
   const profit = deliveryCharge - (order.outsource_charges || 0);
 
-  // Calculate Receivable or Payable based on Payment Mode
-  let receivablePayable = '';
+  // Calculate Receivable or Payable using cash-flow formula
   
-  if (order.payment_mode === 'Online Payment') {
-    // If Payment Mode is "ONLINE": Return string: "Pay " + Outsource Charges + " to Outsource"
-    receivablePayable = `Pay ${order.outsource_charges || 0} to Outsource`;
-  } else if (order.payment_mode === 'Cash on Delivery (COD)' || order.payment_mode === 'Cash on Pickup (COP)') {
-    // If Payment Mode is "COD": Calculate: CollectAmount = Total Amount Received - Outsource Charges.
-    // Return string: "Collect " + CollectAmount + " from Outsource"
-    const collectAmount = (order.total_amount_received || 0) - (order.outsource_charges || 0);
-    receivablePayable = `Collect ${collectAmount} from Outsource`;
+  // Step A: Calculate Driver Cash Held
+  let driverCashHeld = 0;
+  if (order.payment_mode === 'Cash on Delivery (COD)' || order.payment_mode === 'Cash on Pickup (COP)') {
+    // If Payment Mode is "COD" or "COP": Driver Cash Held = Delivery Charge
+    driverCashHeld = deliveryCharge;
+  } else if (order.payment_mode === 'Online Payment') {
+    // If Payment Mode is "ONLINE": Driver Cash Held = 0
+    driverCashHeld = 0;
+  }
+
+  // Step B: Calculate Driver Earnings
+  const driverEarnings = order.outsource_charges || 0;
+
+  // Step C: Calculate Net Balance
+  const netBalance = driverCashHeld - driverEarnings;
+
+  // Step D: Output String for Column
+  let receivablePayable = '';
+  if (netBalance > 0) {
+    // If Net Balance > 0: Return "Collect " + Net Balance + " from Outsource"
+    receivablePayable = `Collect ${netBalance} from Outsource`;
+  } else if (netBalance < 0) {
+    // If Net Balance < 0: Return "Pay " + Math.abs(Net Balance) + " to Outsource"
+    receivablePayable = `Pay ${Math.abs(netBalance)} to Outsource`;
   } else {
-    // Default case
-    receivablePayable = 'Settled: 0';
+    // If Net Balance === 0: Return "Settled"
+    receivablePayable = 'Settled';
   }
 
   return {
@@ -115,7 +130,7 @@ export const mapOrdersToExcelData = (orders: any[]): ExcelRowData[] => {
       'Total Amount Received': order.total_amount_received || 0,
       'Delivery Charge': financials.deliveryCharge,
       'Item Charge': order.item_charge || 0,
-      'Outsource Name': order.outsource_name || '',
+      'Outsource Name': order.outsources?.name || '',
       'Outsource Charges': order.outsource_charges || 0,
       'Profit': financials.profit,
       'Receivable or Payable': financials.receivablePayable

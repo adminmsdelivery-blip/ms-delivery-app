@@ -89,9 +89,11 @@ export default function AllOrders() {
       .from('orders')
       .update({
         customer_name: editingOrder.customer_name,
-        customer_contact: editingOrder.customer_contact,
+        customer_contact_number: editingOrder.customer_contact_number,
         pickup_location: editingOrder.pickup_location,
-        drop_location: editingOrder.drop_location,
+        delivery_location: editingOrder.delivery_location,
+        item_charge: editingOrder.item_charge,
+        total_amount_received: editingOrder.total_amount_received,
         delivery_charges: editingOrder.delivery_charges,
         outsource_charges: editingOrder.outsource_charges,
         estimated_profit: editingOrder.estimated_profit,
@@ -161,7 +163,12 @@ export default function AllOrders() {
               <tr className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">
                 <th className="p-4 w-12"></th>
                 <th className="p-4">Order Details</th>
-                <th className="p-4">Client / Outsource</th>
+                <th className="p-4">Pickup Location</th>
+                <th className="p-4">Delivery Location</th>
+                <th className="p-4">Client</th>
+                <th className="p-4">Outsource Name</th>
+                <th className="p-4">Payment Mode</th>
+                <th className="p-4">Total Amount</th>
                 <th className="p-4">Financials</th>
                 <th className="p-4">Status</th>
                 <th className="p-4 text-right px-6">Actions</th>
@@ -169,7 +176,7 @@ export default function AllOrders() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={6} className="text-center p-10 text-gray-400">Loading orders...</td></tr>
+                <tr><td colSpan={12} className="text-center p-10 text-gray-400">Loading orders...</td></tr>
               ) : filteredOrders.map((order) => (
                 <tr key={order.id} className={`hover:bg-gray-50/50 transition-all ${selectedIds.includes(order.id) ? 'bg-indigo-50/30' : ''}`}>
                   <td className="p-4">
@@ -185,17 +192,33 @@ export default function AllOrders() {
                     <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleDateString()}</p>
                   </td>
                   <td className="p-4">
-                    <p className="text-sm font-medium text-gray-800">{order.clients?.name}</p>
-                    <p className="text-xs text-indigo-500 font-semibold">{order.outsources?.name || 'Unassigned'}</p>
+                    <p className="text-sm text-gray-800">{order.pickup_location || '-'}</p>
                   </td>
                   <td className="p-4">
-                    <p className="text-sm font-bold text-green-600">AED {order.estimated_profit}</p>
-                    <p className="text-[10px] text-gray-400 uppercase">Rev: {order.delivery_charges}</p>
+                    <p className="text-sm text-gray-800">{order.drop_location || '-'}</p>
+                  </td>
+                  <td className="p-4">
+                    <p className="text-sm font-medium text-gray-800">{order.clients?.name || 'Unknown'}</p>
+                  </td>
+                  <td className="p-4">
+                    <p className="text-sm text-indigo-500 font-semibold">{order.outsources?.name || 'Unassigned'}</p>
+                  </td>
+                  <td className="p-4">
+                    <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">
+                      {order.payment_mode || '-'}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <p className="text-sm font-bold text-green-600">AED {order.total_amount_received || 0}</p>
+                  </td>
+                  <td className="p-4">
+                    <p className="text-sm font-bold text-green-600">AED {order.estimated_profit || 0}</p>
+                    <p className="text-[10px] text-gray-400 uppercase">Rev: {order.delivery_charges || 0}</p>
                   </td>
                   <td className="p-4 text-xs font-bold uppercase tracking-tighter">
-                     <span className={`px-2 py-1 rounded-md ${order.payment_status === 'Settled' ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'}`}>
-                        {order.payment_status}
-                     </span>
+                    <span className={`px-2 py-1 rounded-md ${order.payment_status === 'Settled' ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'}`}>
+                      {order.payment_status}
+                    </span>
                   </td>
                   <td className="p-4 text-right px-6">
                     <div className="flex justify-end gap-2">
@@ -239,8 +262,8 @@ export default function AllOrders() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
                     <input
                       type="tel"
-                      value={editingOrder.customer_contact || ''}
-                      onChange={(e) => setEditingOrder({...editingOrder, customer_contact: e.target.value})}
+                      value={editingOrder.customer_contact_number || ''}
+                      onChange={(e) => setEditingOrder({...editingOrder, customer_contact_number: e.target.value})}
                       className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
                       placeholder="Enter contact number"
                     />
@@ -279,6 +302,30 @@ export default function AllOrders() {
               <div className="border-b pb-4">
                 <h3 className="text-sm font-bold text-gray-700 mb-3">Financial Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Item Charge (AED)</label>
+                    <input
+                      type="number"
+                      value={editingOrder.item_charge || ''}
+                      onChange={(e) => setEditingOrder({...editingOrder, item_charge: Number(e.target.value)})}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount Received (AED)</label>
+                    <input
+                      type="number"
+                      value={editingOrder.total_amount_received || ''}
+                      onChange={(e) => setEditingOrder({...editingOrder, total_amount_received: Number(e.target.value)})}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Charges (AED)</label>
                     <input
