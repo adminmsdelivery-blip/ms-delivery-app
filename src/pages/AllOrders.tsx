@@ -41,6 +41,36 @@ export default function AllOrders() {
     );
   };
 
+  // --- STATUS UPDATE LOGIC ---
+  const handleStatusUpdate = async (orderId: string, newStatus: string) => {
+    const { error } = await supabase
+      .from('orders')
+      .update({ order_status: newStatus })
+      .eq('id', orderId);
+
+    if (error) {
+      alert('Failed to update status: ' + error.message);
+    } else {
+      // Update local state
+      setOrders(prev => prev.map(order => 
+        order.id === orderId ? { ...order, order_status: newStatus } : order
+      ));
+      // Show success notification
+      const statusColors = {
+        'PENDING': 'bg-yellow-50 text-yellow-600',
+        'OUT FOR DELIVERY': 'bg-blue-50 text-blue-600', 
+        'COMPLETED': 'bg-green-50 text-green-600',
+        'CANCELLED': 'bg-red-50 text-red-600'
+      };
+      // Simple toast notification
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-pulse';
+      toast.textContent = `Status updated to ${newStatus}`;
+      document.body.appendChild(toast);
+      setTimeout(() => document.body.removeChild(toast), 2000);
+    }
+  };
+
   // --- DELETE LOGIC ---
   const handleDelete = async (ids: string[]) => {
     if (!window.confirm(`Are you sure you want to delete ${ids.length} order(s)?`)) return;
@@ -170,7 +200,8 @@ export default function AllOrders() {
                 <th className="p-4">Payment Mode</th>
                 <th className="p-4">Total Amount</th>
                 <th className="p-4">Financials</th>
-                <th className="p-4">Status</th>
+                <th className="p-4">Order Status</th>
+                <th className="p-4">Payment Status</th>
                 <th className="p-4 text-right px-6">Actions</th>
               </tr>
             </thead>
@@ -214,6 +245,18 @@ export default function AllOrders() {
                   <td className="p-4">
                     <p className="text-sm font-bold text-green-600">AED {order.estimated_profit || 0}</p>
                     <p className="text-[10px] text-gray-400 uppercase">Rev: {order.delivery_charges || 0}</p>
+                  </td>
+                  <td className="p-4">
+                    <select
+                      value={order.order_status || 'PENDING'}
+                      onChange={(e) => handleStatusUpdate(order.id, e.target.value)}
+                      className="text-xs px-2 py-1 rounded border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none font-bold uppercase tracking-tight cursor-pointer"
+                    >
+                      <option value="PENDING">PENDING</option>
+                      <option value="OUT FOR DELIVERY">OUT FOR DELIVERY</option>
+                      <option value="COMPLETED">COMPLETED</option>
+                      <option value="CANCELLED">CANCELLED</option>
+                    </select>
                   </td>
                   <td className="p-4 text-xs font-bold uppercase tracking-tighter">
                     <span className={`px-2 py-1 rounded-md ${order.payment_status === 'Settled' ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'}`}>

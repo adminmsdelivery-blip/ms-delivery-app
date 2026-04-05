@@ -16,6 +16,7 @@ export interface ExcelRowData {
   'Outsource Charges': number;
   'Profit': number;
   'Receivable or Payable': string;
+  'Order Status': string;
 }
 
 export const exportToExcel = (data: ExcelRowData[], filename: string) => {
@@ -42,6 +43,7 @@ export const exportToExcel = (data: ExcelRowData[], filename: string) => {
     { wch: 16 }, // Outsource Charges
     { wch: 10 }, // Profit
     { wch: 25 }, // Receivable or Payable
+    { wch: 12 }, // Order Status
   ];
   ws['!cols'] = colWidths;
 
@@ -114,6 +116,12 @@ export const calculateFinancials = (order: any): {
   };
 };
 
+export const filterCompletedOrders = (orders: any[]): any[] => {
+  return orders.filter(order => 
+    order.order_status?.toUpperCase() === 'COMPLETED'
+  );
+};
+
 export const mapOrdersToExcelData = (orders: any[]): ExcelRowData[] => {
   return orders.map(order => {
     const financials = calculateFinancials(order);
@@ -133,7 +141,8 @@ export const mapOrdersToExcelData = (orders: any[]): ExcelRowData[] => {
       'Outsource Name': order.outsources?.name || '',
       'Outsource Charges': order.outsource_charges || 0,
       'Profit': financials.profit,
-      'Receivable or Payable': financials.receivablePayable
+      'Receivable or Payable': financials.receivablePayable,
+      'Order Status': order.order_status || 'PENDING'
     };
   });
 };

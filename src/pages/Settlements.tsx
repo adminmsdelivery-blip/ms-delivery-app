@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
-import { exportToExcel, mapOrdersToExcelData } from '../utils/excelExportNew';
+import { exportToExcel, mapOrdersToExcelData, filterCompletedOrders } from '../utils/excelExportNew';
 
 // Strict Type Enforcement for Order Data
 interface Order {
@@ -272,22 +272,38 @@ const Settlements: React.FC = () => {
         .select(`
           *,
           clients(name),
-          outsources(name)
+          outsources(name),
+          order_status
         `)
-        .eq('order_status', 'COMPLETED')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       if (!orders || orders.length === 0) {
-        alert('No completed orders found to export');
+        alert('No orders found to export');
         return;
       }
 
+      // Filter for completed orders using case-insensitive logic
+      const completedOrders = filterCompletedOrders(orders);
+      
+      // If no completed orders, export all orders with status column
+      const ordersToExport = completedOrders.length > 0 ? completedOrders : orders;
+      const filename = completedOrders.length > 0 
+        ? `MS_Delivery_Settlements_${format(new Date(), 'yyyy-MM-dd')}`
+        : `MS_Delivery_All_Orders_${format(new Date(), 'yyyy-MM-dd')}`;
+
       // Map orders to Excel format
-      const excelData = mapOrdersToExcelData(orders);
+      const excelData = mapOrdersToExcelData(ordersToExport);
       
       // Export to Excel
-      exportToExcel(excelData, `MS_Delivery_Settlements_${format(new Date(), 'yyyy-MM-dd')}`);
+      exportToExcel(excelData, filename);
+      
+      // Show info message about what was exported
+      if (completedOrders.length === 0) {
+        alert(`Exported all ${orders.length} orders (including pending/completed statuses) as no completed orders were found.`);
+      } else {
+        alert(`Exported ${completedOrders.length} completed orders successfully.`);
+      }
     } catch (error: any) {
       console.error('Error exporting master report:', error);
       alert('Failed to export report: ' + error.message);
@@ -302,23 +318,39 @@ const Settlements: React.FC = () => {
         .select(`
           *,
           clients(name),
-          outsources(name)
+          outsources(name),
+          order_status
         `)
         .eq('outsource_id', driverId)
-        .eq('order_status', 'COMPLETED')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       if (!orders || orders.length === 0) {
-        alert(`No completed orders found for ${driverName}`);
+        alert(`No orders found for ${driverName}`);
         return;
       }
 
+      // Filter for completed orders using case-insensitive logic
+      const completedOrders = filterCompletedOrders(orders);
+      
+      // If no completed orders, export all orders with status column
+      const ordersToExport = completedOrders.length > 0 ? completedOrders : orders;
+      const filename = completedOrders.length > 0 
+        ? `Settlement_Report_${driverName}_${format(new Date(), 'yyyy-MM-dd')}`
+        : `All_Orders_${driverName}_${format(new Date(), 'yyyy-MM-dd')}`;
+
       // Map orders to Excel format
-      const excelData = mapOrdersToExcelData(orders);
+      const excelData = mapOrdersToExcelData(ordersToExport);
       
       // Export to Excel
-      exportToExcel(excelData, `Settlement_Report_${driverName}_${format(new Date(), 'yyyy-MM-dd')}`);
+      exportToExcel(excelData, filename);
+      
+      // Show info message about what was exported
+      if (completedOrders.length === 0) {
+        alert(`Exported all ${orders.length} orders for ${driverName} (including pending/completed statuses) as no completed orders were found.`);
+      } else {
+        alert(`Exported ${completedOrders.length} completed orders for ${driverName} successfully.`);
+      }
     } catch (error: any) {
       console.error('Error exporting driver ledger:', error);
       alert('Failed to export driver report: ' + error.message);
