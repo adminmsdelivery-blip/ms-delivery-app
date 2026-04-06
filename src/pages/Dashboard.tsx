@@ -7,7 +7,8 @@ import {
   ArrowUpRight,
   ChevronRight,
   Calendar,
-  BarChart3
+  BarChart3,
+  Wallet
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
@@ -20,7 +21,8 @@ const Dashboard: React.FC = () => {
     totalRevenue: 0,
     netProfit: 0,
     totalOrders: 0,
-    activeClients: 0
+    activeClients: 0,
+    cashHeldByOutsource: 0
   });
   const [loading, setLoading] = useState(true);
   const [salesData, setSalesData] = useState<any[]>([]);
@@ -210,10 +212,30 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const { data: orders } = await supabase.from('orders').select('delivery_charges, estimated_profit');
+        const { data: orders } = await supabase.from('orders').select('delivery_charges, estimated_profit, payment_mode, total_amount_received, item_charge');
         const { count: clientCount } = await supabase.from('clients').select('*', { count: 'exact', head: true });
 
         if (orders) {
+          // Bulletproof cash held by outsource calculation
+          const outsourceHeldTotal = orders.reduce((sum, order) => {
+            // 1. Safely extract the payment mode, handling potential key variations
+            const rawMode = order.payment_mode || order.paymentMode || order['Payment Mode'] || '';
+            const pMode = String(rawMode).toUpperCase().trim();
+            
+            // 2. Check if it's cash collected by the driver
+            const isDriverCash = pMode === 'COD' || pMode === 'COP';
+            
+            // 3. Calculate the delivery charge (Total Received - Item Charge)
+            if (isDriverCash) {
+              const totalReceived = Number(order.total_amount_received) || 0;
+              const itemCharge = Number(order.item_charge) || 0;
+              const deliveryCharge = totalReceived - itemCharge;
+              return sum + deliveryCharge;
+            }
+            
+            return sum;
+          }, 0);
+
           const revenue = orders.reduce((acc, curr) => acc + (Number(curr.delivery_charges) || 0), 0);
           const profit = orders.reduce((acc, curr) => acc + (Number(curr.estimated_profit) || 0), 0);
           
@@ -221,11 +243,12 @@ const Dashboard: React.FC = () => {
             totalRevenue: revenue,
             netProfit: profit,
             totalOrders: orders.length,
-            activeClients: clientCount || 0
+            activeClients: clientCount || 0,
+            cashHeldByOutsource: outsourceHeldTotal
           });
         }
       } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
+        console.error('Error fetching stats:', error);
       } finally {
         setLoading(false);
       }
@@ -262,6 +285,13 @@ const Dashboard: React.FC = () => {
       icon: Package, 
       color: 'from-warning-500 to-warning-600',
       isPositive: true
+    },
+    { 
+      title: 'Cash Held by Outsource', 
+      value: formatCurrency(stats.cashHeldByOutsource), 
+      icon: Wallet, 
+      color: 'from-error-500 to-error-600',
+      isPositive: stats.cashHeldByOutsource >= 0
     },
     { 
       title: 'Active Clients', 
