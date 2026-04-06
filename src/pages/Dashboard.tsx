@@ -107,103 +107,83 @@ const Dashboard: React.FC = () => {
     try {
       const { data: orders, error } = await supabase
         .from('orders')
-        .select('delivery_charges, order_date')
-        .not('delivery_charges', 'is', null)
-        .order('order_date', { ascending: true });
+        .select('total_amount_received, item_charge, created_at')
+        .not('total_amount_received', 'is', null)
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
 
       console.log("RAW ORDERS:", orders);
 
-      let processedData: any[] = [];
-      const now = new Date();
+      // Safely aggregate revenue by date using the robust logic
+      const aggregatedData = orders?.reduce((acc, order) => {
+        // Ensure we have a valid date; fallback to today if missing
+        const dateObj = order.created_at ? new Date(order.created_at) : new Date();
+        
+        const received = Number(order.total_amount_received) || 0;
+        const itemCharge = Number(order.item_charge) || 0;
+        const deliveryCharge = received - itemCharge;
 
-      if (salesPeriod === 'daily') {
-        // Group by hour for current date
-        const todayOrders = orders?.filter(order => {
-          const orderDate = new Date(order.order_date);
-          console.log("Order date from DB:", order.order_date, "Parsed to:", orderDate);
-          return orderDate.toDateString() === now.toDateString();
-        }) || [];
-
-        const hourlyData = Array.from({ length: 24 }, (_, hour) => {
-          const hourOrders = todayOrders.filter(order => {
-            const orderHour = new Date(order.order_date).getHours();
-            return orderHour === hour;
-          });
+        // Only add positive revenue to the chart
+        if (deliveryCharge > 0) {
+          // Format date based on period
+          let dateKey: string;
+          if (salesPeriod === 'daily') {
+            dateKey = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', hour12: false });
+          } else if (salesPeriod === 'weekly') {
+            dateKey = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+          } else {
+            dateKey = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          }
           
-          const totalRevenue = hourOrders.reduce((sum, order) => 
-            sum + (Number(order.delivery_charges) || 0), 0
-          );
+          acc[dateKey] = (acc[dateKey] || 0) + deliveryCharge;
+        }
+        
+        return acc;
+      }, {}) || {};
 
+      // Convert the aggregated object back into an array for the charting library
+      let chartData: any[] = [];
+      
+      if (salesPeriod === 'daily') {
+        // Generate hourly data for today
+        const now = new Date();
+        chartData = Array.from({ length: 24 }, (_, hour) => {
+          const hourKey = hour.toString().padStart(2, '0');
           return {
-            label: `${hour.toString().padStart(2, '0')}:00`,
-            value: totalRevenue,
+            label: `${hourKey}:00`,
+            value: aggregatedData[hourKey] || 0,
             hour
           };
-        });
-
-        processedData = hourlyData.filter(item => item.value > 0 || item.hour === now.getHours());
+        }).filter(item => item.value > 0 || item.hour === now.getHours());
       } else if (salesPeriod === 'weekly') {
-        // Group by day for last 7 days
-        const weekAgo = subDays(now, 7);
-        const weekOrders = orders?.filter(order => {
-          const orderDate = new Date(order.order_date);
-          return orderDate >= weekAgo;
-        }) || [];
-
-        const dailyData = Array.from({ length: 7 }, (_, i) => {
-          const date = subDays(now, 6 - i);
-          const dayOrders = weekOrders.filter(order => {
-            const orderDate = new Date(order.order_date);
-            return orderDate.toDateString() === date.toDateString();
-          });
-
-          const totalRevenue = dayOrders.reduce((sum, order) => 
-            sum + (Number(order.delivery_charges) || 0), 0
-          );
-
-          return {
-            label: format(date, 'EEE'),
-            value: totalRevenue,
-            date: format(date, 'MMM dd')
-          };
-        });
-
-        processedData = dailyData;
+        // Generate data for last 7 days
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const now = new Date();
+        chartData = days.map(day => ({
+          label: day,
+          value: aggregatedData[day] || 0,
+          date: day
+        }));
       } else {
-        // Group by date for current month
-        const monthStart = startOfMonth(now);
-        const monthOrders = orders?.filter(order => {
-          const orderDate = new Date(order.order_date);
-          return orderDate >= monthStart;
-        }) || [];
-
-        const dailyData = Array.from({ length: now.getDate() }, (_, i) => {
-          const date = new Date(now.getFullYear(), now.getMonth(), i + 1);
-          const dayOrders = monthOrders.filter(order => {
-            const orderDate = new Date(order.order_date);
-            return orderDate.toDateString() === date.toDateString();
-          });
-
-          const totalRevenue = dayOrders.reduce((sum, order) => 
-            sum + (Number(order.delivery_charges) || 0), 0
-          );
-
+        // Generate data for current month
+        const now = new Date();
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        chartData = Array.from({ length: daysInMonth }, (_, i) => {
+          const dateKey = (i + 1).toString();
           return {
-            label: (i + 1).toString(),
-            value: totalRevenue,
-            date: format(date, 'MMM dd')
+            label: dateKey,
+            value: aggregatedData[dateKey] || 0,
+            date: format(new Date(now.getFullYear(), now.getMonth(), i + 1), 'MMM dd')
           };
         });
-
-        processedData = dailyData;
       }
 
-      console.log("GRAPH DATA:", processedData);
-      setSalesData(processedData);
+      console.log("CHART DATA:", chartData);
+      setSalesData(chartData);
     } catch (error) {
       console.error('Error fetching sales data:', error);
+      setSalesData([]);
     } finally {
       setSalesLoading(false);
     }
@@ -432,7 +412,8 @@ const Dashboard: React.FC = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"
+        transition={{ duration: 0.6 }}
+        className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mt-8"
       >
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
