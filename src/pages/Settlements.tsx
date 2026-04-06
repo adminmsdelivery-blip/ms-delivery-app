@@ -181,25 +181,56 @@ const Settlements: React.FC = () => {
 
   useEffect(() => {
     console.log('🔄 Settlements component mounted - fetching initial data');
-    fetchData();
-    fetchOutsources();
+    // First fetch outsources, then fetch data that depends on outsources
+    fetchOutsources().then(() => {
+      console.log('📊 Outsources loaded, now fetching settlement data');
+      fetchData();
+    });
   }, []); // Run on initial mount
 
   useEffect(() => {
     console.log('🔄 Period changed to:', selectedPeriod, ' - refetching data');
-    fetchData();
-  }, [selectedPeriod]);
+    // Ensure outsources are loaded before fetching settlement data
+    if (outsources.length > 0) {
+      fetchData();
+    } else {
+      console.log('⚠️ Outsources not loaded yet, fetching them first');
+      fetchOutsources().then(() => {
+        fetchData();
+      });
+    }
+  }, [selectedPeriod, outsources.length]);
 
   // Add manual refresh function
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     console.log('🔄 Manual refresh triggered');
-    fetchData();
-    fetchOutsources();
+    setLoading(true);
+    try {
+      // First refresh outsources, then refresh settlement data
+      await fetchOutsources();
+      await fetchData();
+    } catch (error) {
+      console.error('❌ Refresh failed:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchOutsources = async () => {
-    const { data } = await supabase.from('outsources').select('*').order('name');
-    if (data) setOutsources(data);
+    console.log('📊 Fetching outsources...');
+    try {
+      const { data } = await supabase.from('outsources').select('*').order('name');
+      if (data) {
+        console.log('✅ Outsources fetched:', data.length);
+        setOutsources(data);
+      } else {
+        console.log('⚠️ No outsources found');
+        setOutsources([]);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching outsources:', error);
+      setOutsources([]);
+    }
   };
 
   const fetchData = async () => {
@@ -267,6 +298,13 @@ const Settlements: React.FC = () => {
         const uniqueOutsourceIds = [...new Set(processedOrders.map(order => order.driver_id).filter(Boolean))];
         console.log('Unique outsource IDs:', uniqueOutsourceIds.length);
 
+        // Fallback: If no orders or no unique outsource IDs, show empty state
+        if (processedOrders.length === 0 || uniqueOutsourceIds.length === 0) {
+          console.log('⚠️ No orders or outsource IDs found, setting empty balances');
+          setBalances([]);
+          return;
+        }
+
         for (const outsourceId of uniqueOutsourceIds) {
           const baseSettlement = calculateOutsourceSettlement(outsourceId, selectedPeriod);
           if (baseSettlement) {
@@ -295,7 +333,13 @@ const Settlements: React.FC = () => {
         }
 
         console.log('Final outsource settlements:', outsourceSettlements.length);
+        
+        // Always set balances, even if empty, to trigger re-render
         setBalances(outsourceSettlements);
+        
+        // Additional debug: Log cash held total
+        const totalCashHeld = outsourceSettlements.reduce((sum, b) => sum + (b.cash_held_by_driver || 0), 0);
+        console.log(`💰 Total cash held by all drivers: ${totalCashHeld}`);
       }
     } catch (error: any) {
       console.error('Error fetching settlement data:', error);
