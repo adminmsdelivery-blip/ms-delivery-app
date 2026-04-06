@@ -12,6 +12,7 @@ import {
   Truck,
   Wallet
 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 
@@ -75,99 +76,179 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-white flex flex-col md:flex-row">
       {/* Mobile Header */}
-      <header className="md:hidden bg-white border-b px-4 py-3 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <div className="bg-indigo-600 p-1.5 rounded-lg">
+      <header className="md:hidden bg-white/95 backdrop-blur-lg border-b border-neutral-200 px-4 py-3 flex items-center justify-between sticky top-0 z-50 shadow-sm animate-slide-in">
+        <div className="flex items-center gap-3">
+          <div className="bg-gradient-to-r from-primary-600 to-primary-500 p-2 rounded-xl shadow-lg hover-lift">
             {profile.logo_url ? (
-              <img src={profile.logo_url} alt="Company Logo" className="w-5 h-5 object-cover rounded" />
+              <img src={profile.logo_url} alt="Company Logo" className="w-6 h-6 object-cover rounded-lg animate-fade-in" />
             ) : (
-              <Truck className="w-5 h-5 text-white" />
+              <Truck className="w-6 h-6 text-white animate-pulse" />
             )}
           </div>
-          <span className="font-bold text-gray-900">
-            {profile.company_name || profile.owner_name || 'MS Delivery'}
-          </span>
+          <div className="flex flex-col">
+            <span className="font-bold text-neutral-900 text-lg tracking-tight">
+              {profile.company_name || profile.owner_name || 'MS Delivery'}
+            </span>
+            {profile.owner_name && (
+              <span className="text-sm text-neutral-500 animate-fade-in">
+                {profile.owner_name}
+              </span>
+            )}
+          </div>
         </div>
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-2 text-neutral-600 hover:bg-neutral-100 hover:text-primary-600 rounded-xl transition-all duration-300 hover:scale-105 active:scale-95"
         >
-          {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          <motion.div
+            initial={{ rotate: 0 }}
+            animate={{ rotate: isSidebarOpen ? 180 : 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </motion.div>
         </button>
       </header>
 
       {/* Sidebar Overlay */}
       {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-md z-40 md:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0",
-        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
+      <motion.aside 
+        initial={{ x: -320 }}
+        animate={{ x: isSidebarOpen ? 0 : -320 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-80 bg-white border-r border-neutral-200 shadow-xl transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0",
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
         <div className="h-full flex flex-col">
-          <div className="p-6 hidden md:flex items-center gap-3">
-            <div className="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-200">
+          <div className="p-6 hidden md:flex items-center gap-4">
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.4 }}
+              className="bg-gradient-to-r from-primary-600 to-primary-500 p-3 rounded-2xl shadow-xl hover-lift"
+            >
               {profile.logo_url ? (
-                <img src={profile.logo_url} alt="Company Logo" className="w-6 h-6 object-cover rounded" />
+                <motion.img 
+                  initial={{ scale: 0.8 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  src={profile.logo_url} alt="Company Logo" className="w-8 h-8 object-cover rounded-xl" />
               ) : (
-                <Truck className="w-6 h-6 text-white" />
+                <motion.div
+                  initial={{ rotate: 0 }}
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                >
+                  <Truck className="w-8 h-8 text-white" />
+                </motion.div>
               )}
-            </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-xl text-gray-900 tracking-tight">
+            </motion.div>
+            <div className="flex flex-col space-y-2">
+              <motion.span 
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="font-bold text-2xl text-neutral-900 tracking-tight"
+              >
                 {profile.company_name || 'MS Delivery'}
-              </span>
+              </motion.span>
               {profile.owner_name && (
-                <span className="text-sm text-gray-500">
+                <motion.span 
+                  initial={{ y: 10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="text-sm text-neutral-500"
+                >
                   {profile.owner_name}
-                </span>
+                </motion.span>
               )}
             </div>
           </div>
 
-          <nav className="flex-1 px-4 space-y-1 mt-4 md:mt-0">
-            {navItems.map((item) => (
-              <Link
+          <nav className="flex-1 px-6 space-y-2 mt-6 md:mt-8">
+            {navItems.map((item, index) => (
+              <motion.div
                 key={item.name}
-                to={item.path}
-                onClick={() => setIsSidebarOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group",
-                  isActive(item.path) 
-                    ? "bg-indigo-50 text-indigo-600 font-semibold" 
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                )}
+                initial={{ x: -50, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
               >
-                <item.icon className={cn(
-                  "w-5 h-5 transition-colors",
-                  isActive(item.path) ? "text-indigo-600" : "text-gray-400 group-hover:text-gray-600"
-                )} />
-                {item.name}
-              </Link>
+                <Link
+                  to={item.path}
+                  onClick={() => setIsSidebarOpen(false)}
+                  className={cn(
+                    "flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 group hover-lift",
+                    isActive(item.path) 
+                      ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold shadow-lg" 
+                      : "text-neutral-600 hover:bg-neutral-50 hover:text-primary-600"
+                  )}
+                >
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <item.icon className={cn(
+                      "w-6 h-6 transition-colors duration-300",
+                      isActive(item.path) ? "text-white" : "text-neutral-400 group-hover:text-primary-600"
+                    )} />
+                  </motion.div>
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.2 }}
+                    className="font-medium"
+                  >
+                    {item.name}
+                  </motion.span>
+                </Link>
+              </motion.div>
             ))}
           </nav>
 
-          <div className="p-4 border-t">
-            <button
+          <div className="p-6 border-t border-neutral-200">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 0.2 }}
               onClick={handleLogout}
-              className="flex items-center gap-3 w-full px-4 py-3 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all duration-200 group"
+              className="flex items-center gap-3 w-full px-5 py-4 text-neutral-600 hover:bg-red-50 hover:text-red-600 rounded-2xl transition-all duration-300 group"
             >
-              <LogOut className="w-5 h-5 text-gray-400 group-hover:text-red-600 transition-colors" />
-              Logout
-            </button>
+              <motion.div
+                whileHover={{ rotate: 15 }}
+                transition={{ duration: 0.2 }}
+              >
+                <LogOut className="w-5 h-5 text-neutral-400 group-hover:text-red-600 transition-colors duration-300" />
+              </motion.div>
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2 }}
+                className="font-medium"
+              >
+                Logout
+              </motion.span>
+            </motion.button>
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full overflow-x-hidden">
+      <main className="flex-1 p-6 md:p-8 max-w-7xl mx-auto w-full overflow-x-hidden animate-fade-in">
         {children}
       </main>
     </div>

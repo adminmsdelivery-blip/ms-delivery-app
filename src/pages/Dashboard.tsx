@@ -9,9 +9,9 @@ import {
   Calendar,
   BarChart3
 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { formatCurrency } from '../lib/utils';
-import { motion } from 'motion/react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format, startOfDay, startOfWeek, startOfMonth, subDays, subWeeks, subMonths } from 'date-fns';
 
@@ -246,30 +246,30 @@ const Dashboard: React.FC = () => {
       title: 'Total Revenue', 
       value: formatCurrency(stats.totalRevenue), 
       icon: DollarSign, 
-      color: 'bg-blue-500',
-      ...calculateGrowth(stats.totalRevenue, previousStats.totalRevenue)
+      color: 'from-success-500 to-success-600',
+      isPositive: true
     },
     { 
       title: 'Net Profit', 
       value: formatCurrency(stats.netProfit), 
       icon: TrendingUp, 
-      color: 'bg-green-500',
-      ...calculateGrowth(stats.netProfit, previousStats.netProfit)
+      color: 'from-primary-500 to-primary-600',
+      isPositive: stats.netProfit >= 0
     },
     { 
       title: 'Total Orders', 
-      value: stats.totalOrders.toString(), 
+      value: stats.totalOrders.toLocaleString(), 
       icon: Package, 
-      color: 'bg-indigo-500',
-      ...calculateGrowth(stats.totalOrders, previousStats.totalOrders)
+      color: 'from-warning-500 to-warning-600',
+      isPositive: true
     },
     { 
       title: 'Active Clients', 
-      value: stats.activeClients.toString(), 
+      value: stats.activeClients.toLocaleString(), 
       icon: Users, 
-      color: 'bg-purple-500',
-      ...calculateGrowth(stats.activeClients, previousStats.activeClients)
-    },
+      color: 'from-secondary-500 to-secondary-600',
+      isPositive: true
+    }
   ];
 
   if (loading) {
@@ -281,38 +281,32 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Welcome back!</h1>
-        <p className="text-gray-500">Here's what's happening with your business today.</p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-white p-4 md:p-8 animate-fade-in">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <motion.div 
+          initial={{ y: -50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6 }}
+          className="mb-8"
+        >
+          <h1 className="text-4xl font-bold text-neutral-900 tracking-tight mb-2">
+            Delivery Dashboard
+          </h1>
+          <p className="text-neutral-600 text-lg">
+            Manage your delivery operations efficiently
+          </p>
+        </motion.div>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {kpiCards.map((card, index) => (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            key={card.title}
-            className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-start justify-between">
-              <div className={cn("p-3 rounded-xl text-white", card.color)}>
-                <card.icon className="w-6 h-6" />
-              </div>
-              <span className={cn(
-                "text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1",
-                card.isPositive ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50"
-              )}>
-                {card.isPositive ? (
-                  <ArrowUpRight className="w-3 h-3" />
-                ) : (
-                  <ChevronRight className="w-3 h-3 rotate-180" />
-                )}
-                {card.display}
-              </span>
-            </div>
+        {/* KPI Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {kpiCards.map((card, index) => (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              key={card.title}
+              className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
             <div className="mt-4">
               <p className="text-sm font-medium text-gray-500">{card.title}</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">{card.value}</p>
