@@ -125,18 +125,33 @@ const Settlements: React.FC = () => {
         return sum + charge;
       }, 0);
 
-      // Step C: Calculate Cash Held - Sum of total_order_amount ONLY for COD/COP orders
+      // Step C: Calculate Cash Held - Sum of total_order_amount ONLY for COD/COP orders with bulletproof string matching
       const cash_held_by_driver = driverOrders.reduce((sum, order) => {
-        if (order.payment_method === 'COD' || order.payment_method === 'COP') {
+        // Bulletproof payment mode detection
+        const rawMode = order.payment_method || order.paymentMode || order['Payment Mode'] || '';
+        const pMode = String(rawMode).toUpperCase().trim();
+        
+        console.log(`🔍 Settlement Order payment mode: "${rawMode}" -> "${pMode}"`);
+        
+        // Check if it's cash collected by the driver
+        const isDriverCash = pMode === 'COD' || pMode === 'COP';
+        
+        console.log(`💰 Settlement Is driver cash: ${isDriverCash}`);
+        
+        if (isDriverCash) {
           const amount = Number(order.total_order_amount) || 0;
           if (isNaN(amount)) {
             console.warn(`Invalid total_order_amount for order ${order.id}: ${order.total_order_amount}`);
-            return sum; // Skip invalid values
+            return sum;
           }
+          console.log(`💵 Settlement Cash amount: ${amount}`);
           return sum + amount;
         }
+        
         return sum;
       }, 0);
+      
+      console.log(`💰 Final cash held by driver: ${cash_held_by_driver}`);
 
       // Step D: Calculate Base Balance
       const base_balance = total_earned - cash_held_by_driver;
@@ -208,8 +223,20 @@ const Settlements: React.FC = () => {
           id: order.id,
           driver_id: order.outsource_id || '',
           order_status: order.payment_status === 'Settled' ? 'COMPLETED' : 'COMPLETED', // For now, treat all as completed
-          payment_method: order.payment_mode === 'Cash on Delivery (COD)' ? 'COD' : 
-                         order.payment_mode === 'Cash on Pickup (COP)' ? 'COP' : 'ONLINE',
+          // Bulletproof payment mode mapping with debug logging
+          payment_method: (() => {
+            const rawMode = order.payment_mode || order.paymentMode || order['Payment Mode'] || '';
+            const pMode = String(rawMode).toUpperCase().trim();
+            console.log(`🔍 Order mapping payment mode: "${rawMode}" -> "${pMode}"`);
+            
+            if (pMode.includes('COD') || pMode === 'CASH ON DELIVERY') {
+              return 'COD';
+            } else if (pMode.includes('COP') || pMode === 'CASH ON PICKUP') {
+              return 'COP';
+            } else {
+              return 'ONLINE';
+            }
+          })(),
           total_order_amount: Number(order.delivery_charges) || 0,
           outsource_charge: Number(order.outsource_charges) || 0,
           created_at: order.created_at,
