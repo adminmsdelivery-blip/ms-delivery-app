@@ -213,7 +213,7 @@ const Dashboard: React.FC = () => {
     const fetchStats = async () => {
       try {
         console.log("🔍 Fetching dashboard stats...");
-        const { data: orders, error } = await supabase.from('orders').select('delivery_charges, estimated_profit, payment_mode, total_amount_received, item_charge');
+        const { data: orders, error } = await supabase.from('orders').select('id, delivery_charges, estimated_profit, payment_mode, total_amount_received, item_charge, outsource_charges');
         const { count: clientCount } = await supabase.from('clients').select('*', { count: 'exact', head: true });
 
         console.log("📊 Raw orders data:", orders);
@@ -232,7 +232,7 @@ const Dashboard: React.FC = () => {
           // Bulletproof cash held by outsource calculation
           const outsourceHeldTotal = orders.reduce((sum, order) => {
             // 1. Safely extract the payment mode, handling potential key variations
-            const rawMode = order.payment_mode || order.paymentMode || order['Payment Mode'] || '';
+            const rawMode = order.payment_mode || '';
             const pMode = String(rawMode).toUpperCase().trim();
             
             console.log(`🔍 Order payment mode: "${rawMode}" -> "${pMode}"`);
@@ -256,8 +256,51 @@ const Dashboard: React.FC = () => {
 
           console.log(`💰 Final outsource held total: ${outsourceHeldTotal}`);
 
-          const revenue = orders.reduce((acc, curr) => acc + (Number(curr.delivery_charges) || 0), 0);
-          const profit = orders.reduce((acc, curr) => acc + (Number(curr.estimated_profit) || 0), 0);
+          // Bulletproof Total Revenue Calculation
+          const revenue = orders.reduce((sum, order) => {
+            console.log(`🔍 Calculating revenue for order ${order.id}:`, {
+              delivery_charges: order.delivery_charges,
+              total_amount_received: order.total_amount_received,
+              item_charge: order.item_charge
+            });
+            
+            // Method 1: Try to use delivery_charges if available and valid
+            const deliveryCharge = Number(order.delivery_charges);
+            if (!isNaN(deliveryCharge) && deliveryCharge > 0) {
+              console.log(`💰 Using delivery_charges: ${deliveryCharge}`);
+              return sum + deliveryCharge;
+            }
+            
+            // Method 2: Calculate on the fly (Total Received - Item Charge)
+            const totalReceived = Number(order.total_amount_received) || 0;
+            const itemCharge = Number(order.item_charge) || 0;
+            const calculatedDeliveryCharge = totalReceived - itemCharge;
+            
+            if (calculatedDeliveryCharge > 0) {
+              console.log(`💰 Calculated delivery charge: ${totalReceived} - ${itemCharge} = ${calculatedDeliveryCharge}`);
+              return sum + calculatedDeliveryCharge;
+            }
+            
+            console.log(`⚠️ No valid revenue for order ${order.id}`);
+            return sum;
+          }, 0);
+          
+          console.log(`💰 Final calculated revenue: ${revenue}`);
+          
+          // Bulletproof Net Profit Calculation
+          // First calculate total outsource costs
+          const totalOutsourceCosts = orders.reduce((sum, order) => {
+            const outsourceCharge = Number(order.outsource_charges) || 0;
+            console.log(`🏢 Outsource charge for order ${order.id}: ${outsourceCharge}`);
+            return sum + outsourceCharge;
+          }, 0);
+          
+          console.log(`🏢 Total outsource costs: ${totalOutsourceCosts}`);
+          
+          // Calculate profit as Revenue - Outsource Costs
+          const profit = revenue - totalOutsourceCosts;
+          
+          console.log(`📊 Profit calculation: ${revenue} - ${totalOutsourceCosts} = ${profit}`);
           
           const newStats = {
             totalRevenue: revenue,
