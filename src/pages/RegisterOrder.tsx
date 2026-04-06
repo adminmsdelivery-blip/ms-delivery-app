@@ -243,6 +243,17 @@ const RegisterOrder: React.FC = () => {
                   required
                 />
               </div>
+              <div className="space-y-1 md:col-span-2">
+                <label className="text-sm font-medium text-gray-700">Map Pin URL (Optional)</label>
+                <input
+                  type="url"
+                  name="map_pin_url"
+                  value={formData.map_pin_url}
+                  onChange={handleChange}
+                  placeholder="https://maps.google.com/..."
+                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                />
+              </div>
             </div>
           </div>
 
