@@ -138,8 +138,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
-                className="font-bold text-xl"
-                style={{ color: '#111827' }}
+                className="!text-gray-900 !font-bold text-xl tracking-tight"
               >
                 Delivery
               </motion.span>
@@ -173,17 +172,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   }`}
                 >
                   {/* Icon Container with inline styles bypassing CSS clashes */}
-                  <div className="relative z-10 flex items-center justify-center" style={{ color: isActive(item.path) ? '#533AFD' : '#6B7280' }}>
-                    <item.icon size={20} />
+                  <div className="relative z-10 flex items-center justify-center">
+                    <item.icon 
+                      size={20} 
+                      color={isActive(item.path) ? '#533AFD' : '#6B7280'} 
+                      strokeWidth={2} 
+                    />
                   </div>
                   
-                  {/* Text Container with inline styles bypassing CSS clashes */}
+                  {/* Text Container with important utilities */}
                   <span 
-                    className="relative z-10"
-                    style={{ 
-                      color: isActive(item.path) ? '#533AFD' : '#6B7280',
-                      fontWeight: isActive(item.path) ? 600 : 500
-                    }}
+                    className={`relative z-10 ${
+                      isActive(item.path) 
+                        ? "!text-[#533AFD] !font-bold" 
+                        : "!text-gray-500"
+                    }`}
                   >
                     {item.name}
                   </span>
@@ -263,17 +266,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   }`}
                 >
                   {/* Icon Container with inline styles bypassing CSS clashes */}
-                  <div className="relative z-10 flex items-center justify-center" style={{ color: isActive(item.path) ? '#533AFD' : '#6B7280' }}>
-                    <item.icon size={20} />
+                  <div className="relative z-10 flex items-center justify-center">
+                    <item.icon 
+                      size={20} 
+                      color={isActive(item.path) ? '#533AFD' : '#6B7280'} 
+                      strokeWidth={2} 
+                    />
                   </div>
                   
-                  {/* Text Container with inline styles bypassing CSS clashes */}
+                  {/* Text Container with important utilities */}
                   <span 
-                    className="relative z-10"
-                    style={{ 
-                      color: isActive(item.path) ? '#533AFD' : '#6B7280',
-                      fontWeight: isActive(item.path) ? 600 : 500
-                    }}
+                    className={`relative z-10 ${
+                      isActive(item.path) 
+                        ? "!text-[#533AFD] !font-bold" 
+                        : "!text-gray-500"
+                    }`}
                   >
                     {item.name}
                   </span>
