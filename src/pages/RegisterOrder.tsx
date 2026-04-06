@@ -170,7 +170,7 @@ const RegisterOrder: React.FC = () => {
                 />
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Section 2: Pickup Details */}
           <motion.div 
@@ -211,7 +211,7 @@ const RegisterOrder: React.FC = () => {
                 />
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Section 3: Delivery Details */}
           <motion.div 
@@ -272,7 +272,7 @@ const RegisterOrder: React.FC = () => {
                 />
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Section 4: Payment & Item Details */}
           <motion.div 
@@ -324,7 +324,7 @@ const RegisterOrder: React.FC = () => {
                 />
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Section 5: Outsource Details */}
           <motion.div 
@@ -366,7 +366,7 @@ const RegisterOrder: React.FC = () => {
                 />
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Section 6: Auto-Calculated Summary (Read-Only) */}
           <motion.div 
@@ -396,7 +396,7 @@ const RegisterOrder: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Additional Information */}
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
