@@ -202,7 +202,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.2 }}
-                    className="font-medium"
+                    className={cn(
+                      "font-medium",
+                      isActive(item.path) ? "text-white" : "text-gray-700"
+                    )}
                   >
                     {item.name}
                   </motion.span>
@@ -286,7 +289,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     "w-6 h-6 transition-colors duration-300",
                     isActive(item.path) ? "text-white" : "text-neutral-400 group-hover:text-primary-600"
                   )} />
-                  <span className="font-medium">
+                  <span className={cn(
+                    "font-medium",
+                    isActive(item.path) ? "text-white" : "text-gray-700"
+                  )}>
                     {item.name}
                   </span>
                 </Link>
