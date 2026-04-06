@@ -124,129 +124,118 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       )}
 
       {/* Sidebar - Fixed on desktop, hidden on mobile */}
-      <aside className="hidden md:flex flex-col w-80 fixed inset-y-0 z-50">
-        <motion.aside 
-          initial={{ x: -320 }}
-          animate={{ x: isSidebarOpen ? 0 : -320 }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
-          className={cn(
-            "h-full bg-white border-r border-neutral-200 shadow-xl transform transition-transform duration-300 ease-in-out",
-            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          )}
-        >
-          <div className="h-full flex flex-col">
-            <div className="p-6 flex items-center gap-4">
-              <motion.div 
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.4 }}
-                className="bg-gradient-to-r from-primary-600 to-primary-500 p-3 rounded-2xl shadow-xl hover-lift"
+      <aside className="hidden md:flex flex-col w-80 fixed inset-y-0 left-0 z-50 bg-white border-r border-neutral-200 shadow-xl">
+        <div className="h-full flex flex-col">
+          <div className="p-6 flex items-center gap-4">
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.4 }}
+              className="bg-gradient-to-r from-primary-600 to-primary-500 p-3 rounded-2xl shadow-xl hover-lift"
+            >
+              {profile.logo_url ? (
+                <motion.img 
+                  initial={{ scale: 0.8 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  src={profile.logo_url} alt="Company Logo" className="w-8 h-8 object-cover rounded-xl" />
+              ) : (
+                <motion.div
+                  initial={{ rotate: 0 }}
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                >
+                  <Truck className="w-8 h-8 text-white" />
+                </motion.div>
+              )}
+            </motion.div>
+            <div className="flex flex-col space-y-2">
+              <motion.span 
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="font-bold text-2xl text-neutral-900 tracking-tight"
               >
-                {profile.logo_url ? (
-                  <motion.img 
-                    initial={{ scale: 0.8 }}
-                    animate={{ scale: 1 }}
-                    transition={{ duration: 0.3 }}
-                    src={profile.logo_url} alt="Company Logo" className="w-8 h-8 object-cover rounded-xl" />
-                ) : (
-                  <motion.div
-                    initial={{ rotate: 0 }}
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                  >
-                    <Truck className="w-8 h-8 text-white" />
-                  </motion.div>
-                )}
-              </motion.div>
-              <div className="flex flex-col space-y-2">
+                {profile.company_name || 'MS Delivery'}
+              </motion.span>
+              {profile.owner_name && (
                 <motion.span 
-                  initial={{ y: 20, opacity: 0 }}
+                  initial={{ y: 10, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.5, delay: 0.1 }}
-                  className="font-bold text-2xl text-neutral-900 tracking-tight"
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="text-sm text-neutral-500"
                 >
-                  {profile.company_name || 'MS Delivery'}
+                  {profile.owner_name}
                 </motion.span>
-                {profile.owner_name && (
-                  <motion.span 
-                    initial={{ y: 10, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.5, delay: 0.2 }}
-                    className="text-sm text-neutral-500"
-                  >
-                    {profile.owner_name}
-                  </motion.span>
-                )}
-              </div>
-            </div>
-
-            <nav className="flex-1 px-6 space-y-2 mt-8">
-              {navItems.map((item, index) => (
-                <motion.div
-                  key={item.name}
-                  initial={{ x: -50, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                >
-                  <Link
-                    to={item.path}
-                    onClick={() => setIsSidebarOpen(false)}
-                    className={cn(
-                      "flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 group hover-lift",
-                      isActive(item.path) 
-                        ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold shadow-lg" 
-                        : "text-neutral-600 hover:bg-neutral-50 hover:text-primary-600"
-                    )}
-                  >
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <item.icon className={cn(
-                        "w-6 h-6 transition-colors duration-300",
-                        isActive(item.path) ? "text-white" : "text-neutral-400 group-hover:text-primary-600"
-                      )} />
-                    </motion.div>
-                    <motion.span
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.2 }}
-                      className="font-medium"
-                    >
-                      {item.name}
-                    </motion.span>
-                  </Link>
-                </motion.div>
-              ))}
-            </nav>
-
-            <div className="p-6 border-t border-neutral-200">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ duration: 0.2 }}
-                onClick={handleLogout}
-                className="flex items-center gap-3 w-full px-5 py-4 text-neutral-600 hover:bg-red-50 hover:text-red-600 rounded-2xl transition-all duration-300 group"
-              >
-                <motion.div
-                  whileHover={{ rotate: 15 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <LogOut className="w-5 h-5 text-neutral-400 group-hover:text-red-600 transition-colors duration-300" />
-                </motion.div>
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.2 }}
-                  className="font-medium"
-                >
-                  Logout
-                </motion.span>
-              </motion.button>
+              )}
             </div>
           </div>
-        </motion.aside>
+
+          <nav className="flex-1 px-6 space-y-2 mt-8">
+            {navItems.map((item, index) => (
+              <motion.div
+                key={item.name}
+                initial={{ x: -50, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+              >
+                <Link
+                  to={item.path}
+                  className={cn(
+                    "flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 group hover-lift",
+                    isActive(item.path) 
+                      ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold shadow-lg" 
+                      : "text-neutral-600 hover:bg-neutral-50 hover:text-primary-600"
+                  )}
+                >
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <item.icon className={cn(
+                      "w-6 h-6 transition-colors duration-300",
+                      isActive(item.path) ? "text-white" : "text-neutral-400 group-hover:text-primary-600"
+                    )} />
+                  </motion.div>
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.2 }}
+                    className="font-medium"
+                  >
+                    {item.name}
+                  </motion.span>
+                </Link>
+              </motion.div>
+            ))}
+          </nav>
+
+          <div className="p-6 border-t border-neutral-200">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              onClick={handleLogout}
+              className="flex items-center gap-3 w-full px-5 py-4 text-neutral-600 hover:bg-red-50 hover:text-red-600 rounded-2xl transition-all duration-300 group"
+            >
+              <motion.div
+                whileHover={{ rotate: 15 }}
+                transition={{ duration: 0.2 }}
+              >
+                <LogOut className="w-5 h-5 text-neutral-400 group-hover:text-red-600 transition-colors duration-300" />
+              </motion.div>
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2 }}
+                className="font-medium"
+              >
+                Logout
+              </motion.span>
+            </motion.button>
+          </div>
+        </div>
       </aside>
 
       {/* Mobile Sidebar - Drawer style */}
