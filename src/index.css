@@ -5,16 +5,16 @@
   --font-display: "Outfit", sans-serif;
   
   /* Enhanced Color Palette */
-  --primary-50: #eff6ff;
-  --primary-100: #dbeafe;
-  --primary-200: #bfdbfe;
-  --primary-300: #93c5fd;
-  --primary-400: #60a5fa;
-  --primary-500: #3b82f6;
-  --primary-600: #2563eb;
-  --primary-700: #1d4ed8;
-  --primary-800: #1e40af;
-  --primary-900: #1e3a8a;
+  --primary-50: #eef2ff;
+  --primary-100: #e0e7ff;
+  --primary-200: #c7d2fe;
+  --primary-300: #a5b8fc;
+  --primary-400: #6366f8;
+  --primary-500: #533afd;
+  --primary-600: #4338ca;
+  --primary-700: #3730a3;
+  --primary-800: #2e1f5a;
+  --primary-900: #1e1a4a;
   
   --secondary-50: #f0fdf4;
   --secondary-100: #fde68a;
@@ -70,6 +70,17 @@
   --neutral-700: #404040;
   --neutral-800: #262626;
   --neutral-900: #171717;
+  
+  /* Extended 9-Color Palette */
+  --slate-gray: #8B98A5;
+  --soft-indigo: #7B8CFA;
+  --sky-blue: #52AEE5;
+  --mint-green: #4FD18B;
+  --warm-gold: #F1BB64;
+  --peach-orange: #F39C6B;
+  --coral-red: #EF766B;
+  --soft-orchid: #D883D9;
+  --lavender: #A98CEB;
   
   /* Border Color */
   --border: #e5e5e5; /* Using neutral-200 as default border color */
