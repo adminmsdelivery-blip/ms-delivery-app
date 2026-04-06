@@ -126,37 +126,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Sidebar - Fixed on desktop, hidden on mobile */}
       <aside className="hidden md:flex flex-col w-80 fixed inset-y-0 left-0 z-50 bg-white border-r border-neutral-200 shadow-xl">
         <div className="h-full flex flex-col">
-          <div className="p-6 flex items-center gap-4">
-            <motion.div 
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.4 }}
-              className="bg-gradient-to-r from-primary-600 to-primary-500 p-3 rounded-2xl shadow-xl hover-lift"
+          <div className="p-6 hidden md:flex items-center gap-4">
+            <div 
+              className="w-10 h-10 rounded-full flex items-center justify-center shadow-md font-bold"
+              style={{ backgroundColor: '#533AFD', color: 'white', zIndex: 1 }}
             >
-              {profile.logo_url ? (
-                <motion.img 
-                  initial={{ scale: 0.8 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 0.3 }}
-                  src={profile.logo_url} alt="Company Logo" className="w-8 h-8 object-cover rounded-xl" />
-              ) : (
-                <motion.div
-                  initial={{ rotate: 0 }}
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                >
-                  <Truck className="w-8 h-8 text-white" />
-                </motion.div>
-              )}
-            </motion.div>
-            <div className="flex flex-col space-y-2">
+              MS
+            </div>
+            <div className="flex flex-col">
               <motion.span 
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
-                className="font-bold text-2xl text-neutral-900 tracking-tight"
+                className="font-bold text-xl"
+                style={{ color: '#111827' }}
               >
-                {profile.company_name || 'MS Delivery'}
+                Delivery
               </motion.span>
               {profile.owner_name && (
                 <motion.span 
@@ -181,34 +166,27 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               >
                 <Link
                   to={item.path}
-                  className={cn(
-                    "flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 group hover-lift",
+                  className={`relative flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-medium overflow-hidden ${
                     isActive(item.path) 
-                      ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold shadow-lg" 
-                      : "text-neutral-600 hover:bg-neutral-50 hover:text-primary-600"
-                  )}
+                      ? "bg-white shadow-sm" 
+                      : "hover:bg-gray-100/50"
+                  }`}
                 >
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <item.icon className={cn(
-                      "w-6 h-6 transition-colors duration-300",
-                      isActive(item.path) ? "text-white" : "text-neutral-400 group-hover:text-primary-600"
-                    )} />
-                  </motion.div>
-                  <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.2 }}
-                    className={cn(
-                      "font-medium",
-                      isActive(item.path) ? "text-white" : "text-gray-700"
-                    )}
+                  {/* Icon Container with inline styles bypassing CSS clashes */}
+                  <div className="relative z-10 flex items-center justify-center" style={{ color: isActive(item.path) ? '#533AFD' : '#6B7280' }}>
+                    <item.icon size={20} />
+                  </div>
+                  
+                  {/* Text Container with inline styles bypassing CSS clashes */}
+                  <span 
+                    className="relative z-10"
+                    style={{ 
+                      color: isActive(item.path) ? '#533AFD' : '#6B7280',
+                      fontWeight: isActive(item.path) ? 600 : 500
+                    }}
                   >
                     {item.name}
-                  </motion.span>
+                  </span>
                 </Link>
               </motion.div>
             ))}
@@ -278,21 +256,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Link
                   to={item.path}
                   onClick={() => setIsSidebarOpen(false)}
-                  className={cn(
-                    "flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 group",
+                  className={`relative flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-medium overflow-hidden ${
                     isActive(item.path) 
-                      ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold shadow-lg" 
-                      : "text-neutral-600 hover:bg-neutral-50 hover:text-primary-600"
-                  )}
+                      ? "bg-white shadow-sm" 
+                      : "hover:bg-gray-100/50"
+                  }`}
                 >
-                  <item.icon className={cn(
-                    "w-6 h-6 transition-colors duration-300",
-                    isActive(item.path) ? "text-white" : "text-neutral-400 group-hover:text-primary-600"
-                  )} />
-                  <span className={cn(
-                    "font-medium",
-                    isActive(item.path) ? "text-white" : "text-gray-700"
-                  )}>
+                  {/* Icon Container with inline styles bypassing CSS clashes */}
+                  <div className="relative z-10 flex items-center justify-center" style={{ color: isActive(item.path) ? '#533AFD' : '#6B7280' }}>
+                    <item.icon size={20} />
+                  </div>
+                  
+                  {/* Text Container with inline styles bypassing CSS clashes */}
+                  <span 
+                    className="relative z-10"
+                    style={{ 
+                      color: isActive(item.path) ? '#533AFD' : '#6B7280',
+                      fontWeight: isActive(item.path) ? 600 : 500
+                    }}
+                  >
                     {item.name}
                   </span>
                 </Link>
