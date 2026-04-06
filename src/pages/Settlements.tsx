@@ -180,13 +180,22 @@ const Settlements: React.FC = () => {
   };
 
   useEffect(() => {
+    console.log('🔄 Settlements component mounted - fetching initial data');
     fetchData();
     fetchOutsources();
   }, []); // Run on initial mount
 
   useEffect(() => {
+    console.log('🔄 Period changed to:', selectedPeriod, ' - refetching data');
     fetchData();
   }, [selectedPeriod]);
+
+  // Add manual refresh function
+  const handleRefresh = () => {
+    console.log('🔄 Manual refresh triggered');
+    fetchData();
+    fetchOutsources();
+  };
 
   const fetchOutsources = async () => {
     const { data } = await supabase.from('outsources').select('*').order('name');
@@ -194,9 +203,14 @@ const Settlements: React.FC = () => {
   };
 
   const fetchData = async () => {
+    console.log('🔄 Starting settlement data fetch for period:', selectedPeriod);
     setLoading(true);
     setError(null);
     try {
+      // Add small delay to ensure loading state is visible
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      console.log('📊 Fetching orders and settlements...');
       console.log('Fetching settlement data for period:', selectedPeriod);
       
       // Fetch all orders with client and outsource details
@@ -287,6 +301,7 @@ const Settlements: React.FC = () => {
       console.error('Error fetching settlement data:', error);
       setError(error.message || 'Failed to fetch settlement data');
     } finally {
+      console.log('✅ Settlement data fetch completed');
       setLoading(false);
     }
   };
@@ -549,6 +564,19 @@ const Settlements: React.FC = () => {
           <p className="text-gray-500 text-sm">Track cash flow between business and outsource partners.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="bg-white border border-gray-200 text-gray-700 px-6 py-3 rounded-xl font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <motion.div
+              animate={{ rotate: loading ? 360 : 0 }}
+              transition={{ duration: 1, repeat: loading ? Infinity : 0, ease: "linear" }}
+            >
+              <History className="w-5 h-5" />
+            </motion.div>
+            Refresh
+          </button>
           <button
             onClick={exportMasterReport}
             className="bg-white border border-gray-200 text-gray-700 px-6 py-3 rounded-xl font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2 shadow-sm"
