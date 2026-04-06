@@ -706,6 +706,16 @@ const Settlements: React.FC = () => {
       {/* Main Content - Only show when not loading */}
       {!loading && (
         <>
+      {/* TEMPORARY DEBUGGING BLOCK - DO NOT DELETE UNTIL INSTRUCTED */}
+      {allOrders && allOrders.length > 0 && (
+        <div className="bg-slate-900 text-green-400 p-4 rounded-lg my-4 overflow-x-auto text-sm font-mono shadow-lg border border-red-500">
+          <p className="text-white mb-2 font-bold uppercase tracking-wider">Micro-Check Raw Data (First Order):</p>
+          <pre>
+            {JSON.stringify(allOrders[0], null, 2)}
+          </pre>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Financial Settlements</h1>
