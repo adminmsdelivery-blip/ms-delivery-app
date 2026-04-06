@@ -389,6 +389,7 @@ const Settlements: React.FC = () => {
         }
 
         console.log('Final outsource settlements:', outsourceSettlements.length);
+        console.log('Outsource settlements data:', outsourceSettlements);
         
         // Always set balances, even if empty, to trigger re-render
         setBalances(outsourceSettlements);
@@ -396,6 +397,7 @@ const Settlements: React.FC = () => {
         // Additional debug: Log cash held total
         const totalCashHeld = outsourceSettlements.reduce((sum, b) => sum + (b.cash_held_by_driver || 0), 0);
         console.log(`💰 Total cash held by all drivers: ${totalCashHeld}`);
+        console.log(`💰 Dashboard card will show: ${formatCurrency(totalCashHeld)}`);
       }
     } catch (error: any) {
       console.error('Error fetching settlement data:', error);
