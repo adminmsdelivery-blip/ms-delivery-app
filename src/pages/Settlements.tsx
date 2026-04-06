@@ -690,31 +690,18 @@ const Settlements: React.FC = () => {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <button
-            onClick={handleRefresh}
+            onClick={exportMasterReport}
             disabled={loading}
-            className="bg-white border border-gray-200 text-gray-700 px-6 py-3 rounded-xl font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-green-50 border border-green-200 text-green-700 px-6 py-3 rounded-xl font-bold hover:bg-green-100 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <motion.div
-              animate={{ rotate: loading ? 360 : 0 }}
-              transition={{ duration: 1, repeat: loading ? Infinity : 0, ease: "linear" }}
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.2 }}
             >
-              <History className="w-5 h-5" />
+              <Download className="w-5 h-5" />
             </motion.div>
-            Refresh
-          </button>
-          <button
-            onClick={testCalculations}
-            className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-6 py-3 rounded-xl font-bold hover:bg-yellow-100 transition-all flex items-center justify-center gap-2 shadow-sm"
-          >
-            <Calculator className="w-5 h-5" />
-            Test
-          </button>
-          <button
-            onClick={exportMasterReport}
-            className="bg-white border border-gray-200 text-gray-700 px-6 py-3 rounded-xl font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2 shadow-sm"
-          >
-            <Download className="w-5 h-5 text-indigo-600" />
-            Export All Balances
+            Export Master Report
           </button>
         </div>
       </div>
