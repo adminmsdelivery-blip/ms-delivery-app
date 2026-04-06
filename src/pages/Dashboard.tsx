@@ -210,31 +210,38 @@ const Dashboard: React.FC = () => {
           console.log("💳 Payment modes found:", paymentModes);
 
           // Bulletproof cash held by outsource calculation
-          const outsourceHeldTotal = orders.reduce((sum, order) => {
-            // 1. Safely extract the payment mode, handling potential key variations
-            const rawMode = order.payment_mode || '';
-            const pMode = String(rawMode).toUpperCase().trim();
+          const cashHeldByOutsource = orders.reduce((sum, order) => {
+            // 1. Safe string matching for payment mode
+            const pMode = String(order.payment_mode || '').toUpperCase().trim();
             
-            console.log(`🔍 Order payment mode: "${rawMode}" -> "${pMode}"`);
+            // 2. Safe number parsing (crucial for preventing $0.00 bugs)
+            // Adjust these object keys if database uses different column names
+            const totalReceived = Number(order.total_amount_received) || 0;
+            const itemCharge = Number(order.item_charge) || 0;
             
-            // 2. Check if it's cash collected by the driver
-            const isDriverCash = pMode === 'COD' || pMode === 'COP';
-            
-            console.log(`💰 Is driver cash: ${isDriverCash}`);
-            
-            // 3. Calculate the delivery charge (Total Received - Item Charge)
-            if (isDriverCash) {
-              const totalReceived = Number(order.total_amount_received) || 0;
-              const itemCharge = Number(order.item_charge) || 0;
-              const deliveryCharge = totalReceived - itemCharge;
-              console.log(`💵 Delivery charge: ${totalReceived} - ${itemCharge} = ${deliveryCharge}`);
+            // 3. Calculate Delivery Charge
+            const deliveryCharge = totalReceived - itemCharge;
+
+            // 4. Apply Business Logic
+            if (pMode === 'COD' || pMode === 'COP') {
               return sum + deliveryCharge;
             }
             
             return sum;
           }, 0);
 
-          console.log(`💰 Final outsource held total: ${outsourceHeldTotal}`);
+          // Bulletproof cash held by us calculation (for ONLINE payments)
+          const cashHeldByUs = orders.reduce((sum, order) => {
+            const pMode = String(order.payment_mode || '').toUpperCase().trim();
+            const totalReceived = Number(order.total_amount_received) || 0;
+            const itemCharge = Number(order.item_charge) || 0;
+            const deliveryCharge = totalReceived - itemCharge;
+
+            if (pMode === 'ONLINE') {
+              return sum + deliveryCharge;
+            }
+            return sum;
+          }, 0);
 
           // Bulletproof Total Revenue Calculation
           const revenue = orders.reduce((sum, order) => {
@@ -287,7 +294,7 @@ const Dashboard: React.FC = () => {
             netProfit: profit,
             totalOrders: orders.length,
             activeClients: clientCount || 0,
-            cashHeldByOutsource: outsourceHeldTotal
+            cashHeldByOutsource: cashHeldByOutsource
           };
           
           console.log("📈 New stats:", newStats);
