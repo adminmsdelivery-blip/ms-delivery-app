@@ -144,8 +144,10 @@ const Settlements: React.FC = () => {
         
         if (pMethod === 'COD' || pMethod === 'COP') {
           const total = Number(order.total_order_amount) || 0;
-          const item = Number(order.item_charge) || 0;
+          const item = Number(order.item_charge) || 0; // Handle null by converting to 0
           const deliveryCharge = total - item;
+          
+          console.log(`💰 Order ${order.id}: ${pMethod}, Total: ${total}, Item: ${item}, Delivery: ${deliveryCharge}`);
           
           // Add to sum (prevent negative values if data is dirty)
           return sum + (deliveryCharge > 0 ? deliveryCharge : 0);
