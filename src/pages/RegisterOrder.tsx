@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { cn, formatCurrency } from '../lib/utils';
 import { 
   Save, 
   Clock, 
+  Phone, 
+  ChevronRight,
+  Info,
   MapPin, 
   User, 
-  Phone, 
   DollarSign,
-  Info,
-  ChevronRight
+  Calculator,
+  X
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
+import { cn, formatCurrency } from '../lib/utils';
 
 const RegisterOrder: React.FC = () => {
   const [clients, setClients] = useState<any[]>([]);
@@ -134,10 +136,15 @@ const RegisterOrder: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Section 1: Order Information */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 text-indigo-600 font-semibold mb-2">
-              <Info className="w-5 h-5" />
-              <h2>Order Information</h2>
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="bg-gradient-to-br from-primary-50 to-white p-6 rounded-2xl border border-primary-200 shadow-lg hover:shadow-xl space-y-4"
+          >
+            <div className="flex items-center gap-3 text-primary-600 font-semibold mb-4">
+              <Info className="w-6 h-6 animate-pulse" />
+              <h2 className="text-gradient bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent">Order Information</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
@@ -166,10 +173,15 @@ const RegisterOrder: React.FC = () => {
           </div>
 
           {/* Section 2: Pickup Details */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 text-indigo-600 font-semibold mb-2">
-              <MapPin className="w-5 h-5" />
-              <h2>Pickup Details</h2>
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="bg-gradient-to-br from-secondary-50 to-white p-6 rounded-2xl border border-secondary-200 shadow-lg hover:shadow-xl space-y-4"
+          >
+            <div className="flex items-center gap-3 text-secondary-600 font-semibold mb-4">
+              <MapPin className="w-6 h-6 animate-bounce" />
+              <h2 className="text-gradient bg-gradient-to-r from-secondary-600 to-secondary-400 bg-clip-text text-transparent">Pickup Details</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
@@ -202,10 +214,15 @@ const RegisterOrder: React.FC = () => {
           </div>
 
           {/* Section 3: Delivery Details */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 text-indigo-600 font-semibold mb-2">
-              <User className="w-5 h-5" />
-              <h2>Delivery Details</h2>
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="bg-gradient-to-br from-success-50 to-white p-6 rounded-2xl border border-success-200 shadow-lg hover:shadow-xl space-y-4"
+          >
+            <div className="flex items-center gap-3 text-success-600 font-semibold mb-4">
+              <User className="w-6 h-6 animate-pulse" />
+              <h2 className="text-gradient bg-gradient-to-r from-success-600 to-success-400 bg-clip-text text-transparent">Delivery Details</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
@@ -258,10 +275,15 @@ const RegisterOrder: React.FC = () => {
           </div>
 
           {/* Section 4: Payment & Item Details */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 text-indigo-600 font-semibold mb-2">
-              <DollarSign className="w-5 h-5" />
-              <h2>Payment & Item Details</h2>
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="bg-gradient-to-br from-warning-50 to-white p-6 rounded-2xl border border-warning-200 shadow-lg hover:shadow-xl space-y-4"
+          >
+            <div className="flex items-center gap-3 text-warning-600 font-semibold mb-4">
+              <DollarSign className="w-6 h-6 animate-pulse" />
+              <h2 className="text-gradient bg-gradient-to-r from-warning-600 to-warning-400 bg-clip-text text-transparent">Payment & Item Details</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1">
@@ -305,10 +327,15 @@ const RegisterOrder: React.FC = () => {
           </div>
 
           {/* Section 5: Outsource Details */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 text-indigo-600 font-semibold mb-2">
-              <User className="w-5 h-5" />
-              <h2>Outsource Details</h2>
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="bg-gradient-to-br from-error-50 to-white p-6 rounded-2xl border border-error-200 shadow-lg hover:shadow-xl space-y-4"
+          >
+            <div className="flex items-center gap-3 text-error-600 font-semibold mb-4">
+              <User className="w-6 h-6 animate-bounce" />
+              <h2 className="text-gradient bg-gradient-to-r from-error-600 to-error-400 bg-clip-text text-transparent">Outsource Details</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
@@ -342,10 +369,15 @@ const RegisterOrder: React.FC = () => {
           </div>
 
           {/* Section 6: Auto-Calculated Summary (Read-Only) */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 text-indigo-600 font-semibold mb-2">
-              <DollarSign className="w-5 h-5" />
-              <h2>Auto-Calculated Summary</h2>
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+            className="bg-gradient-to-br from-neutral-50 to-neutral-100 p-6 rounded-2xl border border-neutral-200 shadow-lg hover:shadow-xl space-y-4"
+          >
+            <div className="flex items-center gap-3 text-neutral-600 font-semibold mb-4">
+              <Calculator className="w-6 h-6 animate-pulse" />
+              <h2 className="text-gradient bg-gradient-to-r from-neutral-600 to-neutral-400 bg-clip-text text-transparent">Auto-Calculated Summary</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
