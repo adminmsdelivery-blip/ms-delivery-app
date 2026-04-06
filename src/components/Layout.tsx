@@ -245,7 +245,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </motion.button>
           </div>
         </div>
-      </aside>
+        </motion.aside>
 
       {/* Main Content */}
       <main className="flex-1 p-6 md:p-8 max-w-7xl mx-auto w-full overflow-x-hidden animate-fade-in">

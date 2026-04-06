@@ -409,11 +409,23 @@ const Dashboard: React.FC = () => {
               transition={{ delay: index * 0.1 }}
               key={card.title}
               className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
-            <div className="mt-4">
-              <p className="text-sm font-medium text-gray-500">{card.title}</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{card.value}</p>
-            </div>
-          </motion.div>
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className={`p-3 rounded-xl bg-gradient-to-r ${card.color}`}>
+                  <card.icon className="w-6 h-6 text-white" />
+                </div>
+                <div className={`flex items-center gap-1 text-sm font-medium ${
+                  card.isPositive ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  <TrendingUp className="w-4 h-4" />
+                  <span>+12%</span>
+                </div>
+              </div>
+              <div className="mt-4">
+                <p className="text-sm font-medium text-gray-500">{card.title}</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{card.value}</p>
+              </div>
+            </motion.div>
         ))}
       </div>
 
@@ -519,6 +531,7 @@ const Dashboard: React.FC = () => {
           )}
         </div>
       </motion.div>
+      </div>
     </div>
   );
 };
