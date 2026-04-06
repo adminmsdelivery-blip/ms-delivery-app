@@ -383,25 +383,24 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-white p-4 md:p-8 animate-fade-in">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <motion.div 
-          initial={{ y: -50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.6 }}
-          className="mb-8"
-        >
-          <h1 className="text-4xl font-bold text-neutral-900 tracking-tight mb-2">
-            Delivery Dashboard
-          </h1>
-          <p className="text-neutral-600 text-lg">
-            Manage your delivery operations efficiently
-          </p>
-        </motion.div>
+    <>
+      {/* Header */}
+      <motion.div 
+        initial={{ y: -50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.6 }}
+        className="mb-8"
+      >
+        <h1 className="text-4xl font-bold text-neutral-900 tracking-tight mb-2">
+          Delivery Dashboard
+        </h1>
+        <p className="text-neutral-600 text-lg">
+          Manage your delivery operations efficiently
+        </p>
+      </motion.div>
 
-        {/* KPI Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* KPI Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {kpiCards.map((card, index) => (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -531,8 +530,7 @@ const Dashboard: React.FC = () => {
           )}
         </div>
       </motion.div>
-      </div>
-    </div>
+    </>
   );
 };
 
