@@ -27,8 +27,9 @@ interface Order {
   driver_id: string; // outsource_id
   order_status: 'COMPLETED' | 'PENDING' | 'CANCELLED';
   payment_method: 'COD' | 'COP' | 'ONLINE';
-  total_order_amount: number; // delivery_charges
+  total_order_amount: number; // total_order_amount
   outsource_charge: number; // outsource_charges
+  item_charge?: number; // item_charge (may be missing/undefined)
   created_at: string;
   order_number: string;
   clients?: { name: string };
@@ -137,52 +138,18 @@ const Settlements: React.FC = () => {
         return sum + charge;
       }, 0);
 
-      // Aggressive number cleaning function
-      const cleanNumber = (val) => {
-        if (!val) return 0;
-        // Strip everything except digits and decimals
-        const cleaned = String(val).replace(/[^0-9.-]+/g,""); 
-        return Number(cleaned) || 0;
-      };
-
-      // Force console logging for micro-level debugging
-      console.log("MICRO-CHECK - Orders Array:", driverOrders?.length ? driverOrders[0] : "Empty Array");
-
-      // Step C: Calculate Cash Held - Sum of delivery charges (Total Received - Item Charge) ONLY for COD/COP orders
+      // Step C: Calculate Cash Held - Sum of delivery charges (Total Order Amount - Item Charge) ONLY for COD/COP orders
       const cash_held_by_driver = driverOrders.reduce((sum, order) => {
-        // Check all possible variations of the payment mode key
-        const rawMode = order.payment_mode || order.paymentMode || order.payment_method || order.payment_type || order.type || '';
-        const pMode = String(rawMode).toUpperCase().trim();
+        const pMethod = String(order.payment_method || '').toUpperCase().trim();
         
-        console.log(`🔍 Settlement Order payment mode: "${rawMode}" -> "${pMode}"`);
-        console.log(`🔍 Order object keys:`, Object.keys(order));
-        console.log(`🔍 Order data:`, {
-          id: order.id,
-          payment_mode: order.payment_mode,
-          payment_method: order.payment_method,
-          total_amount_received: order.total_amount_received,
-          total_order_amount: order.total_order_amount,
-          item_charge: order.item_charge,
-          item_price: order.item_price,
-          subtotal: order.subtotal
-        });
-        
-        // Check if it's cash collected by the driver
-        const isDriverCash = pMode === 'COD' || pMode === 'COP';
-        
-        console.log(`💰 Settlement Is driver cash: ${isDriverCash}`);
-        
-        if (isDriverCash) {
-          // USE THE EXACT KEYS VERIFIED FROM YOUR CONSOLE/SCHEMA HERE
-          const total = cleanNumber(order.total_amount_received || order.total_order_amount || order.total_amount || order.grand_total || order.amount); 
-          const item = cleanNumber(order.item_charge || order.item_price || order.subtotal || 0);
+        if (pMethod === 'COD' || pMethod === 'COP') {
+          const total = Number(order.total_order_amount) || 0;
+          const item = Number(order.item_charge) || 0;
           const deliveryCharge = total - item;
           
-          console.log(`💵 Settlement Calculation: ${total} - ${item} = ${deliveryCharge}`);
-          
+          // Add to sum (prevent negative values if data is dirty)
           return sum + (deliveryCharge > 0 ? deliveryCharge : 0);
         }
-        
         return sum;
       }, 0);
       
@@ -706,16 +673,6 @@ const Settlements: React.FC = () => {
       {/* Main Content - Only show when not loading */}
       {!loading && (
         <>
-      {/* TEMPORARY DEBUGGING BLOCK - DO NOT DELETE UNTIL INSTRUCTED */}
-      {allOrders && allOrders.length > 0 && (
-        <div className="bg-slate-900 text-green-400 p-4 rounded-lg my-4 overflow-x-auto text-sm font-mono shadow-lg border border-red-500">
-          <p className="text-white mb-2 font-bold uppercase tracking-wider">Micro-Check Raw Data (First Order):</p>
-          <pre>
-            {JSON.stringify(allOrders[0], null, 2)}
-          </pre>
-        </div>
-      )}
-
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Financial Settlements</h1>
