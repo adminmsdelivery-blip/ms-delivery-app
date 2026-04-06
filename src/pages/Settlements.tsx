@@ -137,13 +137,35 @@ const Settlements: React.FC = () => {
         return sum + charge;
       }, 0);
 
-      // Step C: Calculate Cash Held - Sum of total_order_amount ONLY for COD/COP orders with bulletproof string matching
+      // Aggressive number cleaning function
+      const cleanNumber = (val) => {
+        if (!val) return 0;
+        // Strip everything except digits and decimals
+        const cleaned = String(val).replace(/[^0-9.-]+/g,""); 
+        return Number(cleaned) || 0;
+      };
+
+      // Force console logging for micro-level debugging
+      console.log("MICRO-CHECK - Orders Array:", driverOrders?.length ? driverOrders[0] : "Empty Array");
+
+      // Step C: Calculate Cash Held - Sum of delivery charges (Total Received - Item Charge) ONLY for COD/COP orders
       const cash_held_by_driver = driverOrders.reduce((sum, order) => {
-        // Bulletproof payment mode detection
-        const rawMode = order.payment_method || order.paymentMode || order['Payment Mode'] || '';
+        // Check all possible variations of the payment mode key
+        const rawMode = order.payment_mode || order.paymentMode || order.payment_method || order.payment_type || order.type || '';
         const pMode = String(rawMode).toUpperCase().trim();
         
         console.log(`🔍 Settlement Order payment mode: "${rawMode}" -> "${pMode}"`);
+        console.log(`🔍 Order object keys:`, Object.keys(order));
+        console.log(`🔍 Order data:`, {
+          id: order.id,
+          payment_mode: order.payment_mode,
+          payment_method: order.payment_method,
+          total_amount_received: order.total_amount_received,
+          total_order_amount: order.total_order_amount,
+          item_charge: order.item_charge,
+          item_price: order.item_price,
+          subtotal: order.subtotal
+        });
         
         // Check if it's cash collected by the driver
         const isDriverCash = pMode === 'COD' || pMode === 'COP';
@@ -151,13 +173,14 @@ const Settlements: React.FC = () => {
         console.log(`💰 Settlement Is driver cash: ${isDriverCash}`);
         
         if (isDriverCash) {
-          const amount = Number(order.total_order_amount) || 0;
-          if (isNaN(amount)) {
-            console.warn(`Invalid total_order_amount for order ${order.id}: ${order.total_order_amount}`);
-            return sum;
-          }
-          console.log(`💵 Settlement Cash amount: ${amount}`);
-          return sum + amount;
+          // USE THE EXACT KEYS VERIFIED FROM YOUR CONSOLE/SCHEMA HERE
+          const total = cleanNumber(order.total_amount_received || order.total_order_amount || order.total_amount || order.grand_total || order.amount); 
+          const item = cleanNumber(order.item_charge || order.item_price || order.subtotal || 0);
+          const deliveryCharge = total - item;
+          
+          console.log(`💵 Settlement Calculation: ${total} - ${item} = ${deliveryCharge}`);
+          
+          return sum + (deliveryCharge > 0 ? deliveryCharge : 0);
         }
         
         return sum;
