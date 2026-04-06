@@ -212,54 +212,83 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const { data: orders } = await supabase.from('orders').select('delivery_charges, estimated_profit, payment_mode, total_amount_received, item_charge');
+        console.log("🔍 Fetching dashboard stats...");
+        const { data: orders, error } = await supabase.from('orders').select('delivery_charges, estimated_profit, payment_mode, total_amount_received, item_charge');
         const { count: clientCount } = await supabase.from('clients').select('*', { count: 'exact', head: true });
 
+        console.log("📊 Raw orders data:", orders);
+        console.log("👥 Client count:", clientCount);
+
+        if (error) {
+          console.error("❌ Database error:", error);
+          throw error;
+        }
+
         if (orders) {
+          // Debug payment modes
+          const paymentModes = orders.map(o => ({ payment_mode: o.payment_mode, normalized: String(o.payment_mode || '').toUpperCase().trim() }));
+          console.log("💳 Payment modes found:", paymentModes);
+
           // Bulletproof cash held by outsource calculation
           const outsourceHeldTotal = orders.reduce((sum, order) => {
             // 1. Safely extract the payment mode, handling potential key variations
             const rawMode = order.payment_mode || order.paymentMode || order['Payment Mode'] || '';
             const pMode = String(rawMode).toUpperCase().trim();
             
+            console.log(`🔍 Order payment mode: "${rawMode}" -> "${pMode}"`);
+            
             // 2. Check if it's cash collected by the driver
             const isDriverCash = pMode === 'COD' || pMode === 'COP';
+            
+            console.log(`💰 Is driver cash: ${isDriverCash}`);
             
             // 3. Calculate the delivery charge (Total Received - Item Charge)
             if (isDriverCash) {
               const totalReceived = Number(order.total_amount_received) || 0;
               const itemCharge = Number(order.item_charge) || 0;
               const deliveryCharge = totalReceived - itemCharge;
+              console.log(`💵 Delivery charge: ${totalReceived} - ${itemCharge} = ${deliveryCharge}`);
               return sum + deliveryCharge;
             }
             
             return sum;
           }, 0);
 
+          console.log(`💰 Final outsource held total: ${outsourceHeldTotal}`);
+
           const revenue = orders.reduce((acc, curr) => acc + (Number(curr.delivery_charges) || 0), 0);
           const profit = orders.reduce((acc, curr) => acc + (Number(curr.estimated_profit) || 0), 0);
           
-          setStats({
+          const newStats = {
             totalRevenue: revenue,
             netProfit: profit,
             totalOrders: orders.length,
             activeClients: clientCount || 0,
             cashHeldByOutsource: outsourceHeldTotal
-          });
+          };
+          
+          console.log("📈 New stats:", newStats);
+          setStats(newStats);
         }
       } catch (error) {
-        console.error('Error fetching stats:', error);
+        console.error('❌ Error fetching stats:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchStats();
-    fetchSalesData();
-    fetchPreviousPeriodData();
+    const refreshData = () => {
+      console.log("🔄 Refreshing dashboard data...");
+      fetchStats();
+      fetchSalesData();
+      fetchPreviousPeriodData();
+    };
+
+    refreshData();
   }, []);
 
   useEffect(() => {
+    console.log("🔄 Sales period changed to:", salesPeriod);
     fetchSalesData();
     fetchPreviousPeriodData();
   }, [salesPeriod]);
