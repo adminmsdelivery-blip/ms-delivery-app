@@ -85,6 +85,15 @@ const Settlements: React.FC = () => {
   // Robust Financial Settlement Calculation
   const calculateOutsourceSettlement = (outsourceId: string, timePeriod: 'week' | 'month' | 'quarter'): DriverSettlement | null => {
     try {
+      console.log(`🔍 Calculating settlement for outsource ${outsourceId}, period: ${timePeriod}`);
+      console.log(`📊 Available orders: ${allOrders.length}, Available outsources: ${outsources.length}`);
+      
+      // Guard: Ensure we have data
+      if (allOrders.length === 0 || outsources.length === 0) {
+        console.log('⚠️ No orders or outsources available for calculation');
+        return null;
+      }
+      
       // Step A: Filter - Get completed orders for driver within time period
       const now = new Date();
       let startDate = new Date();
@@ -110,8 +119,11 @@ const Settlements: React.FC = () => {
           orderDate <= now
         );
       });
+      
+      console.log(`📦 Found ${driverOrders.length} orders for outsource ${outsourceId}`);
 
       if (driverOrders.length === 0) {
+        console.log(`⚠️ No orders found for outsource ${outsourceId} in period ${timePeriod}`);
         return null; // No orders for this driver in the period
       }
 
@@ -185,8 +197,25 @@ const Settlements: React.FC = () => {
     fetchOutsources().then(() => {
       console.log('📊 Outsources loaded, now fetching settlement data');
       fetchData();
+    }).catch(error => {
+      console.error('❌ Initial data fetch failed:', error);
+      // Fallback: Try fetching data anyway
+      fetchData();
     });
   }, []); // Run on initial mount
+
+  // Fallback useEffect in case the first one fails
+  useEffect(() => {
+    // If after 3 seconds we still have no data, try again
+    const timer = setTimeout(() => {
+      if (balances.length === 0 && !loading) {
+        console.log('⚠️ No data after 3 seconds, retrying...');
+        handleRefresh();
+      }
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, [balances.length, loading]);
 
   useEffect(() => {
     console.log('🔄 Period changed to:', selectedPeriod, ' - refetching data');
@@ -216,6 +245,34 @@ const Settlements: React.FC = () => {
     }
   };
 
+  // Add test function to verify calculations
+  const testCalculations = () => {
+    console.log('🧪 Testing calculations...');
+    console.log('📊 Current state:', {
+      allOrdersCount: allOrders.length,
+      outsourcesCount: outsources.length,
+      balancesCount: balances.length,
+      selectedPeriod
+    });
+    
+    if (allOrders.length > 0) {
+      console.log('📦 Sample orders:', allOrders.slice(0, 3).map(o => ({
+        id: o.id,
+        driver_id: o.driver_id,
+        payment_method: o.payment_method,
+        total_order_amount: o.total_order_amount
+      })));
+    }
+    
+    if (balances.length > 0) {
+      console.log('💰 Current balances:', balances.map(b => ({
+        name: b.outsource_name,
+        cash_held: b.cash_held_by_driver,
+        total_earned: b.total_earned
+      })));
+    }
+  };
+
   const fetchOutsources = async () => {
     console.log('📊 Fetching outsources...');
     try {
@@ -238,6 +295,13 @@ const Settlements: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      // Guard: Ensure outsources are loaded
+      if (outsources.length === 0) {
+        console.log('⚠️ Outsources not loaded, cannot fetch settlement data');
+        setBalances([]);
+        return;
+      }
+      
       // Add small delay to ensure loading state is visible
       await new Promise(resolve => setTimeout(resolve, 100));
       
@@ -602,6 +666,23 @@ const Settlements: React.FC = () => {
 
   return (
     <div className="space-y-8">
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto mb-4"
+            />
+            <p className="text-gray-600 font-medium">Loading settlement data...</p>
+          </div>
+        </div>
+      )}
+      
+      {/* Main Content - Only show when not loading */}
+      {!loading && (
+        <>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Financial Settlements</h1>
@@ -620,6 +701,13 @@ const Settlements: React.FC = () => {
               <History className="w-5 h-5" />
             </motion.div>
             Refresh
+          </button>
+          <button
+            onClick={testCalculations}
+            className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-6 py-3 rounded-xl font-bold hover:bg-yellow-100 transition-all flex items-center justify-center gap-2 shadow-sm"
+          >
+            <Calculator className="w-5 h-5" />
+            Test
           </button>
           <button
             onClick={exportMasterReport}
@@ -1017,6 +1105,8 @@ const Settlements: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+        </>
+      )}
     </div>
   );
 };
