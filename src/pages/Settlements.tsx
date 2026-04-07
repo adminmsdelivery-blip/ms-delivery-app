@@ -123,29 +123,6 @@ const Settlements: React.FC = () => {
     fetchData();
   }, []);
 
-  // Loading Guard - Use actual loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto mb-4 animate-spin"></div>
-          <p className="text-gray-600 font-medium">Loading settlements data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-600 font-medium">{error}</p>
-        </div>
-      </div>
-    );
-  }
-
   // Core Data Aggregation
   console.log("1. Raw Orders Array:", orders);
   console.log("1. Orders Length:", orders?.length);
@@ -248,6 +225,29 @@ const Settlements: React.FC = () => {
       driver.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [settlementData.driverRows, searchTerm]);
+
+  // Early returns AFTER all hooks - Loading and Error states
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto mb-4 animate-spin"></div>
+          <p className="text-gray-600 font-medium">Loading settlements data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 font-medium">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   // Export Master Report Logic
   const exportMasterReport = () => {
