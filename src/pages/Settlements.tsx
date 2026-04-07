@@ -82,36 +82,24 @@ const Settlements: React.FC = () => {
           .select('*, clients(name), outsources(name)')
           .order('created_at', { ascending: false });
 
-        console.log("3. Supabase Response:", { ordersData, ordersError });
-        console.log("3. Raw Orders Data Length:", ordersData?.length);
-        console.log("3. Raw Orders Sample:", ordersData?.slice(0, 2));
+        console.log("3. Supabase Query Executed");
+        console.log("3. OrdersError:", ordersError);
+        console.log("3. OrdersData:", ordersData);
+        console.log("3. OrdersData Type:", typeof ordersData);
+        console.log("3. OrdersData Length:", ordersData?.length);
 
-        if (ordersError) throw ordersError;
-
-        if (ordersData) {
-          console.log("3. Processing orders...");
-          const processedOrders: Order[] = ordersData.map(order => ({
-            id: order.id,
-            driver_id: order.driver_id || order.outsource_id || '',
-            order_status: order.order_status || 'COMPLETED',
-            payment_method: order.payment_method || 'ONLINE',
-            total_order_amount: Number(order.total_order_amount) || 0,
-            outsource_charge: Number(order.outsource_charge) || 0,
-            item_charge: Number(order.item_charge) || 0,
-            created_at: order.created_at,
-            order_number: order.order_number || '',
-            clients: order.clients,
-            outsources: order.outsources,
-            customer_name: order.customer_name,
-            delivery_location: order.delivery_location || order.drop_location,
-          }));
-
-          console.log("3. Processed Orders Length:", processedOrders.length);
-          console.log("3. Processed Orders Sample:", processedOrders.slice(0, 2));
-
-          setOrders(processedOrders);
-          console.log("3. Orders state updated");
+        if (ordersError) {
+          console.error("3. Supabase Error Detected:", ordersError);
+          throw ordersError;
         }
+
+        if (!ordersData || ordersData.length === 0) {
+          console.warn("3. No orders data found in database");
+          setLoading(false);
+          return;
+        }
+
+        setOrders(ordersData);
       } catch (error: any) {
         console.error('Error fetching settlement data:', error);
         setError(error.message || 'Failed to fetch settlement data');
@@ -260,16 +248,16 @@ const Settlements: React.FC = () => {
     let csvContent = "Detailed Ledger\n";
     csvContent += "Order Date,Order ID,Outsource Name,Client Name,Customer Name,Delivery Location,Payment Method,Total Delivery Charge,Total Outsource Charge,MS Profit,Balance Amount (Who Holds whose Cash),Status (Pay/Collect)\n";
 
-    orders.forEach(order => {
-      const driverName = order.outsources?.name || order.outsource_name || 'Unknown Driver';
-      const clientName = order.clients?.name || 'Unknown Client';
-      const customerName = order.customer_name || 'N/A';
-      const deliveryLocation = order.delivery_location || 'N/A';
-      const paymentMethod = order.payment_method || 'UNKNOWN';
+    settlementData.driverRows.forEach(driver => {
+      const driverName = driver.name;
+      const clientName = 'N/A'; // Not available in this context
+      const customerName = 'N/A'; // Not available in this context
+      const deliveryLocation = 'N/A'; // Not available in this context
+      const paymentMethod = 'N/A'; // Not available in this context
       
-      const totalAmount = Number(order.total_order_amount) || 0;
-      const itemCharge = Number(order.item_charge) || 0;
-      const outsourceCharge = Number(order.outsource_charge) || 0;
+      const totalAmount = driver.earned + driver.driverCash + driver.msCash; // Total from driver data
+      const itemCharge = 0; // Not available in this context
+      const outsourceCharge = driver.earned; // From driver data
       
       const deliveryCharge = Math.max(0, totalAmount - itemCharge);
       const msProfit = deliveryCharge - outsourceCharge;
@@ -278,21 +266,21 @@ const Settlements: React.FC = () => {
       let balanceText = '';
       let status = '';
       
-      const pMethod = String(paymentMethod).toUpperCase().trim();
-      const isDriverCash = pMethod.includes('COD') || pMethod.includes('COP') || pMethod.includes('CASH');
-      const isMSCash = pMethod.includes('ONLINE');
-      
-      if (isDriverCash) {
-        balanceAmount = deliveryCharge.toString();
-        balanceText = "Driver holds MS Cash";
+      if (driver.driverCash > driver.earned) {
+        balanceAmount = (driver.driverCash - driver.earned).toString();
+        balanceText = "Outsource holds MS Cash";
         status = "Collect";
-      } else if (isMSCash) {
-        balanceAmount = outsourceCharge.toString();
-        balanceText = "MS holds Driver Cash";
+      } else if (driver.earned > driver.driverCash) {
+        balanceAmount = (driver.earned - driver.driverCash).toString();
+        balanceText = "MS holds Outsource Cash";
         status = "Pay";
+      } else {
+        balanceAmount = "0";
+        balanceText = "Settled";
+        status = "Settled";
       }
 
-      csvContent += `${format(new Date(order.created_at), 'yyyy-MM-dd')},${order.order_number},${driverName},${clientName},${customerName},${deliveryLocation},${paymentMethod},${deliveryCharge},${outsourceCharge},${msProfit},${balanceAmount},"${balanceText}",${status}\n`;
+      csvContent += `${format(new Date(), 'yyyy-MM-dd')},DRV-${driver.name},${clientName},${customerName},${deliveryLocation},${paymentMethod},${deliveryCharge},${outsourceCharge},${msProfit},${balanceAmount},"${balanceText}",${status}\n`;
     });
 
     // Section 2: Settlement Summary
