@@ -63,6 +63,24 @@ const Settlements: React.FC = () => {
         setIsLoading(true);
         setDbError(null);
 
+        // Test basic Supabase connection first
+        console.log("🔍 [DEBUG] Testing basic Supabase connection...");
+        const { data: testData, error: testError } = await supabase
+          .from('orders')
+          .select('count')
+          .single();
+
+        console.log("🔍 [DEBUG] Basic connection test:", { testData, testError });
+
+        if (testError) {
+          console.error("🔍 [DEBUG] Basic connection failed:", testError);
+          setDbError(`Basic connection test failed: ${testError.message || JSON.stringify(testError)}`);
+          setOrders([]);
+          return;
+        }
+
+        console.log("🔍 [DEBUG] Basic connection successful! Total orders:", testData?.count);
+
         // CRITICAL: Query relational tables to get names
         console.log("🔍 [DEBUG] Executing Supabase query...");
         const { data, error } = await supabase
