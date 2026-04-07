@@ -59,28 +59,37 @@ const Settlements: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log("🔍 [DEBUG] Starting data fetch...");
         setIsLoading(true);
         setDbError(null);
 
         // CRITICAL: Query relational tables to get names
+        console.log("🔍 [DEBUG] Executing Supabase query...");
         const { data, error } = await supabase
           .from('orders')
           .select('*, outsources(name), clients(name)');
 
+        console.log("🔍 [DEBUG] Supabase Response:", { data, error });
+        console.log("🔍 [DEBUG] Data type:", typeof data);
+        console.log("🔍 [DEBUG] Data length:", data?.length);
+        console.log("🔍 [DEBUG] Error:", error);
+
         if (error) {
-          console.error('Supabase Error:', error);
+          console.error('🔍 [DEBUG] Supabase Error:', error);
           setDbError(error.message || JSON.stringify(error));
           setOrders([]);
           return;
         }
 
         // Ensure setOrders only receives an array
+        console.log("🔍 [DEBUG] Setting orders state with:", data || []);
         setOrders(data || []);
       } catch (error: any) {
-        console.error('Fetch Error:', error);
+        console.error('🔍 [DEBUG] Fetch Error:', error);
         setDbError(error.message || 'Failed to fetch data');
         setOrders([]);
       } finally {
+        console.log("🔍 [DEBUG] Setting loading to false");
         setIsLoading(false);
       }
     };
@@ -90,38 +99,69 @@ const Settlements: React.FC = () => {
 
   // Time Filter Logic (useMemo)
   const filteredOrders = useMemo(() => {
-    if (!orders || orders.length === 0) return [];
+    console.log("🔍 [DEBUG] Time filter running with orders:", orders);
+    console.log("🔍 [DEBUG] Orders length:", orders?.length);
+    console.log("🔍 [DEBUG] Time filter:", timeFilter);
+    
+    if (!orders || orders.length === 0) {
+      console.log("🔍 [DEBUG] No orders, returning empty array");
+      return [];
+    }
 
     // Ultra-forgiving with date parsing
     const now = new Date();
     
-    return orders.filter(order => {
-      if (timeFilter === 'all') return true;
+    const filtered = orders.filter(order => {
+      if (timeFilter === 'all') {
+        console.log("🔍 [DEBUG] All Time filter - returning all orders");
+        return true;
+      }
       
-      if (!order.created_at) return true;
+      if (!order.created_at) {
+        console.log("🔍 [DEBUG] Order has no created_at, including:", order.id);
+        return true;
+      }
       
       try {
         const orderDate = new Date(order.created_at);
-        if (isNaN(orderDate.getTime())) return true;
+        if (isNaN(orderDate.getTime())) {
+          console.log("🔍 [DEBUG] Invalid date, including order:", order.id);
+          return true;
+        }
         
         const diffTime = Math.abs(now.getTime() - orderDate.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
         switch (timeFilter) {
-          case 'week': return diffDays <= 7;
-          case 'month': return diffDays <= 30;
-          case 'year': return diffDays <= 365;
-          default: return true;
+          case 'week': 
+            console.log("🔍 [DEBUG] Week filter - diffDays:", diffDays, "included:", diffDays <= 7);
+            return diffDays <= 7;
+          case 'month': 
+            console.log("🔍 [DEBUG] Month filter - diffDays:", diffDays, "included:", diffDays <= 30);
+            return diffDays <= 30;
+          case 'year': 
+            console.log("🔍 [DEBUG] Year filter - diffDays:", diffDays, "included:", diffDays <= 365);
+            return diffDays <= 365;
+          default: 
+            return true;
         }
-      } catch {
+      } catch (error) {
+        console.log("🔍 [DEBUG] Date parsing error, including order:", order.id, error);
         return true; // Include orders with invalid dates
       }
     });
+    
+    console.log("🔍 [DEBUG] Filtered orders length:", filtered.length);
+    return filtered;
   }, [orders, timeFilter]);
 
   // Core Math & Aggregation (useMemo)
   const settlementData: SettlementData = useMemo(() => {
+    console.log("🔍 [DEBUG] Settlement calculation running with filteredOrders:", filteredOrders);
+    console.log("🔍 [DEBUG] Filtered orders length:", filteredOrders?.length);
+    
     if (!filteredOrders || filteredOrders.length === 0) {
+      console.log("🔍 [DEBUG] No filtered orders, returning empty settlement data");
       return {
         totalEarned: 0,
         cashHeldByOutsource: 0,
@@ -136,8 +176,10 @@ const Settlements: React.FC = () => {
     let cashHeldByOutsource = 0;
     let cashHeldByMS = 0;
 
+    console.log("🔍 [DEBUG] Processing orders for settlement...");
+    
     // Map over filteredOrders to calculate ledger
-    filteredOrders.forEach(order => {
+    filteredOrders.forEach((order, index) => {
       const driverName = order.outsources?.name || order.outsource_name || 'Unknown Driver';
       const clientName = order.clients?.name || order.client_name || 'Unknown Client';
       const paymentMethod = (order.payment_method || '').toUpperCase();
@@ -146,6 +188,16 @@ const Settlements: React.FC = () => {
       const outsourceCharge = Number(order.outsource_charge) || 0;
       const deliveryCharge = Math.max(0, totalAmount - itemCharge);
 
+      console.log(`🔍 [DEBUG] Order ${index + 1}:`, {
+        driverName,
+        clientName,
+        paymentMethod,
+        totalAmount,
+        itemCharge,
+        outsourceCharge,
+        deliveryCharge
+      });
+
       // Double-entry accounting logic
       const isCOD = paymentMethod.includes('COD') || paymentMethod.includes('COP');
       const isOnline = paymentMethod.includes('ONLINE');
@@ -153,6 +205,13 @@ const Settlements: React.FC = () => {
       // Calculate cash holdings
       const driverHolds = isCOD ? deliveryCharge : 0;
       const msHolds = isOnline ? deliveryCharge : 0;
+
+      console.log(`🔍 [DEBUG] Cash flow for order ${index + 1}:`, {
+        isCOD,
+        isOnline,
+        driverHolds,
+        msHolds
+      });
 
       // Update global totals
       totalEarned += outsourceCharge;
@@ -178,6 +237,12 @@ const Settlements: React.FC = () => {
       driver.cashHeldByMS += msHolds;
     });
 
+    console.log("🔍 [DEBUG] Global totals before final calculation:", {
+      totalEarned,
+      cashHeldByOutsource,
+      cashHeldByMS
+    });
+
     // Calculate final balances and status for each driver
     const driverRows = Array.from(driverMap.values()).map(driver => {
       const netBalance = driver.earned - driver.cashHeldByOutsource;
@@ -198,6 +263,14 @@ const Settlements: React.FC = () => {
     });
 
     const finalBalance = Math.abs(cashHeldByOutsource - totalEarned);
+
+    console.log("🔍 [DEBUG] Final settlement data:", {
+      totalEarned,
+      cashHeldByOutsource,
+      cashHeldByMS,
+      finalBalance,
+      driverRowsCount: driverRows.length
+    });
 
     return {
       totalEarned,
@@ -278,8 +351,16 @@ const Settlements: React.FC = () => {
 
   // UI Structure & Early Returns (CRITICAL)
   
+  console.log("🔍 [DEBUG] Main render - Current state:", {
+    isLoading,
+    dbError,
+    ordersLength: orders?.length,
+    timeFilter
+  });
+  
   // If dbError is true, return giant red error box
   if (dbError) {
+    console.log("🔍 [DEBUG] Showing database error:", dbError);
     return (
       <div className="p-8">
         <div className="bg-red-100 border-l-4 border-red-600 text-red-900 p-6 rounded shadow-lg font-mono">
@@ -295,6 +376,7 @@ const Settlements: React.FC = () => {
 
   // If isLoading is true, return spinner
   if (isLoading) {
+    console.log("🔍 [DEBUG] Showing loading spinner");
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -304,6 +386,8 @@ const Settlements: React.FC = () => {
       </div>
     );
   }
+
+  console.log("🔍 [DEBUG] About to render main UI with settlementData:", settlementData);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
