@@ -68,7 +68,7 @@ const Settlements: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [timeFilter, setTimeFilter] = useState('month'); // 'week', 'month', 'year'
+  const [timeFilter, setTimeFilter] = useState('all'); // 'week', 'month', 'year', 'all' - BYPASS
 
   // Fetch data from Supabase
   useEffect(() => {
@@ -118,18 +118,30 @@ const Settlements: React.FC = () => {
 
   // Pre-Filter Logic based on time filter
   const filteredOrders = useMemo(() => {
-    if (!orders || orders.length === 0) return [];
+    const safeOrders = Array.isArray(orders) ? orders : [];
+    if (safeOrders.length === 0) return [];
+    
+    // BYPASS: If "all" selected, return all orders without date filtering
+    if (timeFilter === 'all') {
+      console.log("🔍 BYPASS: Showing ALL orders without date filter");
+      return safeOrders;
+    }
     
     const now = new Date();
-    return orders.filter(order => {
+    return safeOrders.filter(order => {
       if (!order.created_at) return true; // Include if no date
       
       const orderDate = new Date(order.created_at);
+      if (isNaN(orderDate.getTime())) {
+        console.warn("🔍 Invalid date detected, including order:", order.id);
+        return true; // Include orders with invalid dates
+      }
+      
       const diffTime = Math.abs(now.getTime() - orderDate.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       
       if (timeFilter === 'week') return diffDays <= 7;
-      if (timeFilter === 'month') return diffDays <= 30;
+      if (timeFilter === 'month') return diffDays <= 31;
       if (timeFilter === 'year') return diffDays <= 365;
       return true;
     });
@@ -331,208 +343,199 @@ const Settlements: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Financial Settlements</h1>
-            <p className="text-gray-500 text-sm mt-1">Track cash flow between MS Delivery and Outsource Drivers</p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search drivers..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
+          <button
+            onClick={exportMasterReport}
+            className="bg-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm"
+          >
+            <Download className="w-5 h-5" />
+            Export Master Report
+          </button>
+        </div>
+      </div>
+
+      {/* Time Filter Tabs */}
+      <div className="flex justify-center mb-6">
+        <div className="bg-white border rounded-full p-1 shadow-sm inline-flex">
+          {['week', 'month', 'year', 'all'].map((tab) => (
             <button
-              onClick={exportMasterReport}
-              className="bg-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm"
+              key={tab}
+              onClick={() => setTimeFilter(tab)}
+              className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${
+                timeFilter === tab
+                  ? 'bg-blue-600 text-white shadow'
+                  : 'text-gray-500 hover:text-gray-900'
+              }`}
             >
-              <Download className="w-5 h-5" />
-              Export Master Report
+              {tab === 'all' ? 'All Time' : tab.charAt(0).toUpperCase() + tab.slice(1) + 'ly'}
             </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Total Earned */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="bg-blue-50 p-3 rounded-xl">
+              <TrendingUp className="w-6 h-6 text-blue-600" />
+            </div>
+            <span className="text-sm text-gray-500 font-medium">Total Earned</span>
           </div>
+          <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.totalEarned)}</p>
+          <p className="text-sm text-gray-500 mt-1">By Outsource Drivers</p>
         </div>
 
-        {/* Time Filter Tabs */}
-        <div className="flex justify-center mb-6">
-          <div className="bg-white border rounded-full p-1 shadow-sm inline-flex">
-            {['week', 'month', 'year'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setTimeFilter(tab)}
-                className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${
-                  timeFilter === tab 
-                    ? 'bg-blue-600 text-white shadow' 
-                    : 'text-gray-500 hover:text-gray-900'
-                }`}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}ly
-              </button>
-            ))}
+        {/* Cash Held by Drivers */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="bg-green-50 p-3 rounded-xl">
+              <Users className="w-6 h-6 text-green-600" />
+            </div>
+            <span className="text-sm text-gray-500 font-medium">Cash Held by Drivers</span>
           </div>
+          <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.cashHeldByDrivers)}</p>
+          <p className="text-sm text-gray-500 mt-1">COD/COP Orders</p>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Total Earned */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-blue-50 p-3 rounded-xl">
-                <TrendingUp className="w-6 h-6 text-blue-600" />
-              </div>
-              <span className="text-sm text-gray-500 font-medium">Total Earned</span>
+        {/* Cash Held by MS */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="bg-purple-50 p-3 rounded-xl">
+              <CreditCard className="w-6 h-6 text-purple-600" />
             </div>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.totalEarned)}</p>
-            <p className="text-sm text-gray-500 mt-1">By Outsource Drivers</p>
+            <span className="text-sm text-gray-500 font-medium">Cash Held by MS</span>
           </div>
-
-          {/* Cash Held by Drivers */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-green-50 p-3 rounded-xl">
-                <Users className="w-6 h-6 text-green-600" />
-              </div>
-              <span className="text-sm text-gray-500 font-medium">Cash Held by Drivers</span>
-            </div>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.cashHeldByDrivers)}</p>
-            <p className="text-sm text-gray-500 mt-1">COD/COP Orders</p>
-          </div>
-
-          {/* Cash Held by MS */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-purple-50 p-3 rounded-xl">
-                <CreditCard className="w-6 h-6 text-purple-600" />
-              </div>
-              <span className="text-sm text-gray-500 font-medium">Cash Held by MS</span>
-            </div>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.cashHeldByMS)}</p>
-            <p className="text-sm text-gray-500 mt-1">Online Orders</p>
-          </div>
-
-          {/* Final Balance */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-orange-50 p-3 rounded-xl">
-                <Scale className="w-6 h-6 text-orange-600" />
-              </div>
-              <span className="text-sm text-gray-500 font-medium">Final Balance</span>
-            </div>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.finalBalance)}</p>
-            <p className="text-sm text-gray-500 mt-1">Settlement Amount</p>
-          </div>
+          <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.cashHeldByMS)}</p>
+          <p className="text-sm text-gray-500 mt-1">Online Orders</p>
         </div>
 
-        {/* Driver Ledger Table */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-900">Driver Ledger</h2>
-            <p className="text-sm text-gray-500 mt-1">Individual driver settlement details</p>
+        {/* Final Balance */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="bg-orange-50 p-3 rounded-xl">
+              <Scale className="w-6 h-6 text-orange-600" />
+            </div>
+            <span className="text-sm text-gray-500 font-medium">Final Balance</span>
           </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Outsource Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Earned</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cash Held by Outsource</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cash Held by MS</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Final Balance</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Settlement Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredDriverRows.length > 0 ? (
-                  filteredDriverRows.map((driver, index) => (
-                    <tr key={index} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 font-medium text-gray-900">{driver.name}</td>
-                      <td className="px-6 py-4 text-green-600 font-medium">{formatCurrency(driver.earned)}</td>
-                      <td className="px-6 py-4 text-blue-600 font-medium">{formatCurrency(driver.driverCash)}</td>
-                      <td className="px-6 py-4 text-purple-600 font-medium">{formatCurrency(driver.msCash)}</td>
-                      <td className="px-6 py-4 font-bold text-gray-900">{formatCurrency(driver.netBalance)}</td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${driver.actionType === 'settled' ? 'bg-gray-100 text-gray-800' : driver.actionType === 'collect' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                          {driver.action}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        {driver.actionType === 'collect' && (
-                          <button className="bg-green-600 text-white px-3 py-1 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
-                            Collect
-                          </button>
-                        )}
-                        {driver.actionType === 'pay' && (
-                          <button className="bg-red-600 text-white px-3 py-1 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">
-                            Pay
-                          </button>
-                        )}
-                        {driver.actionType === 'settled' && (
-                          <button className="bg-gray-200 text-gray-600 px-3 py-1 rounded-lg text-sm font-medium" disabled>
-                            Settled
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                      {searchTerm ? 'No drivers found matching your search' : 'No settlement data available'}
+          <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.finalBalance)}</p>
+          <p className="text-sm text-gray-500 mt-1">Settlement Amount</p>
+        </div>
+      </div>
+
+      {/* Driver Ledger Table */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Driver Ledger</h2>
+          <p className="text-sm text-gray-500 mb-4">Individual driver settlement details</p>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Outsource Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Earned</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cash Held by Outsource</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cash Held by MS</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Final Balance</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Settlement Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredDriverRows.length > 0 ? (
+                filteredDriverRows.map((driver, index) => (
+                  <tr key={index} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 font-medium text-gray-900">{driver.name}</td>
+                    <td className="px-6 py-4 text-green-600 font-medium">{formatCurrency(driver.earned)}</td>
+                    <td className="px-6 py-4 text-blue-600 font-medium">{formatCurrency(driver.driverCash)}</td>
+                    <td className="px-6 py-4 text-purple-600 font-medium">{formatCurrency(driver.msCash)}</td>
+                    <td className="px-6 py-4 font-bold text-gray-900">{formatCurrency(driver.netBalance)}</td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        driver.actionType === 'settled' 
+                          ? 'bg-gray-100 text-gray-800' 
+                          : driver.actionType === 'collect' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                      }`}>
+                        {driver.action}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {driver.actionType === 'collect' && (
+                        <button className="bg-green-600 text-white px-3 py-1 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
+                          Collect
+                        </button>
+                      )}
+                      {driver.actionType === 'pay' && (
+                        <button className="bg-red-600 text-white px-3 py-1 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">
+                          Pay
+                        </button>
+                      )}
+                      {driver.actionType === 'settled' && (
+                        <button className="bg-gray-200 text-gray-600 px-3 py-1 rounded-lg text-sm font-medium" disabled>
+                          Settled
+                        </button>
+                      )}
                     </td>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                    {searchTerm ? 'No drivers found matching your search' : 'No settlement data available'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Summary Stats */}
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="bg-indigo-50 p-3 rounded-xl">
+              <Calculator className="w-6 h-6 text-indigo-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Total Orders Processed</p>
+              <p className="text-xl font-bold text-gray-900">{orders.length}</p>
+            </div>
           </div>
         </div>
-
-        {/* Summary Stats */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="bg-indigo-50 p-3 rounded-xl">
-                <Calculator className="w-6 h-6 text-indigo-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Total Orders Processed</p>
-                <p className="text-xl font-bold text-gray-900">{orders.length}</p>
-              </div>
+        
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="bg-green-50 p-3 rounded-xl">
+              <Users className="w-6 h-6 text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Active Drivers</p>
+              <p className="text-xl font-bold text-gray-900">{settlementData.driverRows.length}</p>
             </div>
           </div>
-          
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="bg-green-50 p-3 rounded-xl">
-                <Users className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Active Drivers</p>
-                <p className="text-xl font-bold text-gray-900">{settlementData.driverRows.length}</p>
-              </div>
+        </div>
+        
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="bg-orange-50 p-3 rounded-xl">
+              <AlertTriangle className="w-6 h-6 text-orange-600" />
             </div>
-          </div>
-          
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="bg-orange-50 p-3 rounded-xl">
-                <AlertTriangle className="w-6 h-6 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Pending Settlements</p>
-                <p className="text-xl font-bold text-gray-900">
-                  {settlementData.driverRows.filter(d => d.actionType !== 'settled').length}
-                </p>
-              </div>
+            <div>
+              <p className="text-sm text-gray-500">Pending Settlements</p>
+              <p className="text-xl font-bold text-gray-900">
+                {settlementData.driverRows.filter(d => d.actionType !== 'settled').length}
+              </p>
             </div>
           </div>
         </div>
       </div>
     </div>
-  );
-};
-
+  </div>
+);
 export default Settlements;
