@@ -70,8 +70,16 @@ const Settlements: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Core Data Aggregation
+  console.log("1. Raw Orders Array:", orders);
+  console.log("1. Orders Length:", orders?.length);
+  console.log("1. Orders Sample:", orders?.slice(0, 2));
+  
   const settlementData: SettlementData = useMemo(() => {
-    if (!orders || orders.length === 0) return { totalEarned: 0, cashHeldByDrivers: 0, cashHeldByMS: 0, finalBalance: 0, driverRows: [] };
+    console.log("2. useMemo running with orders:", orders?.length);
+    if (!orders || orders.length === 0) {
+      console.log("2. useMemo: Orders empty, returning fallback");
+      return { totalEarned: 0, cashHeldByDrivers: 0, cashHeldByMS: 0, finalBalance: 0, driverRows: [] };
+    }
 
     let globalEarned = 0;
     let globalDriverCash = 0;
@@ -132,6 +140,9 @@ const Settlements: React.FC = () => {
     };
   }, [orders]);
 
+  console.log("2. Final Settlement Data:", settlementData);
+  console.log("2. Driver Rows Count:", settlementData.driverRows.length);
+
   // Filter driver rows based on search
   const filteredDriverRows = useMemo(() => {
     if (!searchTerm) return settlementData.driverRows;
@@ -152,9 +163,14 @@ const Settlements: React.FC = () => {
           .select('*, clients(name), outsources(name)')
           .order('created_at', { ascending: false });
 
+        console.log("3. Supabase Response:", { ordersData, ordersError });
+        console.log("3. Raw Orders Data Length:", ordersData?.length);
+        console.log("3. Raw Orders Sample:", ordersData?.slice(0, 2));
+
         if (ordersError) throw ordersError;
 
         if (ordersData) {
+          console.log("3. Processing orders...");
           const processedOrders: Order[] = ordersData.map(order => ({
             id: order.id,
             driver_id: order.driver_id || order.outsource_id || '',
@@ -171,7 +187,11 @@ const Settlements: React.FC = () => {
             delivery_location: order.delivery_location || order.drop_location,
           }));
 
+          console.log("3. Processed Orders Length:", processedOrders.length);
+          console.log("3. Processed Orders Sample:", processedOrders.slice(0, 2));
+
           setOrders(processedOrders);
+          console.log("3. Orders state updated");
         }
       } catch (error: any) {
         console.error('Error fetching settlement data:', error);
