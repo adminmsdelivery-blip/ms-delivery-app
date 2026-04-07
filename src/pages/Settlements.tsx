@@ -68,16 +68,50 @@ const Settlements: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [timeFilter, setTimeFilter] = useState('month'); // 'week', 'month', 'year'
+
+  // Loading Guard - Wait for data to arrive
+  if (!orders || orders.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto mb-4 animate-spin"></div>
+          <p className="text-gray-600 font-medium">Loading settlements data...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Core Data Aggregation
   console.log("1. Raw Orders Array:", orders);
   console.log("1. Orders Length:", orders?.length);
   console.log("1. Orders Sample:", orders?.slice(0, 2));
+
+  // Pre-Filter Logic based on time filter
+  const filteredOrders = useMemo(() => {
+    if (!orders || orders.length === 0) return [];
+    
+    const now = new Date();
+    return orders.filter(order => {
+      if (!order.created_at) return true; // Include if no date
+      
+      const orderDate = new Date(order.created_at);
+      const diffTime = Math.abs(now.getTime() - orderDate.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (timeFilter === 'week') return diffDays <= 7;
+      if (timeFilter === 'month') return diffDays <= 30;
+      if (timeFilter === 'year') return diffDays <= 365;
+      return true;
+    });
+  }, [orders, timeFilter]);
+
+  console.log("1. Filtered Orders Length:", filteredOrders.length);
   
   const settlementData: SettlementData = useMemo(() => {
-    console.log("2. useMemo running with orders:", orders?.length);
-    if (!orders || orders.length === 0) {
-      console.log("2. useMemo: Orders empty, returning fallback");
+    console.log("2. useMemo running with filtered orders:", filteredOrders.length);
+    if (!filteredOrders || filteredOrders.length === 0) {
+      console.log("2. useMemo: Filtered orders empty, returning fallback");
       return { totalEarned: 0, cashHeldByDrivers: 0, cashHeldByMS: 0, finalBalance: 0, driverRows: [] };
     }
 
@@ -86,7 +120,7 @@ const Settlements: React.FC = () => {
     let globalMSCash = 0;
     const driverMap: { [key: string]: { name: string; earned: number; driverCash: number; msCash: number } } = {};
 
-    orders.forEach(order => {
+    filteredOrders.forEach(order => {
       const driverName = order.outsources?.name || order.outsource_name || 'Unknown Driver';
       const pMethod = String(order.payment_method || '').toUpperCase().trim();
       const isDriverCash = pMethod.includes('COD') || pMethod.includes('COP') || pMethod.includes('CASH');
@@ -138,7 +172,7 @@ const Settlements: React.FC = () => {
       finalBalance: Math.abs(globalDriverCash - globalEarned),
       driverRows 
     };
-  }, [orders]);
+  }, [filteredOrders]);
 
   console.log("2. Final Settlement Data:", settlementData);
   console.log("2. Driver Rows Count:", settlementData.driverRows.length);
@@ -314,6 +348,25 @@ const Settlements: React.FC = () => {
               <Download className="w-5 h-5" />
               Export Master Report
             </button>
+          </div>
+        </div>
+
+        {/* Time Filter Tabs */}
+        <div className="flex justify-center mb-6">
+          <div className="bg-white border rounded-full p-1 shadow-sm inline-flex">
+            {['week', 'month', 'year'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setTimeFilter(tab)}
+                className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${
+                  timeFilter === tab 
+                    ? 'bg-blue-600 text-white shadow' 
+                    : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}ly
+              </button>
+            ))}
           </div>
         </div>
 
