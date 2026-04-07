@@ -228,6 +228,7 @@ const Settlements: React.FC = () => {
 
   // Early returns AFTER all hooks - Loading and Error states
   if (loading) {
+    console.log("🔍 Component in loading state, showing loader");
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -239,6 +240,7 @@ const Settlements: React.FC = () => {
   }
 
   if (error) {
+    console.log("🔍 Component in error state, showing error");
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -248,6 +250,9 @@ const Settlements: React.FC = () => {
       </div>
     );
   }
+
+  console.log("🔍 Component reached main render section");
+  console.log("🔍 Current state - Loading:", loading, "Error:", error, "Orders length:", orders?.length);
 
   // Export Master Report Logic
   const exportMasterReport = () => {
