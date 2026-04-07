@@ -70,13 +70,77 @@ const Settlements: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [timeFilter, setTimeFilter] = useState('month'); // 'week', 'month', 'year'
 
-  // Loading Guard - Wait for data to arrive
-  if (!orders || orders.length === 0) {
+  // Fetch data from Supabase
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const { data: ordersData, error: ordersError } = await supabase
+          .from('orders')
+          .select('*, clients(name), outsources(name)')
+          .order('created_at', { ascending: false });
+
+        console.log("3. Supabase Response:", { ordersData, ordersError });
+        console.log("3. Raw Orders Data Length:", ordersData?.length);
+        console.log("3. Raw Orders Sample:", ordersData?.slice(0, 2));
+
+        if (ordersError) throw ordersError;
+
+        if (ordersData) {
+          console.log("3. Processing orders...");
+          const processedOrders: Order[] = ordersData.map(order => ({
+            id: order.id,
+            driver_id: order.driver_id || order.outsource_id || '',
+            order_status: order.order_status || 'COMPLETED',
+            payment_method: order.payment_method || 'ONLINE',
+            total_order_amount: Number(order.total_order_amount) || 0,
+            outsource_charge: Number(order.outsource_charge) || 0,
+            item_charge: Number(order.item_charge) || 0,
+            created_at: order.created_at,
+            order_number: order.order_number || '',
+            clients: order.clients,
+            outsources: order.outsources,
+            customer_name: order.customer_name,
+            delivery_location: order.delivery_location || order.drop_location,
+          }));
+
+          console.log("3. Processed Orders Length:", processedOrders.length);
+          console.log("3. Processed Orders Sample:", processedOrders.slice(0, 2));
+
+          setOrders(processedOrders);
+          console.log("3. Orders state updated");
+        }
+      } catch (error: any) {
+        console.error('Error fetching settlement data:', error);
+        setError(error.message || 'Failed to fetch settlement data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Loading Guard - Use actual loading state
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto mb-4 animate-spin"></div>
           <p className="text-gray-600 font-medium">Loading settlements data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 font-medium">{error}</p>
         </div>
       </div>
     );
@@ -184,59 +248,6 @@ const Settlements: React.FC = () => {
       driver.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [settlementData.driverRows, searchTerm]);
-
-  // Fetch data from Supabase
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const { data: ordersData, error: ordersError } = await supabase
-          .from('orders')
-          .select('*, clients(name), outsources(name)')
-          .order('created_at', { ascending: false });
-
-        console.log("3. Supabase Response:", { ordersData, ordersError });
-        console.log("3. Raw Orders Data Length:", ordersData?.length);
-        console.log("3. Raw Orders Sample:", ordersData?.slice(0, 2));
-
-        if (ordersError) throw ordersError;
-
-        if (ordersData) {
-          console.log("3. Processing orders...");
-          const processedOrders: Order[] = ordersData.map(order => ({
-            id: order.id,
-            driver_id: order.driver_id || order.outsource_id || '',
-            order_status: order.order_status || 'COMPLETED',
-            payment_method: order.payment_method || 'ONLINE',
-            total_order_amount: Number(order.total_order_amount) || 0,
-            outsource_charge: Number(order.outsource_charge) || 0,
-            item_charge: Number(order.item_charge) || 0,
-            created_at: order.created_at,
-            order_number: order.order_number || '',
-            clients: order.clients,
-            outsources: order.outsources,
-            customer_name: order.customer_name,
-            delivery_location: order.delivery_location || order.drop_location,
-          }));
-
-          console.log("3. Processed Orders Length:", processedOrders.length);
-          console.log("3. Processed Orders Sample:", processedOrders.slice(0, 2));
-
-          setOrders(processedOrders);
-          console.log("3. Orders state updated");
-        }
-      } catch (error: any) {
-        console.error('Error fetching settlement data:', error);
-        setError(error.message || 'Failed to fetch settlement data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
 
   // Export Master Report Logic
   const exportMasterReport = () => {
