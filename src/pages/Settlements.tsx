@@ -454,6 +454,21 @@ const Settlements: React.FC = () => {
           </div>
         </div>
 
+        {/* DEBUG: Show actual values on screen */}
+        <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6">
+          <h3 className="text-lg font-bold text-yellow-800 mb-2">🔍 DEBUG: Current Values</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div><strong>Orders Length:</strong> {orders?.length || 0}</div>
+            <div><strong>Filtered Orders:</strong> {settlementData.driverRows.length}</div>
+            <div><strong>Total Earned:</strong> {formatCurrency(settlementData.totalEarned)}</div>
+            <div><strong>Cash Held by Outsource:</strong> {formatCurrency(settlementData.cashHeldByOutsource)}</div>
+            <div><strong>Cash Held by MS:</strong> {formatCurrency(settlementData.cashHeldByMS)}</div>
+            <div><strong>Final Balance:</strong> {formatCurrency(settlementData.finalBalance)}</div>
+            <div><strong>Time Filter:</strong> {timeFilter}</div>
+            <div><strong>Loading:</strong> {isLoading ? 'Yes' : 'No'}</div>
+          </div>
+        </div>
+
         {/* 4 Top Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Total Earned */}
@@ -466,6 +481,7 @@ const Settlements: React.FC = () => {
             </div>
             <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.totalEarned)}</p>
             <p className="text-sm text-gray-500 mt-1">By Outsource Drivers</p>
+            <div className="text-xs text-blue-600 mt-2">DEBUG: {settlementData.totalEarned}</div>
           </div>
 
           {/* Cash Held by Outsource */}
@@ -478,6 +494,7 @@ const Settlements: React.FC = () => {
             </div>
             <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.cashHeldByOutsource)}</p>
             <p className="text-sm text-gray-500 mt-1">COD/COP Orders</p>
+            <div className="text-xs text-green-600 mt-2">DEBUG: {settlementData.cashHeldByOutsource}</div>
           </div>
 
           {/* Cash Held by MS */}
@@ -490,6 +507,7 @@ const Settlements: React.FC = () => {
             </div>
             <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.cashHeldByMS)}</p>
             <p className="text-sm text-gray-500 mt-1">Online Orders</p>
+            <div className="text-xs text-purple-600 mt-2">DEBUG: {settlementData.cashHeldByMS}</div>
           </div>
 
           {/* Final Balance */}
@@ -502,6 +520,7 @@ const Settlements: React.FC = () => {
             </div>
             <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.finalBalance)}</p>
             <p className="text-sm text-gray-500 mt-1">Settlement Amount</p>
+            <div className="text-xs text-orange-600 mt-2">DEBUG: {settlementData.finalBalance}</div>
           </div>
         </div>
 
@@ -529,11 +548,26 @@ const Settlements: React.FC = () => {
                 {settlementData.driverRows.length > 0 ? (
                   settlementData.driverRows.map((driver, index) => (
                     <tr key={index} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 font-medium text-gray-900">{driver.name}</td>
-                      <td className="px-6 py-4 text-green-600 font-medium">{formatCurrency(driver.earned)}</td>
-                      <td className="px-6 py-4 text-blue-600 font-medium">{formatCurrency(driver.cashHeldByOutsource)}</td>
-                      <td className="px-6 py-4 text-purple-600 font-medium">{formatCurrency(driver.cashHeldByMS)}</td>
-                      <td className="px-6 py-4 font-bold text-gray-900">{formatCurrency(driver.finalBalance)}</td>
+                      <td className="px-6 py-4 font-medium text-gray-900">
+                        {driver.name}
+                        <div className="text-xs text-gray-500">DEBUG: {driver.name}</div>
+                      </td>
+                      <td className="px-6 py-4 text-green-600 font-medium">
+                        {formatCurrency(driver.earned)}
+                        <div className="text-xs text-gray-500">DEBUG: {driver.earned}</div>
+                      </td>
+                      <td className="px-6 py-4 text-blue-600 font-medium">
+                        {formatCurrency(driver.cashHeldByOutsource)}
+                        <div className="text-xs text-gray-500">DEBUG: {driver.cashHeldByOutsource}</div>
+                      </td>
+                      <td className="px-6 py-4 text-purple-600 font-medium">
+                        {formatCurrency(driver.cashHeldByMS)}
+                        <div className="text-xs text-gray-500">DEBUG: {driver.cashHeldByMS}</div>
+                      </td>
+                      <td className="px-6 py-4 font-bold text-gray-900">
+                        {formatCurrency(driver.finalBalance)}
+                        <div className="text-xs text-gray-500">DEBUG: {driver.finalBalance}</div>
+                      </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                           driver.actionType === 'settled' 
@@ -544,6 +578,7 @@ const Settlements: React.FC = () => {
                         }`}>
                           {driver.status}
                         </span>
+                        <div className="text-xs text-gray-500">DEBUG: {driver.actionType}</div>
                       </td>
                       <td className="px-6 py-4">
                         {driver.actionType === 'collect' && (
@@ -568,6 +603,7 @@ const Settlements: React.FC = () => {
                   <tr>
                     <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                       No settlement data available
+                      <div className="text-xs text-gray-500">DEBUG: settlementData.driverRows.length = {settlementData.driverRows.length}</div>
                     </td>
                   </tr>
                 )}
