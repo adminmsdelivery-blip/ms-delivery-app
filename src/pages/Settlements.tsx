@@ -322,11 +322,11 @@ const Settlements: React.FC = () => {
         // Convert to Order type with proper field mapping
         const processedOrders: Order[] = orders.map(order => ({
           id: order.id,
-          driver_id: order.outsource_id || '',
-          order_status: order.payment_status === 'Settled' ? 'COMPLETED' : 'COMPLETED', // For now, treat all as completed
+          driver_id: order.driver_id || order.outsource_id || '',
+          order_status: order.order_status === 'COMPLETED' ? 'COMPLETED' : 'COMPLETED', // For now, treat all as completed
           // Bulletproof payment mode mapping with debug logging
           payment_method: (() => {
-            const rawMode = order.payment_mode || order.paymentMode || order['Payment Mode'] || '';
+            const rawMode = order.payment_method || order.paymentMode || order['Payment Mode'] || '';
             const pMode = String(rawMode).toUpperCase().trim();
             console.log(`🔍 Order mapping payment mode: "${rawMode}" -> "${pMode}"`);
             
@@ -338,8 +338,9 @@ const Settlements: React.FC = () => {
               return 'ONLINE';
             }
           })(),
-          total_order_amount: Number(order.delivery_charges) || 0,
-          outsource_charge: Number(order.outsource_charges) || 0,
+          total_order_amount: Number(order.total_order_amount) || 0, // FIXED: Use correct field
+          outsource_charge: Number(order.outsource_charge) || 0,
+          item_charge: Number(order.item_charge) || 0, // ADDED: Map item_charge field
           created_at: order.created_at,
           order_number: order.order_number,
           clients: order.clients,
