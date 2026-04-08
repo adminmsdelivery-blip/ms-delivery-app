@@ -63,14 +63,14 @@ const Settlements: React.FC = () => {
         setIsLoading(true);
         setDbError(null);
 
-        // Test basic Supabase connection first
-        console.log("🔍 [DEBUG] Testing basic Supabase connection...");
+        // SIMPLIFIED TEST: Test basic connection first
+        console.log("🔍 [DEBUG] TEST 1: Basic connection test...");
         const { data: testData, error: testError } = await supabase
           .from('orders')
           .select('count')
           .single();
 
-        console.log("🔍 [DEBUG] Basic connection test:", { testData, testError });
+        console.log("🔍 [DEBUG] TEST 1 Result:", { testData, testError });
 
         if (testError) {
           console.error("🔍 [DEBUG] Basic connection failed:", testError);
@@ -81,27 +81,65 @@ const Settlements: React.FC = () => {
 
         console.log("🔍 [DEBUG] Basic connection successful! Total orders:", testData?.count);
 
-        // CRITICAL: Query relational tables to get names
-        console.log("🔍 [DEBUG] Executing Supabase query...");
+        // SIMPLIFIED TEST: Test simple query without joins
+        console.log("🔍 [DEBUG] TEST 2: Simple query without joins...");
+        const { data: simpleData, error: simpleError } = await supabase
+          .from('orders')
+          .select('*')
+          .limit(5);
+
+        console.log("🔍 [DEBUG] TEST 2 Result:", { simpleData, simpleError });
+
+        if (simpleError) {
+          console.error("🔍 [DEBUG] Simple query failed:", simpleError);
+          setDbError(`Simple query failed: ${simpleError.message || JSON.stringify(simpleError)}`);
+          setOrders([]);
+          return;
+        }
+
+        console.log("🔍 [DEBUG] Simple query successful! Sample data:", simpleData);
+
+        // SIMPLIFIED TEST: Test with joins
+        console.log("🔍 [DEBUG] TEST 3: Query with joins...");
         const { data, error } = await supabase
+          .from('orders')
+          .select('*, outsources(name), clients(name)')
+          .limit(5);
+
+        console.log("🔍 [DEBUG] TEST 3 Result:", { data, error });
+
+        if (error) {
+          console.error('🔍 [DEBUG] Query with joins failed:', error);
+          setDbError(`Query with joins failed: ${error.message || JSON.stringify(error)}`);
+          setOrders([]);
+          return;
+        }
+
+        console.log("🔍 [DEBUG] Query with joins successful! Sample data:", data);
+
+        // FULL QUERY: Get all data with joins
+        console.log("🔍 [DEBUG] TEST 4: Full query with all data...");
+        const { data: fullData, error: fullError } = await supabase
           .from('orders')
           .select('*, outsources(name), clients(name)');
 
-        console.log("🔍 [DEBUG] Supabase Response:", { data, error });
-        console.log("🔍 [DEBUG] Data type:", typeof data);
-        console.log("🔍 [DEBUG] Data length:", data?.length);
-        console.log("🔍 [DEBUG] Error:", error);
+        console.log("🔍 [DEBUG] TEST 4 Result:", { 
+          fullData, 
+          fullError, 
+          dataType: typeof fullData, 
+          dataLength: fullData?.length 
+        });
 
-        if (error) {
-          console.error('🔍 [DEBUG] Supabase Error:', error);
-          setDbError(error.message || JSON.stringify(error));
+        if (fullError) {
+          console.error('🔍 [DEBUG] Full query failed:', fullError);
+          setDbError(`Full query failed: ${fullError.message || JSON.stringify(fullError)}`);
           setOrders([]);
           return;
         }
 
         // Ensure setOrders only receives an array
-        console.log("🔍 [DEBUG] Setting orders state with:", data || []);
-        setOrders(data || []);
+        console.log("🔍 [DEBUG] Setting orders state with:", fullData || []);
+        setOrders(fullData || []);
       } catch (error: any) {
         console.error('🔍 [DEBUG] Fetch Error:', error);
         setDbError(error.message || 'Failed to fetch data');
