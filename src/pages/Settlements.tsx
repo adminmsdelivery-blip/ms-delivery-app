@@ -461,6 +461,18 @@ const Settlements: React.FC = () => {
           </div>
         </div>
 
+        {/* RAW JSON TRUTH SERUM - DO NOT DELETE */}
+        {orders && orders.length > 0 && (
+          <div className="bg-slate-900 text-green-400 p-6 rounded-xl mb-8 overflow-auto border-2 border-red-500 shadow-2xl">
+            <h2 className="text-white font-bold mb-4 uppercase tracking-widest text-sm border-b border-slate-700 pb-2">
+              Raw Database Schema (Order #1)
+            </h2>
+            <pre className="text-xs font-mono whitespace-pre-wrap">
+              {JSON.stringify(orders[0], null, 2)}
+            </pre>
+          </div>
+        )}
+
         {/* 4 Top Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Total Earned */}
