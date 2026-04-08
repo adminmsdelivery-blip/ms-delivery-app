@@ -55,6 +55,11 @@ const Settlements: React.FC = () => {
   const [dbError, setDbError] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<'week' | 'month' | 'year' | 'all'>('all');
 
+  // Modal State Management
+  const [selectedDriver, setSelectedDriver] = useState<DriverRow | null>(null);
+  const [settlementAmount, setSettlementAmount] = useState('');
+  const [isSettling, setIsSettling] = useState(false);
+
   // Data Fetching with Error Guards
   useEffect(() => {
     const fetchData = async () => {
@@ -271,6 +276,52 @@ const Settlements: React.FC = () => {
     };
   }, [filteredOrders]);
 
+  // Modal Handlers
+  const openSettlementModal = (driver: DriverRow) => {
+    setSelectedDriver(driver);
+    // Default the input to their full final balance
+    setSettlementAmount(driver.finalBalance > 0 ? driver.finalBalance.toString() : '');
+  };
+
+  const closeSettlementModal = () => {
+    setSelectedDriver(null);
+    setSettlementAmount('');
+  };
+
+  const handleProcessSettlement = async () => {
+    if (!selectedDriver || !settlementAmount) return;
+    setIsSettling(true);
+    
+    try {
+      const amount = parseFloat(settlementAmount);
+      
+      // TODO: Update your database here. 
+      // Approach A: Mark all specific orders for this driver as "Settled"
+      // Approach B: Insert a new row into a `settlement_ledger` table
+      
+      /* Example Supabase Call:
+      const { error } = await supabase
+        .from('orders')
+        .update({ settlement_status: 'Settled' })
+        .eq('outsource_id', selectedDriver.id) // Ensure driver ID is available
+        .eq('settlement_status', 'Pending');
+      if (error) throw error;
+      */
+      
+      alert(`Successfully processed ${selectedDriver.actionType} of $${amount} for ${selectedDriver.name}`);
+      
+      // Refresh the page or refetch the orders array here to update the dashboard
+      // fetchOrders(); 
+      
+      closeSettlementModal();
+    } catch (error) {
+      console.error("Settlement failed:", error);
+      alert("Failed to process settlement.");
+    } finally {
+      setIsSettling(false);
+    }
+  };
+
   // CSV Export Logic
   const exportMasterReport = () => {
     let csvContent = '';
@@ -415,50 +466,6 @@ const Settlements: React.FC = () => {
           </div>
         </div>
 
-        {/* LIVE DATA DISPLAY: Show exactly what's being displayed */}
-        <div className="bg-blue-50 border-2 border-blue-200 p-6 rounded-lg mb-6">
-          <h3 className="text-lg font-bold text-blue-800 mb-4">📊 CURRENT SETTLEMENTS DATA DISPLAY</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-sm">
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <h4 className="font-semibold text-gray-800 mb-2">🔍 SUMMARY CARDS</h4>
-              <div className="space-y-2">
-                <div><strong>Total Earned:</strong> <span className="text-green-600 font-mono">{formatCurrency(settlementData.totalEarned)}</span></div>
-                <div><strong>Cash Held by Outsource:</strong> <span className="text-blue-600 font-mono">{formatCurrency(settlementData.cashHeldByOutsource)}</span></div>
-                <div><strong>Cash Held by MS:</strong> <span className="text-purple-600 font-mono">{formatCurrency(settlementData.cashHeldByMS)}</span></div>
-                <div><strong>Final Balance:</strong> <span className="text-orange-600 font-mono">{formatCurrency(settlementData.finalBalance)}</span></div>
-              </div>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <h4 className="font-semibold text-gray-800 mb-2">👥 DRIVER LEDGER</h4>
-              <div className="space-y-2">
-                <div><strong>Total Drivers:</strong> <span className="text-blue-600 font-mono">{settlementData.driverRows.length}</span></div>
-                {settlementData.driverRows.map((driver, index) => (
-                  <div key={index} className="ml-4 p-3 bg-gray-50 rounded border">
-                    <div><strong>Driver {index + 1}:</strong> <span className="text-gray-700">{driver.name}</span></div>
-                    <div><strong>Earned:</strong> <span className="text-green-600 font-mono">{formatCurrency(driver.earned)}</span></div>
-                    <div><strong>Cash Held:</strong> <span className="text-blue-600 font-mono">{formatCurrency(driver.cashHeldByOutsource)}</span></div>
-                    <div><strong>MS Holds:</strong> <span className="text-purple-600 font-mono">{formatCurrency(driver.cashHeldByMS)}</span></div>
-                    <div><strong>Balance:</strong> <span className="text-orange-600 font-mono">{formatCurrency(driver.finalBalance)}</span></div>
-                    <div><strong>Status:</strong> <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                      driver.actionType === 'settled' ? 'bg-gray-100 text-gray-800' :
-                      driver.actionType === 'collect' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>{driver.status}</span></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <h4 className="font-semibold text-gray-800 mb-2">📈 DATA SOURCE</h4>
-              <div className="space-y-2">
-                <div><strong>Orders Count:</strong> <span className="text-blue-600 font-mono">{orders?.length || 0}</span></div>
-                <div><strong>Time Filter:</strong> <span className="text-blue-600 font-mono">{timeFilter}</span></div>
-                <div><strong>Loading State:</strong> <span className="text-blue-600 font-mono">{isLoading ? 'Loading' : 'Ready'}</span></div>
-                <div><strong>Database Error:</strong> <span className="text-blue-600 font-mono">{dbError || 'None'}</span></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* 4 Top Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Total Earned */}
@@ -551,21 +558,17 @@ const Settlements: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        {driver.actionType === 'collect' && (
-                          <button className="bg-green-600 text-white px-3 py-1 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
-                            Collect
-                          </button>
-                        )}
-                        {driver.actionType === 'pay' && (
-                          <button className="bg-red-600 text-white px-3 py-1 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">
-                            Pay
-                          </button>
-                        )}
-                        {driver.actionType === 'settled' && (
-                          <button className="bg-gray-200 text-gray-600 px-3 py-1 rounded-lg text-sm font-medium" disabled>
-                            Settled
-                          </button>
-                        )}
+                        <button 
+                          onClick={() => openSettlementModal(driver)}
+                          disabled={driver.actionType === 'settled'}
+                          className={`px-4 py-2 rounded text-sm font-medium text-white ${
+                            driver.actionType === 'pay' ? 'bg-red-600 hover:bg-red-700' : 
+                            driver.actionType === 'collect' ? 'bg-green-600 hover:bg-green-700' : 
+                            'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          }`}
+                        >
+                          {driver.actionType === 'pay' ? 'Pay' : driver.actionType === 'collect' ? 'Collect' : 'Settled'}
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -582,6 +585,63 @@ const Settlements: React.FC = () => {
         </div>
       </div>
     </div>
+
+    {/* SETTLEMENT POPUP MODAL */}
+    {selectedDriver && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm px-4">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+          {/* Header */}
+          <div className={`px-6 py-4 border-b ${selectedDriver.actionType === 'pay' ? 'bg-red-50' : 'bg-green-50'}`}>
+            <h3 className="text-lg font-bold text-gray-900">
+              {selectedDriver.actionType === 'pay' ? 'Process Payment To' : 'Collect Payment From'}: {selectedDriver.name}
+            </h3>
+          </div>
+          
+          {/* Body */}
+          <div className="p-6">
+            <div className="flex justify-between mb-4 text-sm text-gray-600">
+              <span>Current Pending Balance:</span>
+              <span className={`font-bold ${selectedDriver.actionType === 'pay' ? 'text-red-600' : 'text-green-600'}`}>
+                ${selectedDriver.finalBalance.toFixed(2)}
+              </span>
+            </div>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Settlement Amount ($)</label>
+              <input 
+                type="number" 
+                step="0.01"
+                min="0"
+                value={settlementAmount}
+                onChange={(e) => setSettlementAmount(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-lg font-semibold"
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+          
+          {/* Footer */}
+          <div className="px-6 py-4 bg-gray-50 flex justify-end space-x-3 border-t">
+            <button 
+              onClick={closeSettlementModal}
+              disabled={isSettling}
+              className="px-4 py-2 rounded-lg text-gray-600 font-medium hover:bg-gray-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={handleProcessSettlement}
+              disabled={isSettling || !settlementAmount || parseFloat(settlementAmount) <= 0}
+              className={`px-6 py-2 rounded-lg text-white font-medium transition-colors flex items-center ${
+                selectedDriver.actionType === 'pay' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
+              } disabled:opacity-50`}
+            >
+              {isSettling ? 'Processing...' : `Confirm ${selectedDriver.actionType === 'pay' ? 'Pay' : 'Collect'}`}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   );
 };
 
