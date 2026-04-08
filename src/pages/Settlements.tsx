@@ -236,8 +236,9 @@ const Settlements: React.FC = () => {
     
     // Map over filteredOrders to calculate ledger
     filteredOrders.forEach((order, index) => {
-      const driverName = order.outsources?.name || order.outsource_name || 'Unknown Driver';
-      const clientName = order.clients?.name || order.client_name || 'Unknown Client';
+      // FIX: Use correct field names based on actual data structure
+      const driverName = order.outsource_name || 'Unknown Driver';
+      const clientName = order.client_name || 'Unknown Client';
       const paymentMethod = (order.payment_method || '').toUpperCase();
       const totalAmount = Number(order.total_order_amount) || 0;
       const itemCharge = Number(order.item_charge) || 0;
