@@ -417,6 +417,50 @@ const Settlements: React.FC = () => {
           </div>
         </div>
 
+        {/* LIVE DATA DISPLAY: Show exactly what's being displayed */}
+        <div className="bg-blue-50 border-2 border-blue-200 p-6 rounded-lg mb-6">
+          <h3 className="text-lg font-bold text-blue-800 mb-4">📊 CURRENT SETTLEMENTS DATA DISPLAY</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-sm">
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <h4 className="font-semibold text-gray-800 mb-2">🔍 SUMMARY CARDS</h4>
+              <div className="space-y-2">
+                <div><strong>Total Earned:</strong> <span className="text-green-600 font-mono">{formatCurrency(settlementData.totalEarned)}</span></div>
+                <div><strong>Cash Held by Outsource:</strong> <span className="text-blue-600 font-mono">{formatCurrency(settlementData.cashHeldByOutsource)}</span></div>
+                <div><strong>Cash Held by MS:</strong> <span className="text-purple-600 font-mono">{formatCurrency(settlementData.cashHeldByMS)}</span></div>
+                <div><strong>Final Balance:</strong> <span className="text-orange-600 font-mono">{formatCurrency(settlementData.finalBalance)}</span></div>
+              </div>
+            </div>
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <h4 className="font-semibold text-gray-800 mb-2">👥 DRIVER LEDGER</h4>
+              <div className="space-y-2">
+                <div><strong>Total Drivers:</strong> <span className="text-blue-600 font-mono">{settlementData.driverRows.length}</span></div>
+                {settlementData.driverRows.map((driver, index) => (
+                  <div key={index} className="ml-4 p-3 bg-gray-50 rounded border">
+                    <div><strong>Driver {index + 1}:</strong> <span className="text-gray-700">{driver.name}</span></div>
+                    <div><strong>Earned:</strong> <span className="text-green-600 font-mono">{formatCurrency(driver.earned)}</span></div>
+                    <div><strong>Cash Held:</strong> <span className="text-blue-600 font-mono">{formatCurrency(driver.cashHeldByOutsource)}</span></div>
+                    <div><strong>MS Holds:</strong> <span className="text-purple-600 font-mono">{formatCurrency(driver.cashHeldByMS)}</span></div>
+                    <div><strong>Balance:</strong> <span className="text-orange-600 font-mono">{formatCurrency(driver.finalBalance)}</span></div>
+                    <div><strong>Status:</strong> <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                      driver.actionType === 'settled' ? 'bg-gray-100 text-gray-800' :
+                      driver.actionType === 'collect' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>{driver.status}</span></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <h4 className="font-semibold text-gray-800 mb-2">📈 DATA SOURCE</h4>
+              <div className="space-y-2">
+                <div><strong>Orders Count:</strong> <span className="text-blue-600 font-mono">{orders?.length || 0}</span></div>
+                <div><strong>Time Filter:</strong> <span className="text-blue-600 font-mono">{timeFilter}</span></div>
+                <div><strong>Loading State:</strong> <span className="text-blue-600 font-mono">{isLoading ? 'Loading' : 'Ready'}</span></div>
+                <div><strong>Database Error:</strong> <span className="text-blue-600 font-mono">{dbError || 'None'}</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* 4 Top Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Total Earned */}
