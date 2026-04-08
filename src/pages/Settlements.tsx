@@ -55,6 +55,43 @@ const Settlements: React.FC = () => {
   const [dbError, setDbError] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<'week' | 'month' | 'year' | 'all'>('all');
 
+  // TEST: Hardcoded test data to bypass all data fetching
+  useEffect(() => {
+    console.log("🔍 [DEBUG] TEST: Using hardcoded data");
+    
+    // HARDCODED TEST DATA - bypass all database issues
+    const testData: Order[] = [
+      {
+        id: 'test-1',
+        outsource_name: 'Test Driver 1',
+        client_name: 'Test Client 1',
+        customer_name: 'Test Customer 1',
+        delivery_location: 'Test Location 1',
+        payment_method: 'COD',
+        total_order_amount: 1000,
+        item_charge: 200,
+        outsource_charge: 300,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'test-2',
+        outsource_name: 'Test Driver 2',
+        client_name: 'Test Client 2',
+        customer_name: 'Test Customer 2',
+        delivery_location: 'Test Location 2',
+        payment_method: 'ONLINE',
+        total_order_amount: 1500,
+        item_charge: 300,
+        outsource_charge: 400,
+        created_at: new Date().toISOString()
+      }
+    ];
+    
+    console.log("🔍 [DEBUG] Setting hardcoded test data:", testData);
+    setOrders(testData);
+    setIsLoading(false);
+  }, []);
+
   // Data Fetching with Error Guards
   useEffect(() => {
     const fetchData = async () => {
@@ -412,7 +449,32 @@ const Settlements: React.FC = () => {
     isLoading,
     dbError,
     ordersLength: orders?.length,
-    timeFilter
+    timeFilter,
+    ordersSample: orders?.slice(0, 2)
+  });
+  
+  // TEST: Show raw orders data
+  console.log("🔍 [DEBUG] Raw orders data:", orders);
+  console.log("🔍 [DEBUG] Raw orders type:", typeof orders);
+  console.log("🔍 [DEBUG] Raw orders is array:", Array.isArray(orders));
+  
+  // TEST: Show filtered orders data
+  console.log("🔍 [DEBUG] Filtered orders data:", filteredOrders);
+  console.log("🔍 [DEBUG] Filtered orders type:", typeof filteredOrders);
+  console.log("🔍 [DEBUG] Filtered orders is array:", Array.isArray(filteredOrders));
+  
+  // TEST: Show settlement data
+  console.log("🔍 [DEBUG] Settlement data:", settlementData);
+  console.log("🔍 [DEBUG] Settlement data type:", typeof settlementData);
+  
+  // TEST: Show formatCurrency function
+  console.log("🔍 [DEBUG] Testing formatCurrency:", {
+    input1: 100,
+    output1: formatCurrency(100),
+    input2: 0,
+    output2: formatCurrency(0),
+    input3: 1234.56,
+    output3: formatCurrency(1234.56)
   });
   
   // If dbError is true, return giant red error box
