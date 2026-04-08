@@ -55,134 +55,32 @@ const Settlements: React.FC = () => {
   const [dbError, setDbError] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<'week' | 'month' | 'year' | 'all'>('all');
 
-  // TEST: Hardcoded test data to bypass all data fetching
-  useEffect(() => {
-    console.log("🔍 [DEBUG] TEST: Using hardcoded data");
-    
-    // HARDCODED TEST DATA - bypass all database issues
-    const testData: Order[] = [
-      {
-        id: 'test-1',
-        outsource_name: 'Test Driver 1',
-        client_name: 'Test Client 1',
-        customer_name: 'Test Customer 1',
-        delivery_location: 'Test Location 1',
-        payment_method: 'COD',
-        total_order_amount: 1000,
-        item_charge: 200,
-        outsource_charge: 300,
-        created_at: new Date().toISOString()
-      },
-      {
-        id: 'test-2',
-        outsource_name: 'Test Driver 2',
-        client_name: 'Test Client 2',
-        customer_name: 'Test Customer 2',
-        delivery_location: 'Test Location 2',
-        payment_method: 'ONLINE',
-        total_order_amount: 1500,
-        item_charge: 300,
-        outsource_charge: 400,
-        created_at: new Date().toISOString()
-      }
-    ];
-    
-    console.log("🔍 [DEBUG] Setting hardcoded test data:", testData);
-    setOrders(testData);
-    setIsLoading(false);
-  }, []);
-
   // Data Fetching with Error Guards
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log("🔍 [DEBUG] Starting data fetch...");
         setIsLoading(true);
         setDbError(null);
 
-        // SIMPLIFIED TEST: Test basic connection first
-        console.log("🔍 [DEBUG] TEST 1: Basic connection test...");
-        const { data: testData, error: testError } = await supabase
-          .from('orders')
-          .select('count')
-          .single();
-
-        console.log("🔍 [DEBUG] TEST 1 Result:", { testData, testError });
-
-        if (testError) {
-          console.error("🔍 [DEBUG] Basic connection failed:", testError);
-          setDbError(`Basic connection test failed: ${testError.message || JSON.stringify(testError)}`);
-          setOrders([]);
-          return;
-        }
-
-        console.log("🔍 [DEBUG] Basic connection successful! Total orders:", testData?.count);
-
-        // SIMPLIFIED TEST: Test simple query without joins
-        console.log("🔍 [DEBUG] TEST 2: Simple query without joins...");
-        const { data: simpleData, error: simpleError } = await supabase
-          .from('orders')
-          .select('*')
-          .limit(5);
-
-        console.log("🔍 [DEBUG] TEST 2 Result:", { simpleData, simpleError });
-
-        if (simpleError) {
-          console.error("🔍 [DEBUG] Simple query failed:", simpleError);
-          setDbError(`Simple query failed: ${simpleError.message || JSON.stringify(simpleError)}`);
-          setOrders([]);
-          return;
-        }
-
-        console.log("🔍 [DEBUG] Simple query successful! Sample data:", simpleData);
-
-        // SIMPLIFIED TEST: Test with joins
-        console.log("🔍 [DEBUG] TEST 3: Query with joins...");
+        // Query relational tables to get names
         const { data, error } = await supabase
-          .from('orders')
-          .select('*, outsources(name), clients(name)')
-          .limit(5);
-
-        console.log("🔍 [DEBUG] TEST 3 Result:", { data, error });
-
-        if (error) {
-          console.error('🔍 [DEBUG] Query with joins failed:', error);
-          setDbError(`Query with joins failed: ${error.message || JSON.stringify(error)}`);
-          setOrders([]);
-          return;
-        }
-
-        console.log("🔍 [DEBUG] Query with joins successful! Sample data:", data);
-
-        // FULL QUERY: Get all data with joins
-        console.log("🔍 [DEBUG] TEST 4: Full query with all data...");
-        const { data: fullData, error: fullError } = await supabase
           .from('orders')
           .select('*, outsources(name), clients(name)');
 
-        console.log("🔍 [DEBUG] TEST 4 Result:", { 
-          fullData, 
-          fullError, 
-          dataType: typeof fullData, 
-          dataLength: fullData?.length 
-        });
-
-        if (fullError) {
-          console.error('🔍 [DEBUG] Full query failed:', fullError);
-          setDbError(`Full query failed: ${fullError.message || JSON.stringify(fullError)}`);
+        if (error) {
+          console.error('Supabase Error:', error);
+          setDbError(error.message || JSON.stringify(error));
           setOrders([]);
           return;
         }
 
         // Ensure setOrders only receives an array
-        console.log("🔍 [DEBUG] Setting orders state with:", fullData || []);
-        setOrders(fullData || []);
+        setOrders(data || []);
       } catch (error: any) {
-        console.error('🔍 [DEBUG] Fetch Error:', error);
+        console.error('Fetch Error:', error);
         setDbError(error.message || 'Failed to fetch data');
         setOrders([]);
       } finally {
-        console.log("🔍 [DEBUG] Setting loading to false");
         setIsLoading(false);
       }
     };
@@ -445,41 +343,8 @@ const Settlements: React.FC = () => {
 
   // UI Structure & Early Returns (CRITICAL)
   
-  console.log("🔍 [DEBUG] Main render - Current state:", {
-    isLoading,
-    dbError,
-    ordersLength: orders?.length,
-    timeFilter,
-    ordersSample: orders?.slice(0, 2)
-  });
-  
-  // TEST: Show raw orders data
-  console.log("🔍 [DEBUG] Raw orders data:", orders);
-  console.log("🔍 [DEBUG] Raw orders type:", typeof orders);
-  console.log("🔍 [DEBUG] Raw orders is array:", Array.isArray(orders));
-  
-  // TEST: Show filtered orders data
-  console.log("🔍 [DEBUG] Filtered orders data:", filteredOrders);
-  console.log("🔍 [DEBUG] Filtered orders type:", typeof filteredOrders);
-  console.log("🔍 [DEBUG] Filtered orders is array:", Array.isArray(filteredOrders));
-  
-  // TEST: Show settlement data
-  console.log("🔍 [DEBUG] Settlement data:", settlementData);
-  console.log("🔍 [DEBUG] Settlement data type:", typeof settlementData);
-  
-  // TEST: Show formatCurrency function
-  console.log("🔍 [DEBUG] Testing formatCurrency:", {
-    input1: 100,
-    output1: formatCurrency(100),
-    input2: 0,
-    output2: formatCurrency(0),
-    input3: 1234.56,
-    output3: formatCurrency(1234.56)
-  });
-  
   // If dbError is true, return giant red error box
   if (dbError) {
-    console.log("🔍 [DEBUG] Showing database error:", dbError);
     return (
       <div className="p-8">
         <div className="bg-red-100 border-l-4 border-red-600 text-red-900 p-6 rounded shadow-lg font-mono">
@@ -495,7 +360,6 @@ const Settlements: React.FC = () => {
 
   // If isLoading is true, return spinner
   if (isLoading) {
-    console.log("🔍 [DEBUG] Showing loading spinner");
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -505,8 +369,6 @@ const Settlements: React.FC = () => {
       </div>
     );
   }
-
-  console.log("🔍 [DEBUG] About to render main UI with settlementData:", settlementData);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -555,21 +417,6 @@ const Settlements: React.FC = () => {
           </div>
         </div>
 
-        {/* DEBUG: Show actual values on screen */}
-        <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6">
-          <h3 className="text-lg font-bold text-yellow-800 mb-2">🔍 DEBUG: Current Values</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div><strong>Orders Length:</strong> {orders?.length || 0}</div>
-            <div><strong>Filtered Orders:</strong> {settlementData.driverRows.length}</div>
-            <div><strong>Total Earned:</strong> {formatCurrency(settlementData.totalEarned)}</div>
-            <div><strong>Cash Held by Outsource:</strong> {formatCurrency(settlementData.cashHeldByOutsource)}</div>
-            <div><strong>Cash Held by MS:</strong> {formatCurrency(settlementData.cashHeldByMS)}</div>
-            <div><strong>Final Balance:</strong> {formatCurrency(settlementData.finalBalance)}</div>
-            <div><strong>Time Filter:</strong> {timeFilter}</div>
-            <div><strong>Loading:</strong> {isLoading ? 'Yes' : 'No'}</div>
-          </div>
-        </div>
-
         {/* 4 Top Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Total Earned */}
@@ -582,7 +429,6 @@ const Settlements: React.FC = () => {
             </div>
             <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.totalEarned)}</p>
             <p className="text-sm text-gray-500 mt-1">By Outsource Drivers</p>
-            <div className="text-xs text-blue-600 mt-2">DEBUG: {settlementData.totalEarned}</div>
           </div>
 
           {/* Cash Held by Outsource */}
@@ -595,7 +441,6 @@ const Settlements: React.FC = () => {
             </div>
             <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.cashHeldByOutsource)}</p>
             <p className="text-sm text-gray-500 mt-1">COD/COP Orders</p>
-            <div className="text-xs text-green-600 mt-2">DEBUG: {settlementData.cashHeldByOutsource}</div>
           </div>
 
           {/* Cash Held by MS */}
@@ -608,7 +453,6 @@ const Settlements: React.FC = () => {
             </div>
             <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.cashHeldByMS)}</p>
             <p className="text-sm text-gray-500 mt-1">Online Orders</p>
-            <div className="text-xs text-purple-600 mt-2">DEBUG: {settlementData.cashHeldByMS}</div>
           </div>
 
           {/* Final Balance */}
@@ -621,7 +465,6 @@ const Settlements: React.FC = () => {
             </div>
             <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.finalBalance)}</p>
             <p className="text-sm text-gray-500 mt-1">Settlement Amount</p>
-            <div className="text-xs text-orange-600 mt-2">DEBUG: {settlementData.finalBalance}</div>
           </div>
         </div>
 
@@ -649,26 +492,11 @@ const Settlements: React.FC = () => {
                 {settlementData.driverRows.length > 0 ? (
                   settlementData.driverRows.map((driver, index) => (
                     <tr key={index} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 font-medium text-gray-900">
-                        {driver.name}
-                        <div className="text-xs text-gray-500">DEBUG: {driver.name}</div>
-                      </td>
-                      <td className="px-6 py-4 text-green-600 font-medium">
-                        {formatCurrency(driver.earned)}
-                        <div className="text-xs text-gray-500">DEBUG: {driver.earned}</div>
-                      </td>
-                      <td className="px-6 py-4 text-blue-600 font-medium">
-                        {formatCurrency(driver.cashHeldByOutsource)}
-                        <div className="text-xs text-gray-500">DEBUG: {driver.cashHeldByOutsource}</div>
-                      </td>
-                      <td className="px-6 py-4 text-purple-600 font-medium">
-                        {formatCurrency(driver.cashHeldByMS)}
-                        <div className="text-xs text-gray-500">DEBUG: {driver.cashHeldByMS}</div>
-                      </td>
-                      <td className="px-6 py-4 font-bold text-gray-900">
-                        {formatCurrency(driver.finalBalance)}
-                        <div className="text-xs text-gray-500">DEBUG: {driver.finalBalance}</div>
-                      </td>
+                      <td className="px-6 py-4 font-medium text-gray-900">{driver.name}</td>
+                      <td className="px-6 py-4 text-green-600 font-medium">{formatCurrency(driver.earned)}</td>
+                      <td className="px-6 py-4 text-blue-600 font-medium">{formatCurrency(driver.cashHeldByOutsource)}</td>
+                      <td className="px-6 py-4 text-purple-600 font-medium">{formatCurrency(driver.cashHeldByMS)}</td>
+                      <td className="px-6 py-4 font-bold text-gray-900">{formatCurrency(driver.finalBalance)}</td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                           driver.actionType === 'settled' 
@@ -679,7 +507,6 @@ const Settlements: React.FC = () => {
                         }`}>
                           {driver.status}
                         </span>
-                        <div className="text-xs text-gray-500">DEBUG: {driver.actionType}</div>
                       </td>
                       <td className="px-6 py-4">
                         {driver.actionType === 'collect' && (
@@ -704,7 +531,6 @@ const Settlements: React.FC = () => {
                   <tr>
                     <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                       No settlement data available
-                      <div className="text-xs text-gray-500">DEBUG: settlementData.driverRows.length = {settlementData.driverRows.length}</div>
                     </td>
                   </tr>
                 )}
