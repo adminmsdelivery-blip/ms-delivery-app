@@ -171,19 +171,21 @@ const Settlements: React.FC = () => {
     
     // Map over filteredOrders to calculate ledger
     filteredOrders.forEach((order, index) => {
-      // FIX: Use correct field names based on actual data structure
-      const driverName = order.outsource_name || 'Unknown Driver';
-      const clientName = order.client_name || 'Unknown Client';
-      const paymentMethod = (order.payment_method || '').toUpperCase();
-      const totalAmount = Number(order.total_order_amount) || 0;
-      const itemCharge = Number(order.item_charge) || 0;
-      const outsourceCharge = Number(order.outsource_charge) || 0;
+      // MATCH EXACT DATABASE KEYS:
+      const driverName = order.outsources?.name || 'Unknown Driver';
+      const clientName = order.clients?.name || 'Unknown Client';
+      const pMethod = String(order.payment_mode || '').toUpperCase().trim(); 
+      const isDriverCash = pMethod.includes('COD') || pMethod.includes('COP') || pMethod.includes('CASH');
+      const isMSCash = pMethod.includes('ONLINE'); 
+      const totalAmount = Number(order.total_amount_received) || 0; 
+      const itemCharge = Number(order.item_charge) || 0; 
+      const outsourceCharge = Number(order.outsource_charges) || 0; 
       const deliveryCharge = Math.max(0, totalAmount - itemCharge);
 
       console.log(`🔍 [DEBUG] Order ${index + 1}:`, {
         driverName,
         clientName,
-        paymentMethod,
+        paymentMethod: pMethod,
         totalAmount,
         itemCharge,
         outsourceCharge,
@@ -191,16 +193,12 @@ const Settlements: React.FC = () => {
       });
 
       // Double-entry accounting logic
-      const isCOD = paymentMethod.includes('COD') || paymentMethod.includes('COP');
-      const isOnline = paymentMethod.includes('ONLINE');
-
-      // Calculate cash holdings
-      const driverHolds = isCOD ? deliveryCharge : 0;
-      const msHolds = isOnline ? deliveryCharge : 0;
+      const driverHolds = isDriverCash ? deliveryCharge : 0;
+      const msHolds = isMSCash ? deliveryCharge : 0;
 
       console.log(`🔍 [DEBUG] Cash flow for order ${index + 1}:`, {
-        isCOD,
-        isOnline,
+        isDriverCash,
+        isMSCash,
         driverHolds,
         msHolds
       });
@@ -286,17 +284,17 @@ const Settlements: React.FC = () => {
       const clientName = order.clients?.name || order.client_name || 'Unknown Client';
       const customerName = order.customer_name || 'N/A';
       const deliveryLocation = order.delivery_location || 'N/A';
-      const paymentMethod = order.payment_method || 'N/A';
-      const totalAmount = Number(order.total_order_amount) || 0;
+      const paymentMethod = order.payment_mode || 'N/A';
+      const totalAmount = Number(order.total_amount_received) || 0;
       const itemCharge = Number(order.item_charge) || 0;
-      const outsourceCharge = Number(order.outsource_charge) || 0;
+      const outsourceCharge = Number(order.outsource_charges) || 0;
       const deliveryCharge = Math.max(0, totalAmount - itemCharge);
 
       // MS Profit = (Total Amount - Item Charge) - Outsource Charge
       const msProfit = deliveryCharge - outsourceCharge;
 
       // Text Logic
-      const isCOD = paymentMethod.toUpperCase().includes('COD') || paymentMethod.toUpperCase().includes('COP');
+      const isCOD = paymentMethod.toUpperCase().includes('COD') || paymentMethod.toUpperCase().includes('COP') || paymentMethod.toUpperCase().includes('CASH');
       const isOnline = paymentMethod.toUpperCase().includes('ONLINE');
 
       let balanceAmount = '';
@@ -460,18 +458,6 @@ const Settlements: React.FC = () => {
             </div>
           </div>
         </div>
-
-        {/* RAW JSON TRUTH SERUM - DO NOT DELETE */}
-        {orders && orders.length > 0 && (
-          <div className="bg-slate-900 text-green-400 p-6 rounded-xl mb-8 overflow-auto border-2 border-red-500 shadow-2xl">
-            <h2 className="text-white font-bold mb-4 uppercase tracking-widest text-sm border-b border-slate-700 pb-2">
-              Raw Database Schema (Order #1)
-            </h2>
-            <pre className="text-xs font-mono whitespace-pre-wrap">
-              {JSON.stringify(orders[0], null, 2)}
-            </pre>
-          </div>
-        )}
 
         {/* 4 Top Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
