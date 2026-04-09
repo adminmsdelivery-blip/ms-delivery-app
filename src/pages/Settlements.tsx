@@ -26,6 +26,8 @@ interface Order {
   created_at: string;
   outsources?: { name: string };
   clients?: { name: string };
+  settlement_status?: string;
+  settlement_amount?: number;
 }
 
 // Driver Row Interface
@@ -139,6 +141,11 @@ const Settlements: React.FC = () => {
 
     // Map over filteredOrders to calculate ledger
     filteredOrders.forEach((order, index) => {
+      // Skip settled orders - they should not be included in calculations
+      if (order.settlement_status === 'Settled') {
+        return; // Skip this order
+      }
+
       // MATCH EXACT DATABASE KEYS:
       const driverName = order.outsources?.name || 'Unknown Driver';
       const clientName = order.clients?.name || 'Unknown Client';
@@ -240,10 +247,45 @@ const Settlements: React.FC = () => {
       if (error) throw error;
       */
       
-      alert(`Successfully processed ${selectedDriver.actionType} of $${amount} for ${selectedDriver.name}`);
+      // Update local state to reflect the settlement
+      // This will immediately update the UI without requiring a full page refresh
+      setOrders(prevOrders => {
+        if (!prevOrders || prevOrders.length === 0) return prevOrders;
+        
+        return prevOrders.map(order => {
+          // Check if this order belongs to the selected driver
+          const orderDriverName = order.outsources?.name || order.outsource_name || 'Unknown Driver';
+          
+          if (orderDriverName === selectedDriver.name) {
+            // For COD orders: Driver was holding MS cash, now MS pays driver
+            if (order.payment_mode?.toUpperCase().includes('COD') || 
+                order.payment_mode?.toUpperCase().includes('COP') || 
+                order.payment_mode?.toUpperCase().includes('CASH')) {
+              
+              // Mark as settled (MS paid the driver)
+              return {
+                ...order,
+                settlement_status: 'Settled',
+                settlement_amount: amount
+              };
+            }
+            
+            // For ONLINE orders: MS was holding driver cash, now driver pays MS
+            if (order.payment_mode?.toUpperCase().includes('ONLINE')) {
+              // Mark as settled (driver paid MS)
+              return {
+                ...order,
+                settlement_status: 'Settled',
+                settlement_amount: amount
+              };
+            }
+          }
+          
+          return order;
+        });
+      });
       
-      // Refresh the page or refetch the orders array here to update the dashboard
-      // fetchOrders(); 
+      alert(`Successfully processed ${selectedDriver.actionType} of $${amount} for ${selectedDriver.name}`);
       
       closeSettlementModal();
     } catch (error) {
