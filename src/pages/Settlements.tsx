@@ -19,10 +19,10 @@ interface Order {
   client_name?: string;
   customer_name?: string;
   delivery_location?: string;
-  payment_method: string;
-  total_order_amount: number;
+  payment_mode?: string;
+  total_amount_received?: number;
   item_charge?: number;
-  outsource_charge: number;
+  outsource_charges?: number;
   created_at: string;
   outsources?: { name: string };
   clients?: { name: string };
@@ -95,69 +95,34 @@ const Settlements: React.FC = () => {
 
   // Time Filter Logic (useMemo)
   const filteredOrders = useMemo(() => {
-    console.log("🔍 [DEBUG] Time filter running with orders:", orders);
-    console.log("🔍 [DEBUG] Orders length:", orders?.length);
-    console.log("🔍 [DEBUG] Time filter:", timeFilter);
+    if (!orders || orders.length === 0) return [];
     
-    if (!orders || orders.length === 0) {
-      console.log("🔍 [DEBUG] No orders, returning empty array");
-      return [];
-    }
-
-    // Ultra-forgiving with date parsing
     const now = new Date();
+    const filterStart = new Date();
     
-    const filtered = orders.filter(order => {
-      if (timeFilter === 'all') {
-        console.log("🔍 [DEBUG] All Time filter - returning all orders");
-        return true;
-      }
-      
-      if (!order.created_at) {
-        console.log("🔍 [DEBUG] Order has no created_at, including:", order.id);
-        return true;
-      }
-      
-      try {
-        const orderDate = new Date(order.created_at);
-        if (isNaN(orderDate.getTime())) {
-          console.log("🔍 [DEBUG] Invalid date, including order:", order.id);
-          return true;
-        }
-        
-        const diffTime = Math.abs(now.getTime() - orderDate.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        switch (timeFilter) {
-          case 'week': 
-            console.log("🔍 [DEBUG] Week filter - diffDays:", diffDays, "included:", diffDays <= 7);
-            return diffDays <= 7;
-          case 'month': 
-            console.log("🔍 [DEBUG] Month filter - diffDays:", diffDays, "included:", diffDays <= 30);
-            return diffDays <= 30;
-          case 'year': 
-            console.log("🔍 [DEBUG] Year filter - diffDays:", diffDays, "included:", diffDays <= 365);
-            return diffDays <= 365;
-          default: 
-            return true;
-        }
-      } catch (error) {
-        console.log("🔍 [DEBUG] Date parsing error, including order:", order.id, error);
-        return true; // Include orders with invalid dates
-      }
+    switch (timeFilter) {
+      case 'week':
+        filterStart.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        filterStart.setMonth(now.getMonth() - 1);
+        break;
+      case 'year':
+        filterStart.setFullYear(now.getFullYear() - 1);
+        break;
+      case 'all':
+        return orders;
+    }
+    
+    return orders.filter(order => {
+      const orderDate = new Date(order.created_at);
+      return orderDate >= filterStart && orderDate <= now;
     });
-    
-    console.log("🔍 [DEBUG] Filtered orders length:", filtered.length);
-    return filtered;
   }, [orders, timeFilter]);
 
   // Core Math & Aggregation (useMemo)
   const settlementData: SettlementData = useMemo(() => {
-    console.log("🔍 [DEBUG] Settlement calculation running with filteredOrders:", filteredOrders);
-    console.log("🔍 [DEBUG] Filtered orders length:", filteredOrders?.length);
-    
     if (!filteredOrders || filteredOrders.length === 0) {
-      console.log("🔍 [DEBUG] No filtered orders, returning empty settlement data");
       return {
         totalEarned: 0,
         cashHeldByOutsource: 0,
@@ -172,8 +137,6 @@ const Settlements: React.FC = () => {
     let cashHeldByOutsource = 0;
     let cashHeldByMS = 0;
 
-    console.log("🔍 [DEBUG] Processing orders for settlement...");
-    
     // Map over filteredOrders to calculate ledger
     filteredOrders.forEach((order, index) => {
       // MATCH EXACT DATABASE KEYS:
@@ -187,26 +150,9 @@ const Settlements: React.FC = () => {
       const outsourceCharge = Number(order.outsource_charges) || 0; 
       const deliveryCharge = Math.max(0, totalAmount - itemCharge);
 
-      console.log(`🔍 [DEBUG] Order ${index + 1}:`, {
-        driverName,
-        clientName,
-        paymentMethod: pMethod,
-        totalAmount,
-        itemCharge,
-        outsourceCharge,
-        deliveryCharge
-      });
-
       // Double-entry accounting logic
       const driverHolds = isDriverCash ? deliveryCharge : 0;
       const msHolds = isMSCash ? deliveryCharge : 0;
-
-      console.log(`🔍 [DEBUG] Cash flow for order ${index + 1}:`, {
-        isDriverCash,
-        isMSCash,
-        driverHolds,
-        msHolds
-      });
 
       // Update global totals
       totalEarned += outsourceCharge;
@@ -232,12 +178,6 @@ const Settlements: React.FC = () => {
       driver.cashHeldByMS += msHolds;
     });
 
-    console.log("🔍 [DEBUG] Global totals before final calculation:", {
-      totalEarned,
-      cashHeldByOutsource,
-      cashHeldByMS
-    });
-
     // Calculate final balances and status for each driver
     const driverRows = Array.from(driverMap.values()).map(driver => {
       const netBalance = driver.earned - driver.cashHeldByOutsource;
@@ -258,14 +198,6 @@ const Settlements: React.FC = () => {
     });
 
     const finalBalance = Math.abs(cashHeldByOutsource - totalEarned);
-
-    console.log("🔍 [DEBUG] Final settlement data:", {
-      totalEarned,
-      cashHeldByOutsource,
-      cashHeldByMS,
-      finalBalance,
-      driverRowsCount: driverRows.length
-    });
 
     return {
       totalEarned,
@@ -584,64 +516,64 @@ const Settlements: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
 
-    {/* SETTLEMENT POPUP MODAL */}
-    {selectedDriver && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm px-4">
-        <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
-          {/* Header */}
-          <div className={`px-6 py-4 border-b ${selectedDriver.actionType === 'pay' ? 'bg-red-50' : 'bg-green-50'}`}>
-            <h3 className="text-lg font-bold text-gray-900">
-              {selectedDriver.actionType === 'pay' ? 'Process Payment To' : 'Collect Payment From'}: {selectedDriver.name}
-            </h3>
-          </div>
-          
-          {/* Body */}
-          <div className="p-6">
-            <div className="flex justify-between mb-4 text-sm text-gray-600">
-              <span>Current Pending Balance:</span>
-              <span className={`font-bold ${selectedDriver.actionType === 'pay' ? 'text-red-600' : 'text-green-600'}`}>
-                ${selectedDriver.finalBalance.toFixed(2)}
-              </span>
+      {/* SETTLEMENT POPUP MODAL */}
+      {selectedDriver && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            {/* Header */}
+            <div className={`px-6 py-4 border-b ${selectedDriver.actionType === 'pay' ? 'bg-red-50' : 'bg-green-50'}`}>
+              <h3 className="text-lg font-bold text-gray-900">
+                {selectedDriver.actionType === 'pay' ? 'Process Payment To' : 'Collect Payment From'}: {selectedDriver.name}
+              </h3>
             </div>
             
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Settlement Amount ($)</label>
-              <input 
-                type="number" 
-                step="0.01"
-                min="0"
-                value={settlementAmount}
-                onChange={(e) => setSettlementAmount(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-lg font-semibold"
-                placeholder="0.00"
-              />
+            {/* Body */}
+            <div className="p-6">
+              <div className="flex justify-between mb-4 text-sm text-gray-600">
+                <span>Current Pending Balance:</span>
+                <span className={`font-bold ${selectedDriver.actionType === 'pay' ? 'text-red-600' : 'text-green-600'}`}>
+                  ${selectedDriver.finalBalance.toFixed(2)}
+                </span>
+              </div>
+              
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Settlement Amount ($)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  min="0"
+                  value={settlementAmount}
+                  onChange={(e) => setSettlementAmount(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-lg font-semibold"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+            
+            {/* Footer */}
+            <div className="px-6 py-4 bg-gray-50 flex justify-end space-x-3 border-t">
+              <button 
+                onClick={closeSettlementModal}
+                disabled={isSettling}
+                className="px-4 py-2 rounded-lg text-gray-600 font-medium hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleProcessSettlement}
+                disabled={isSettling || !settlementAmount || parseFloat(settlementAmount) <= 0}
+                className={`px-6 py-2 rounded-lg text-white font-medium transition-colors flex items-center ${
+                  selectedDriver.actionType === 'pay' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
+                } disabled:opacity-50`}
+              >
+                {isSettling ? 'Processing...' : `Confirm ${selectedDriver.actionType === 'pay' ? 'Pay' : 'Collect'}`}
+              </button>
             </div>
           </div>
-          
-          {/* Footer */}
-          <div className="px-6 py-4 bg-gray-50 flex justify-end space-x-3 border-t">
-            <button 
-              onClick={closeSettlementModal}
-              disabled={isSettling}
-              className="px-4 py-2 rounded-lg text-gray-600 font-medium hover:bg-gray-200 transition-colors"
-            >
-              Cancel
-            </button>
-            <button 
-              onClick={handleProcessSettlement}
-              disabled={isSettling || !settlementAmount || parseFloat(settlementAmount) <= 0}
-              className={`px-6 py-2 rounded-lg text-white font-medium transition-colors flex items-center ${
-                selectedDriver.actionType === 'pay' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
-              } disabled:opacity-50`}
-            >
-              {isSettling ? 'Processing...' : `Confirm ${selectedDriver.actionType === 'pay' ? 'Pay' : 'Collect'}`}
-            </button>
-          </div>
         </div>
-      </div>
-    )}
+      )}
+    </div>
   );
 };
 
