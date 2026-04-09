@@ -136,7 +136,7 @@ const Settlements: React.FC = () => {
       };
     }
 
-    const driverMap = new Map<string, DriverRow>();
+    const driverMap: Record<string, DriverRow> = {};
     const settledAmountsMap = new Map<string, number>(); // Track settled amounts per driver
     let globalEarned = 0;
     let globalDriverCash = 0;
@@ -144,13 +144,13 @@ const Settlements: React.FC = () => {
 
     // First pass: Calculate all amounts and track settled amounts
     filteredOrders.forEach((order, index) => {
-      // 1. Safe Parsing
+      // 1. STRICT DATABASE KEYS (Do not alter these names)
       const driverName = order.outsources?.name || order.outsource_name || 'Unknown Driver';
       const pMethod = String(order.payment_mode || '').toUpperCase().trim();
       const isDriverCash = pMethod.includes('COD') || pMethod.includes('COP') || pMethod.includes('CASH');
       const isMSCash = pMethod.includes('ONLINE'); 
       
-      // Check if order has been settled in database
+      // Ensure we check for actual settlement status text
       const isSettled = String(order.settlement_status || '').toUpperCase() === 'SETTLED';
       
       const totalAmount = Number(order.total_amount_received) || 0;
@@ -184,26 +184,26 @@ const Settlements: React.FC = () => {
       globalMSCash += (msCollected + driverGivesToMS - msGivesToDriver); 
 
       // 5. Per-Driver Grouping
-      if (!driverMap.has(driverName)) {
-        driverMap.set(driverName, {
-          name: driverName,
-          earned: 0,
-          driverCash: 0,
+      if (!driverMap[driverName]) {
+        driverMap[driverName] = { 
+          name: driverName, 
+          earned: 0, 
+          driverCash: 0, 
           msCash: 0,
           cashHeldByOutsource: 0,
           cashHeldByMS: 0,
           finalBalance: 0,
           status: 'Settled',
           actionType: 'settled'
-        });
+        };
       }
-      driverMap.get(driverName)!.earned += outsourceCharge;
-      driverMap.get(driverName)!.driverCash += (driverCollected + msGivesToDriver - driverGivesToMS);
-      driverMap.get(driverName)!.msCash += (msCollected + driverGivesToMS - msGivesToDriver);
+      driverMap[driverName].earned += outsourceCharge;
+      driverMap[driverName].driverCash += (driverCollected + msGivesToDriver - driverGivesToMS);
+      driverMap[driverName].msCash += (msCollected + driverGivesToMS - msGivesToDriver);
     });
 
     // Calculate final balances and status for each driver
-    const driverRows = Array.from(driverMap.values()).map(driver => {
+    const driverRows = Object.values(driverMap).map(driver => {
       // Calculate net balance based on cash positions
       const netBalance = driver.earned - driver.cashHeldByOutsource;
       
