@@ -135,17 +135,13 @@ const Settlements: React.FC = () => {
     }
 
     const driverMap = new Map<string, DriverRow>();
+    const settledAmountsMap = new Map<string, number>(); // Track settled amounts per driver
     let totalEarned = 0;
     let cashHeldByOutsource = 0;
     let cashHeldByMS = 0;
 
-    // Map over filteredOrders to calculate ledger
+    // First pass: Calculate all amounts and track settled amounts
     filteredOrders.forEach((order, index) => {
-      // Skip settled orders - they should not be included in calculations
-      if (order.settlement_status === 'Settled') {
-        return; // Skip this order
-      }
-
       // MATCH EXACT DATABASE KEYS:
       const driverName = order.outsources?.name || 'Unknown Driver';
       const clientName = order.clients?.name || 'Unknown Client';
@@ -157,16 +153,22 @@ const Settlements: React.FC = () => {
       const outsourceCharge = Number(order.outsource_charges) || 0; 
       const deliveryCharge = Math.max(0, totalAmount - itemCharge);
 
+      // Track settled amounts for this driver
+      if (order.settlement_status === 'Settled' && order.settlement_amount) {
+        const currentSettled = settledAmountsMap.get(driverName) || 0;
+        settledAmountsMap.set(driverName, currentSettled + order.settlement_amount);
+      }
+
       // Double-entry accounting logic
       const driverHolds = isDriverCash ? deliveryCharge : 0;
       const msHolds = isMSCash ? deliveryCharge : 0;
 
-      // Update global totals
+      // Update global totals (include all orders, settled or not)
       totalEarned += outsourceCharge;
       cashHeldByOutsource += driverHolds;
       cashHeldByMS += msHolds;
 
-      // Update driver ledger
+      // Update driver ledger (include all orders, settled or not)
       if (!driverMap.has(driverName)) {
         driverMap.set(driverName, {
           name: driverName,
@@ -188,19 +190,29 @@ const Settlements: React.FC = () => {
     // Calculate final balances and status for each driver
     const driverRows = Array.from(driverMap.values()).map(driver => {
       const netBalance = driver.earned - driver.cashHeldByOutsource;
+      const settledAmount = settledAmountsMap.get(driver.name) || 0;
       
-      if (netBalance > 0) {
-        driver.status = 'Pay';
-        driver.actionType = 'pay';
-      } else if (netBalance < 0) {
-        driver.status = 'Collect';
-        driver.actionType = 'collect';
+      // Deduct settled amount from the net balance
+      const remainingBalance = Math.abs(netBalance) - settledAmount;
+      
+      if (remainingBalance > 0.01) { // Use small threshold to avoid floating point issues
+        // Determine action type based on original net balance (before settlement)
+        if (netBalance > 0) {
+          driver.status = 'Pay';
+          driver.actionType = 'pay';
+        } else if (netBalance < 0) {
+          driver.status = 'Collect';
+          driver.actionType = 'collect';
+        } else {
+          driver.status = 'Settled';
+          driver.actionType = 'settled';
+        }
       } else {
         driver.status = 'Settled';
         driver.actionType = 'settled';
       }
 
-      driver.finalBalance = Math.abs(netBalance);
+      driver.finalBalance = Math.max(0, remainingBalance);
       return driver;
     });
 
@@ -235,15 +247,19 @@ const Settlements: React.FC = () => {
       const amount = parseFloat(settlementAmount);
       
       // TODO: Update your database here. 
-      // Approach A: Mark all specific orders for this driver as "Settled"
+      // Approach A: Mark specific orders for this driver as "Settled" with amount
       // Approach B: Insert a new row into a `settlement_ledger` table
       
       /* Example Supabase Call:
       const { error } = await supabase
         .from('orders')
-        .update({ settlement_status: 'Settled' })
+        .update({ 
+          settlement_status: 'Settled',
+          settlement_amount: amount 
+        })
         .eq('outsource_id', selectedDriver.id) // Ensure driver ID is available
-        .eq('settlement_status', 'Pending');
+        .eq('settlement_status', 'Pending')
+        .limit(1); // Process one order at a time for partial settlements
       if (error) throw error;
       */
       
@@ -252,32 +268,45 @@ const Settlements: React.FC = () => {
       setOrders(prevOrders => {
         if (!prevOrders || prevOrders.length === 0) return prevOrders;
         
+        let remainingAmountToSettle = amount;
+        
         return prevOrders.map(order => {
           // Check if this order belongs to the selected driver
           const orderDriverName = order.outsources?.name || order.outsource_name || 'Unknown Driver';
           
-          if (orderDriverName === selectedDriver.name) {
-            // For COD orders: Driver was holding MS cash, now MS pays driver
-            if (order.payment_mode?.toUpperCase().includes('COD') || 
-                order.payment_mode?.toUpperCase().includes('COP') || 
-                order.payment_mode?.toUpperCase().includes('CASH')) {
+          if (orderDriverName === selectedDriver.name && remainingAmountToSettle > 0) {
+            // Only process orders that haven't been settled yet
+            if (!order.settlement_status || order.settlement_status !== 'Settled') {
+              const totalAmount = Number(order.total_amount_received) || 0;
+              const itemCharge = Number(order.item_charge) || 0;
+              const deliveryCharge = totalAmount - itemCharge;
               
-              // Mark as settled (MS paid the driver)
-              return {
-                ...order,
-                settlement_status: 'Settled',
-                settlement_amount: amount
-              };
-            }
-            
-            // For ONLINE orders: MS was holding driver cash, now driver pays MS
-            if (order.payment_mode?.toUpperCase().includes('ONLINE')) {
-              // Mark as settled (driver paid MS)
-              return {
-                ...order,
-                settlement_status: 'Settled',
-                settlement_amount: amount
-              };
+              // For COD orders: Driver was holding MS cash, now MS pays driver
+              if (order.payment_mode?.toUpperCase().includes('COD') || 
+                  order.payment_mode?.toUpperCase().includes('COP') || 
+                  order.payment_mode?.toUpperCase().includes('CASH')) {
+                
+                // Calculate how much of this order we can settle
+                const settleAmount = Math.min(remainingAmountToSettle, deliveryCharge);
+                
+                return {
+                  ...order,
+                  settlement_status: 'Settled',
+                  settlement_amount: settleAmount
+                };
+              }
+              
+              // For ONLINE orders: MS was holding driver cash, now driver pays MS
+              if (order.payment_mode?.toUpperCase().includes('ONLINE')) {
+                // Calculate how much of this order we can settle
+                const settleAmount = Math.min(remainingAmountToSettle, deliveryCharge);
+                
+                return {
+                  ...order,
+                  settlement_status: 'Settled',
+                  settlement_amount: settleAmount
+                };
+              }
             }
           }
           
