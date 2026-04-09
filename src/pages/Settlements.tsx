@@ -34,6 +34,8 @@ interface Order {
 interface DriverRow {
   name: string;
   earned: number;
+  driverCash: number;
+  msCash: number;
   cashHeldByOutsource: number;
   cashHeldByMS: number;
   finalBalance: number;
@@ -136,43 +138,58 @@ const Settlements: React.FC = () => {
 
     const driverMap = new Map<string, DriverRow>();
     const settledAmountsMap = new Map<string, number>(); // Track settled amounts per driver
-    let totalEarned = 0;
-    let cashHeldByOutsource = 0;
-    let cashHeldByMS = 0;
+    let globalEarned = 0;
+    let globalDriverCash = 0;
+    let globalMSCash = 0;
 
     // First pass: Calculate all amounts and track settled amounts
     filteredOrders.forEach((order, index) => {
-      // MATCH EXACT DATABASE KEYS:
-      const driverName = order.outsources?.name || 'Unknown Driver';
-      const clientName = order.clients?.name || 'Unknown Client';
-      const pMethod = String(order.payment_mode || '').toUpperCase().trim(); 
+      // 1. Safe Parsing
+      const driverName = order.outsources?.name || order.outsource_name || 'Unknown Driver';
+      const pMethod = String(order.payment_mode || '').toUpperCase().trim();
       const isDriverCash = pMethod.includes('COD') || pMethod.includes('COP') || pMethod.includes('CASH');
       const isMSCash = pMethod.includes('ONLINE'); 
-      const totalAmount = Number(order.total_amount_received) || 0; 
-      const itemCharge = Number(order.item_charge) || 0; 
-      const outsourceCharge = Number(order.outsource_charges) || 0; 
+      
+      // Check if order has been settled in database
+      const isSettled = String(order.settlement_status || '').toUpperCase() === 'SETTLED';
+      
+      const totalAmount = Number(order.total_amount_received) || 0;
+      const itemCharge = Number(order.item_charge) || 0;
+      const outsourceCharge = Number(order.outsource_charges) || 0;
+      
+      // 2. Base Order Cash
       const deliveryCharge = Math.max(0, totalAmount - itemCharge);
+      const driverCollected = isDriverCash ? deliveryCharge : 0;
+      const msCollected = isMSCash ? deliveryCharge : 0;
 
-      // Track settled amounts for this driver
-      if (order.settlement_status === 'Settled' && order.settlement_amount) {
-        const currentSettled = settledAmountsMap.get(driverName) || 0;
-        settledAmountsMap.set(driverName, currentSettled + order.settlement_amount);
+      // 3. --- THE CASH TRANSFER ENGINE ---
+      let driverGivesToMS = 0;
+      let msGivesToDriver = 0;
+
+      if (isSettled) {
+        if (isDriverCash) {
+          // Driver settles by handing MS the remaining delivery profit
+          driverGivesToMS = Math.max(0, deliveryCharge - outsourceCharge);
+        } else if (isMSCash) {
+          // MS settles by handing driver their fee
+          msGivesToDriver = outsourceCharge;
+        }
       }
 
-      // Double-entry accounting logic
-      const driverHolds = isDriverCash ? deliveryCharge : 0;
-      const msHolds = isMSCash ? deliveryCharge : 0;
+      // 4. Global Totals (Live Cash Drawers)
+      globalEarned += outsourceCharge; 
+      // Driver drawer: Base collected + payments received - collections paid
+      globalDriverCash += (driverCollected + msGivesToDriver - driverGivesToMS); 
+      // MS drawer: Base collected + collections received - payments paid
+      globalMSCash += (msCollected + driverGivesToMS - msGivesToDriver); 
 
-      // Update global totals (include all orders, settled or not)
-      totalEarned += outsourceCharge;
-      cashHeldByOutsource += driverHolds;
-      cashHeldByMS += msHolds;
-
-      // Update driver ledger (include all orders, settled or not)
+      // 5. Per-Driver Grouping
       if (!driverMap.has(driverName)) {
         driverMap.set(driverName, {
           name: driverName,
           earned: 0,
+          driverCash: 0,
+          msCash: 0,
           cashHeldByOutsource: 0,
           cashHeldByMS: 0,
           finalBalance: 0,
@@ -180,48 +197,40 @@ const Settlements: React.FC = () => {
           actionType: 'settled'
         });
       }
-
-      const driver = driverMap.get(driverName)!;
-      driver.earned += outsourceCharge;
-      driver.cashHeldByOutsource += driverHolds;
-      driver.cashHeldByMS += msHolds;
+      driverMap.get(driverName)!.earned += outsourceCharge;
+      driverMap.get(driverName)!.driverCash += (driverCollected + msGivesToDriver - driverGivesToMS);
+      driverMap.get(driverName)!.msCash += (msCollected + driverGivesToMS - msGivesToDriver);
     });
 
     // Calculate final balances and status for each driver
     const driverRows = Array.from(driverMap.values()).map(driver => {
+      // Calculate net balance based on cash positions
       const netBalance = driver.earned - driver.cashHeldByOutsource;
-      const settledAmount = settledAmountsMap.get(driver.name) || 0;
       
-      // Deduct settled amount from the net balance
-      const remainingBalance = Math.abs(netBalance) - settledAmount;
+      // Final balance is the net amount that needs to be settled
+      // Positive = MS owes driver, Negative = Driver owes MS
+      driver.finalBalance = Math.abs(netBalance);
       
-      if (remainingBalance > 0.01) { // Use small threshold to avoid floating point issues
-        // Determine action type based on original net balance (before settlement)
-        if (netBalance > 0) {
-          driver.status = 'Pay';
-          driver.actionType = 'pay';
-        } else if (netBalance < 0) {
-          driver.status = 'Collect';
-          driver.actionType = 'collect';
-        } else {
-          driver.status = 'Settled';
-          driver.actionType = 'settled';
-        }
+      if (netBalance > 0.01) { // Use small threshold to avoid floating point issues
+        driver.status = 'Pay';
+        driver.actionType = 'pay';
+      } else if (netBalance < -0.01) {
+        driver.status = 'Collect';
+        driver.actionType = 'collect';
       } else {
         driver.status = 'Settled';
         driver.actionType = 'settled';
       }
 
-      driver.finalBalance = Math.max(0, remainingBalance);
       return driver;
     });
 
-    const finalBalance = Math.abs(cashHeldByOutsource - totalEarned);
+    const finalBalance = Math.abs(globalMSCash - globalEarned);
 
     return {
-      totalEarned,
-      cashHeldByOutsource,
-      cashHeldByMS,
+      totalEarned: globalEarned,
+      cashHeldByOutsource: globalDriverCash,
+      cashHeldByMS: globalMSCash,
       finalBalance,
       driverRows
     };
