@@ -3,12 +3,10 @@ import {
   TrendingUp, 
   DollarSign, 
   Package, 
-  Users, 
   ArrowUpRight,
   ChevronRight,
   Calendar,
-  BarChart3,
-  Wallet
+  BarChart3
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
@@ -343,20 +341,6 @@ const Dashboard: React.FC = () => {
       value: stats.totalOrders.toLocaleString(), 
       icon: Package, 
       color: 'from-warning-500 to-warning-600',
-      isPositive: true
-    },
-    { 
-      title: 'Cash Held by Outsource', 
-      value: formatCurrency(stats.cashHeldByOutsource), 
-      icon: Wallet, 
-      color: 'from-error-500 to-error-600',
-      isPositive: stats.cashHeldByOutsource >= 0
-    },
-    { 
-      title: 'Active Clients', 
-      value: stats.activeClients.toLocaleString(), 
-      icon: Users, 
-      color: 'from-secondary-500 to-secondary-600',
       isPositive: true
     }
   ];
