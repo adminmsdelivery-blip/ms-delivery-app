@@ -182,7 +182,8 @@ const Settlements: React.FC = () => {
           paidCollectedAmount: 0,
           totalPaidSoFar: 0,
           isSettled: false,
-          status: 'Settled'
+          statusText: "Settled",
+          status: 'Pay to Outsource' | 'Collect from Outsource' | 'Settled' | 'Collected' | 'Paid to Outsource' | 'Partial Paid' | 'Partial Collected'
         };
       }
 
@@ -205,33 +206,53 @@ const Settlements: React.FC = () => {
       const amountPaid = Number(driver.totalPaidSoFar) || 0;
       const remainingBalance = Math.max(0, initialDebt - amountPaid);
 
-      // Bulletproof zero check to avoid floating point errors
-      const isSettled = remainingBalance <= 0.01; // Treat anything less than a penny as settled
+      // Bulletproof zero check with epsilon threshold for floating point precision
+      const epsilon = 0.001; // One-tenth of a cent
+      const isSettled = Math.abs(remainingBalance) < epsilon; // Use absolute value for safety
 
       // 2. The Dynamic Cash Shift
       let finalDriverCash = initialDriverCash;
       let finalMsCash = initialMsCash;
       let statusText = "";
+
       if (initialDriverCash > driverEarned) {
         // Driver owed MS -> Driver paid MS
         finalDriverCash -= amountPaid;
         finalMsCash += amountPaid;
 
-        if (isSettled && amountPaid > 0) statusText = "Collected from Outsource";
-        else if (amountPaid > 0) statusText = "Partial Collected";
-        else statusText = "Collect from Outsource";
+        if (isSettled && amountPaid > 0) {
+          (driver as any).statusText = "Collected from Outsource";
+        } else if (amountPaid > 0) {
+          (driver as any).statusText = "Partial Collected";
+        } else {
+          (driver as any).statusText = "Collect from Outsource";
+        }
 
       } else if (driverEarned > initialDriverCash) {
         // MS owed Driver -> MS paid Driver
         finalDriverCash += amountPaid;
         finalMsCash -= amountPaid;
 
-        if (isSettled && amountPaid > 0) statusText = "Paid to Outsource";
-        else if (amountPaid > 0) statusText = "Partial Paid";
-        else statusText = "Pay to Outsource";
+        if (isSettled && amountPaid > 0) {
+          (driver as any).statusText = "Paid to Outsource";
+        } else if (amountPaid > 0) {
+          (driver as any).statusText = "Partial Paid";
+        } else {
+          (driver as any).statusText = "Pay to Outsource";
+        }
         
       } else {
-        statusText = "Settled"; // Started at 0 debt
+        (driver as any).statusText = "Settled"; // Started at 0 debt
+      }
+
+      // 3. Formatting PAID/COLLECTED Column
+      let displayAmount = "-";
+      if (isSettled) {
+        displayAmount = "-"; 
+      } else if (amountPaid > 0) {
+        displayAmount = `$${amountPaid.toFixed(2)}`; // Show partial amount paid so far
+      } else {
+        displayAmount = "None";
       }
 
       return {
@@ -242,7 +263,7 @@ const Settlements: React.FC = () => {
         actualEarningMS: msEarned,
         settlementAmount: remainingBalance,
         paidCollectedAmount: amountPaid,
-        status: statusText as any,
+        statusText: statusText as any,
         isSettled: isSettled
       };
     });
