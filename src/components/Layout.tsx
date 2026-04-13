@@ -76,7 +76,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-neutral-50 to-white">
+    <div className="flex h-screen w-full bg-gray-50 flex-col md:flex-row overflow-hidden">
       {/* Mobile Header */}
       <header className="md:hidden bg-white/95 backdrop-blur-lg border-b border-neutral-200 px-4 py-3 flex items-center justify-between sticky top-0 z-50 shadow-sm animate-slide-in">
         <div className="flex items-center gap-3">
@@ -124,7 +124,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       )}
 
       {/* Sidebar - Fixed on desktop, hidden on mobile */}
-      <aside className="hidden md:flex flex-col w-80 fixed inset-y-0 left-0 z-50 bg-white border-r border-neutral-200 shadow-xl">
+      <aside className="hidden md:flex md:w-64 md:flex-shrink-0 bg-white border-r border-neutral-200 overflow-y-auto">
         <div className="h-full flex flex-col">
           <div className="p-6 hidden md:flex items-center gap-4">
             <div 
@@ -304,7 +304,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </motion.aside>
 
       {/* Main Content - Takes up remaining space, adds left margin ONLY on desktop */}
-      <main className="flex-1 w-full md:ml-80">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
         <div className="p-4 md:p-8">
           {children}
         </div>
