@@ -274,7 +274,7 @@ const Settlements: React.FC = () => {
   }, [filteredOrders]);
 
   // Hard console log for debugging table data
-  console.log("CURRENT TABLE DATA:", driverRows);
+  console.log("CURRENT TABLE DATA:", settlementData.driverRows);
 
   // Modal Handlers
   const openSettlementModal = (driver: OutsourceDriver) => {
