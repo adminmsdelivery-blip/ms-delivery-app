@@ -292,56 +292,70 @@ const Settlements: React.FC = () => {
     setIsSettling(true);
     
     try {
-      const amount = parseFloat(settlementAmount);
+      const paymentAmount = parseFloat(settlementAmount);
       
-      // TODO: Update your database here
-      /* Example Supabase Call:
-      const { error } = await supabase
+      // 1. Fetch all pending orders for this specific driver
+      const { data: pendingOrders, error: fetchError } = await supabase
         .from('orders')
-        .update({ 
-          settlement_status: 'Settled',
-          settlement_amount: amount 
-        })
-        .eq('outsource_id', selectedDriver.id)
-        .eq('settlement_status', 'Pending')
-        .limit(1);
-      if (error) throw error;
-      */
-      
-      // Update local state to reflect settlement
-      setOrders(prevOrders => {
-        if (!prevOrders || prevOrders.length === 0) return prevOrders;
+        .select('*')
+        // Ensure you use correct column name for your driver
+        .or(`outsource_name.eq."${selectedDriver.name}",outsources.name.eq."${selectedDriver.name}"`)
+        .neq('settlement_status', 'Settled')
+        .order('created_at', { ascending: true });
+
+      if (fetchError) throw fetchError;
+      if (!pendingOrders || pendingOrders.length === 0) return;
+
+      let remainingPayment = paymentAmount;
+
+      // 2. Distribute payment across their pending orders
+      for (const order of pendingOrders) {
+        if (remainingPayment <= 0) break;
+
+        // Calculate what this specific order needs to be settled
+        const deliveryCharge = Number(order.total_amount_received || 0) - Number(order.item_charge || 0);
+        const msProfit = deliveryCharge - Number(order.outsource_charges || 0);
         
-        let remainingAmountToSettle = amount;
+        const pMethod = String(order.payment_mode || '').toUpperCase();
+        const isDriverCash = pMethod.includes('COD') || pMethod.includes('COP') || pMethod.includes('CASH');
         
-        return prevOrders.map(order => {
-          const orderDriverName = order.outsources?.name || order.outsource_name || 'Unknown Driver';
+        // How much debt is attached to this specific order?
+        let orderDebt = 0;
+        if (isDriverCash) orderDebt = msProfit; // Driver owes MS
+        else orderDebt = Number(order.outsource_charges || 0); // MS owes Driver
+
+        const alreadyPaidOnOrder = Number(order.amount_paid || 0);
+        const unpaidOnOrder = Math.max(0, orderDebt - alreadyPaidOnOrder);
+
+        if (unpaidOnOrder > 0) {
+          const paymentToApply = Math.min(remainingPayment, unpaidOnOrder);
+          const newTotalPaid = alreadyPaidOnOrder + paymentToApply;
           
-          if (orderDriverName === selectedDriver.name && remainingAmountToSettle > 0) {
-            const totalAmount = Number(order.total_amount_received) || 0;
-            const itemCharge = Number(order.item_charge) || 0;
-            const deliveryCharge = totalAmount - itemCharge;
-            const settleAmount = Math.min(remainingAmountToSettle, deliveryCharge);
-            
-            remainingAmountToSettle -= settleAmount;
-            
-            return {
-              ...order,
-              settlement_status: 'Settled',
-              settlement_amount: settleAmount
-            };
-          }
-          
-          return order;
-        });
-      });
-      
-      alert(`Successfully processed settlement of $${amount} for ${selectedDriver.name}`);
-      
+          // If order is now fully paid off, mark it Settled
+          const newStatus = (newTotalPaid >= orderDebt) ? 'Settled' : order.settlement_status;
+
+          // 3. Update specific order in Supabase
+          const { error: updateError } = await supabase
+            .from('orders')
+            .update({ 
+              amount_paid: newTotalPaid,
+              settlement_status: newStatus 
+            })
+            .eq('id', order.id);
+
+          if (updateError) throw updateError;
+
+          remainingPayment -= paymentToApply;
+        }
+      }
+
+      alert("Payment saved successfully!");
       closeSettlementModal();
+      // trigger refetch of table data so UI updates
+      
     } catch (error) {
       console.error("Settlement failed:", error);
-      alert("Failed to process settlement.");
+      alert("Failed to save payment.");
     } finally {
       setIsSettling(false);
     }
