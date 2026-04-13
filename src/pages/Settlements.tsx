@@ -39,7 +39,8 @@ interface OutsourceDriver {
   actualEarningMS: number;
   settlementAmount: number;
   paidCollectedAmount: number;
-  status: 'Pay to Outsource' | 'Collect from Outsource' | 'Settled';
+  amount_paid_so_far?: number; // Track partial payments
+  status: 'Pay to Outsource' | 'Collect from Outsource' | 'Settled' | 'PAID' | 'Partial Paid';
 }
 
 // Settlement Data Interface
@@ -177,6 +178,7 @@ const Settlements: React.FC = () => {
           actualEarningMS: 0,
           settlementAmount: 0,
           paidCollectedAmount: 0,
+          amount_paid_so_far: 0,
           status: 'Settled'
         };
       }
@@ -190,17 +192,44 @@ const Settlements: React.FC = () => {
 
     // 5. Calculate Settlement Status and Amounts
     const drivers = Object.values(driverMap).map(driver => {
-      const netBalance = driver.actualEarning - driver.cashHeldByOutsource;
+      // Calculate initial debt and remaining balance
+      const initialDebt = Math.abs(driver.actualEarning - driver.cashHeldByOutsource);
+      const amountAlreadyPaid = Number(driver.amount_paid_so_far) || 0;
+      const remainingBalance = Math.max(0, initialDebt - amountAlreadyPaid);
       
-      if (netBalance > 0.01) {
-        driver.status = 'Pay to Outsource';
-      } else if (netBalance < -0.01) {
-        driver.status = 'Collect from Outsource';
+      let statusText = "";
+      let isSettled = false;
+
+      // Determine Status Text
+      if (initialDebt === 0) {
+        statusText = "Settled";
+        isSettled = true;
+      } else if (remainingBalance === 0 && amountAlreadyPaid > 0) {
+        statusText = "PAID";
+        isSettled = true;
+      } else if (remainingBalance > 0 && amountAlreadyPaid > 0) {
+        statusText = "Partial Paid";
+        isSettled = false;
       } else {
-        driver.status = 'Settled';
+        // No payments made yet
+        statusText = driver.cashHeldByOutsource > driver.actualEarning ? "Collect from Outsource" : "Pay to Outsource";
+        isSettled = false;
       }
 
-      driver.settlementAmount = Math.abs(netBalance);
+      // The string that will display in the PAID/COLLECTED column
+      let displayAmount = "";
+      if (isSettled || remainingBalance === 0) {
+        displayAmount = "0"; // Full payment made, no remaining balance
+      } else if (amountAlreadyPaid > 0) {
+        displayAmount = remainingBalance.toString(); // Partial payment made, show remaining
+      } else {
+        displayAmount = "None"; // No payments made
+      }
+
+      // Update driver properties
+      driver.status = statusText as any;
+      driver.settlementAmount = remainingBalance;
+      driver.paidCollectedAmount = amountAlreadyPaid;
 
       return driver;
     });
@@ -309,8 +338,10 @@ const Settlements: React.FC = () => {
     csvContent += 'Outsource Name,Cash Held by Outsource,Actual Earning (Outsource),Cash Held by MS,Actual Earning (MS),Total Settlement Amount,Settlement Status,PAID/COLLECTED Details\n';
     
     Object.values(settlementData.drivers).forEach(driver => {
-      const statusText = driver.settlementAmount > 0.01 ? 'Pending' : 'Settled';
-      const paidDetails = driver.settlementAmount > 0.01 ? `AED ${driver.settlementAmount} PAID/COLLECTED, Balance: AED ${driver.settlementAmount}` : 'None';
+      const statusText = driver.status;
+      const paidDetails = driver.paidCollectedAmount > 0 
+        ? `AED ${driver.paidCollectedAmount} PAID/COLLECTED${driver.settlementAmount > 0.01 ? `, Balance: AED ${driver.settlementAmount}` : ''}`
+        : 'None';
       
       csvContent += `${driver.name},${formatCurrency(driver.cashHeldByOutsource)},${formatCurrency(driver.actualEarning)},${formatCurrency(driver.cashHeldByMS)},${formatCurrency(driver.actualEarningMS)},${formatCurrency(driver.settlementAmount)},${statusText},${paidDetails}\n`;
     });
@@ -500,17 +531,19 @@ const Settlements: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          driver.status === 'Settled' 
+                          driver.status === 'Settled' || driver.status === 'PAID'
                             ? 'bg-green-100 text-green-800' 
-                            : driver.status === 'Pay to Outsource'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-blue-100 text-blue-800'
+                            : driver.status === 'Partial Paid'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : driver.status === 'Collect from Outsource'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-red-100 text-red-800'
                         }`}>
                           {driver.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {driver.status === 'Settled' ? (
+                        {driver.status === 'Settled' || driver.status === 'PAID' ? (
                           <span className="text-gray-400">Settled</span>
                         ) : (
                           <button
