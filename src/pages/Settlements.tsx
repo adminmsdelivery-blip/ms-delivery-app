@@ -30,26 +30,25 @@ interface Order {
   settlement_amount?: number;
 }
 
-// Driver Row Interface
-interface DriverRow {
+// Outsource Driver Interface
+interface OutsourceDriver {
   name: string;
-  earned: number;
-  driverCash: number;
-  msCash: number;
   cashHeldByOutsource: number;
+  actualEarning: number;
   cashHeldByMS: number;
-  finalBalance: number;
-  status: string;
-  actionType: "collect" | "pay" | "settled";
+  actualEarningMS: number;
+  settlementAmount: number;
+  paidCollectedAmount: number;
+  status: 'Pay to Outsource' | 'Collect from Outsource' | 'Settled';
 }
 
 // Settlement Data Interface
 interface SettlementData {
-  totalEarned: number;
   cashHeldByOutsource: number;
+  actualEarning: number;
   cashHeldByMS: number;
-  finalBalance: number;
-  driverRows: DriverRow[];
+  actualEarningMS: number;
+  drivers: OutsourceDriver[];
 }
 
 const Settlements: React.FC = () => {
@@ -60,7 +59,7 @@ const Settlements: React.FC = () => {
   const [timeFilter, setTimeFilter] = useState<'week' | 'month' | 'year' | 'all'>('all');
 
   // Modal State Management
-  const [selectedDriver, setSelectedDriver] = useState<DriverRow | null>(null);
+  const [selectedDriver, setSelectedDriver] = useState<OutsourceDriver | null>(null);
   const [settlementAmount, setSettlementAmount] = useState('');
   const [isSettling, setIsSettling] = useState(false);
 
@@ -124,123 +123,101 @@ const Settlements: React.FC = () => {
     });
   }, [orders, timeFilter]);
 
-  // Core Math & Aggregation (useMemo)
+  // Core Accounting Rules & Math Engine (useMemo)
   const settlementData: SettlementData = useMemo(() => {
     if (!filteredOrders || filteredOrders.length === 0) {
       return {
-        totalEarned: 0,
         cashHeldByOutsource: 0,
+        actualEarning: 0,
         cashHeldByMS: 0,
-        finalBalance: 0,
-        driverRows: []
+        actualEarningMS: 0,
+        drivers: []
       };
     }
 
-    const driverMap: Record<string, DriverRow> = {};
-    const settledAmountsMap = new Map<string, number>(); // Track settled amounts per driver
-    let globalEarned = 0;
-    let globalDriverCash = 0;
-    let globalMSCash = 0;
+    const driverMap: Record<string, OutsourceDriver> = {};
+    let cashHeldByOutsource = 0;
+    let actualEarning = 0;
+    let cashHeldByMS = 0;
+    let actualEarningMS = 0;
 
-    // First pass: Calculate all amounts and track settled amounts
-    filteredOrders.forEach((order, index) => {
-      // 1. STRICT DATABASE KEYS (Do not alter these names)
+    // Map through orders and calculate per-driver aggregates
+    filteredOrders.forEach(order => {
+      // 1. Safe Parsing with strict database keys
       const driverName = order.outsources?.name || order.outsource_name || 'Unknown Driver';
       const pMethod = String(order.payment_mode || '').toUpperCase().trim();
       const isDriverCash = pMethod.includes('COD') || pMethod.includes('COP') || pMethod.includes('CASH');
-      const isMSCash = pMethod.includes('ONLINE'); 
-      
-      // Ensure we check for actual settlement status text
-      const isSettled = String(order.settlement_status || '').toUpperCase() === 'SETTLED';
+      const isMSCash = pMethod.includes('ONLINE');
       
       const totalAmount = Number(order.total_amount_received) || 0;
       const itemCharge = Number(order.item_charge) || 0;
       const outsourceCharge = Number(order.outsource_charges) || 0;
       
-      // 2. Base Order Cash
+      // 2. Base Order Calculations
       const deliveryCharge = Math.max(0, totalAmount - itemCharge);
-      const driverCollected = isDriverCash ? deliveryCharge : 0;
-      const msCollected = isMSCash ? deliveryCharge : 0;
+      const msEarning = deliveryCharge - outsourceCharge; // MS profit
 
-      // 3. --- THE CASH TRANSFER ENGINE ---
-      let driverGivesToMS = 0;
-      let msGivesToDriver = 0;
-
-      if (isSettled) {
-        if (isDriverCash) {
-          // Driver settles by handing MS the remaining delivery profit
-          driverGivesToMS = Math.max(0, deliveryCharge - outsourceCharge);
-        } else if (isMSCash) {
-          // MS settles by handing driver their fee
-          msGivesToDriver = outsourceCharge;
-        }
+      // 3. Cash Holdings (Physical Location of Funds)
+      if (isDriverCash) {
+        cashHeldByOutsource += deliveryCharge; // Driver holds delivery cash
+      } else if (isMSCash) {
+        cashHeldByMS += deliveryCharge; // MS holds delivery cash
       }
 
-      // 4. Global Totals (Live Cash Drawers)
-      globalEarned += outsourceCharge; 
-      // Driver drawer: Base collected + payments received - collections paid
-      globalDriverCash += (driverCollected + msGivesToDriver - driverGivesToMS); 
-      // MS drawer: Base collected + collections received - payments paid
-      globalMSCash += (msCollected + driverGivesToMS - msGivesToDriver); 
+      actualEarning += outsourceCharge;
+      actualEarningMS += msEarning;
 
-      // 5. Per-Driver Grouping
+      // 4. Per-Driver Aggregation
       if (!driverMap[driverName]) {
-        driverMap[driverName] = { 
-          name: driverName, 
-          earned: 0, 
-          driverCash: 0, 
-          msCash: 0,
+        driverMap[driverName] = {
+          name: driverName,
           cashHeldByOutsource: 0,
+          actualEarning: 0,
           cashHeldByMS: 0,
-          finalBalance: 0,
-          status: 'Settled',
-          actionType: 'settled'
+          actualEarningMS: 0,
+          settlementAmount: 0,
+          paidCollectedAmount: 0,
+          status: 'Settled'
         };
       }
-      driverMap[driverName].earned += outsourceCharge;
-      driverMap[driverName].driverCash += (driverCollected + msGivesToDriver - driverGivesToMS);
-      driverMap[driverName].msCash += (msCollected + driverGivesToMS - msGivesToDriver);
+
+      // Update driver aggregates
+      driverMap[driverName].cashHeldByOutsource += isDriverCash ? deliveryCharge : 0;
+      driverMap[driverName].actualEarning += outsourceCharge;
+      driverMap[driverName].cashHeldByMS += isMSCash ? deliveryCharge : 0;
+      driverMap[driverName].actualEarningMS += msEarning;
     });
 
-    // Calculate final balances and status for each driver
-    const driverRows = Object.values(driverMap).map(driver => {
-      // Calculate net balance based on cash positions
-      const netBalance = driver.earned - driver.cashHeldByOutsource;
+    // 5. Calculate Settlement Status and Amounts
+    const drivers = Object.values(driverMap).map(driver => {
+      const netBalance = driver.actualEarning - driver.cashHeldByOutsource;
       
-      // Final balance is the net amount that needs to be settled
-      // Positive = MS owes driver, Negative = Driver owes MS
-      driver.finalBalance = Math.abs(netBalance);
-      
-      if (netBalance > 0.01) { // Use small threshold to avoid floating point issues
-        driver.status = 'Pay';
-        driver.actionType = 'pay';
+      if (netBalance > 0.01) {
+        driver.status = 'Pay to Outsource';
       } else if (netBalance < -0.01) {
-        driver.status = 'Collect';
-        driver.actionType = 'collect';
+        driver.status = 'Collect from Outsource';
       } else {
         driver.status = 'Settled';
-        driver.actionType = 'settled';
       }
+
+      driver.settlementAmount = Math.abs(netBalance);
 
       return driver;
     });
 
-    const finalBalance = Math.abs(globalMSCash - globalEarned);
-
     return {
-      totalEarned: globalEarned,
-      cashHeldByOutsource: globalDriverCash,
-      cashHeldByMS: globalMSCash,
-      finalBalance,
-      driverRows
+      cashHeldByOutsource,
+      actualEarning,
+      cashHeldByMS,
+      actualEarningMS,
+      drivers
     };
   }, [filteredOrders]);
 
   // Modal Handlers
-  const openSettlementModal = (driver: DriverRow) => {
+  const openSettlementModal = (driver: OutsourceDriver) => {
     setSelectedDriver(driver);
-    // Default the input to their full final balance
-    setSettlementAmount(driver.finalBalance > 0 ? driver.finalBalance.toString() : '');
+    setSettlementAmount(driver.settlementAmount > 0 ? driver.settlementAmount.toString() : '');
   };
 
   const closeSettlementModal = () => {
@@ -255,10 +232,7 @@ const Settlements: React.FC = () => {
     try {
       const amount = parseFloat(settlementAmount);
       
-      // TODO: Update your database here. 
-      // Approach A: Mark specific orders for this driver as "Settled" with amount
-      // Approach B: Insert a new row into a `settlement_ledger` table
-      
+      // TODO: Update your database here
       /* Example Supabase Call:
       const { error } = await supabase
         .from('orders')
@@ -266,64 +240,41 @@ const Settlements: React.FC = () => {
           settlement_status: 'Settled',
           settlement_amount: amount 
         })
-        .eq('outsource_id', selectedDriver.id) // Ensure driver ID is available
+        .eq('outsource_id', selectedDriver.id)
         .eq('settlement_status', 'Pending')
-        .limit(1); // Process one order at a time for partial settlements
+        .limit(1);
       if (error) throw error;
       */
       
-      // Update local state to reflect the settlement
-      // This will immediately update the UI without requiring a full page refresh
+      // Update local state to reflect settlement
       setOrders(prevOrders => {
         if (!prevOrders || prevOrders.length === 0) return prevOrders;
         
         let remainingAmountToSettle = amount;
         
         return prevOrders.map(order => {
-          // Check if this order belongs to the selected driver
           const orderDriverName = order.outsources?.name || order.outsource_name || 'Unknown Driver';
           
           if (orderDriverName === selectedDriver.name && remainingAmountToSettle > 0) {
-            // Only process orders that haven't been settled yet
-            if (!order.settlement_status || order.settlement_status !== 'Settled') {
-              const totalAmount = Number(order.total_amount_received) || 0;
-              const itemCharge = Number(order.item_charge) || 0;
-              const deliveryCharge = totalAmount - itemCharge;
-              
-              // For COD orders: Driver was holding MS cash, now MS pays driver
-              if (order.payment_mode?.toUpperCase().includes('COD') || 
-                  order.payment_mode?.toUpperCase().includes('COP') || 
-                  order.payment_mode?.toUpperCase().includes('CASH')) {
-                
-                // Calculate how much of this order we can settle
-                const settleAmount = Math.min(remainingAmountToSettle, deliveryCharge);
-                
-                return {
-                  ...order,
-                  settlement_status: 'Settled',
-                  settlement_amount: settleAmount
-                };
-              }
-              
-              // For ONLINE orders: MS was holding driver cash, now driver pays MS
-              if (order.payment_mode?.toUpperCase().includes('ONLINE')) {
-                // Calculate how much of this order we can settle
-                const settleAmount = Math.min(remainingAmountToSettle, deliveryCharge);
-                
-                return {
-                  ...order,
-                  settlement_status: 'Settled',
-                  settlement_amount: settleAmount
-                };
-              }
-            }
+            const totalAmount = Number(order.total_amount_received) || 0;
+            const itemCharge = Number(order.item_charge) || 0;
+            const deliveryCharge = totalAmount - itemCharge;
+            const settleAmount = Math.min(remainingAmountToSettle, deliveryCharge);
+            
+            remainingAmountToSettle -= settleAmount;
+            
+            return {
+              ...order,
+              settlement_status: 'Settled',
+              settlement_amount: settleAmount
+            };
           }
           
           return order;
         });
       });
       
-      alert(`Successfully processed ${selectedDriver.actionType} of $${amount} for ${selectedDriver.name}`);
+      alert(`Successfully processed settlement of $${amount} for ${selectedDriver.name}`);
       
       closeSettlementModal();
     } catch (error) {
@@ -338,94 +289,65 @@ const Settlements: React.FC = () => {
   const exportMasterReport = () => {
     let csvContent = '';
 
-    // Section 1: Detailed Ledger
-    csvContent += 'Detailed Ledger\n';
-    csvContent += 'Order Date,Order ID,Outsource Name,Client Name,Customer Name,Delivery Location,Payment Method,Total Delivery Charge,Total Outsource Charge,MS Profit,Balance Amount (Who Holds whose Cash),Status (Pay/Collect)\n';
-
+    // Section 1: Line-by-Line Audit
+    csvContent += 'Order Date,Order ID,Outsource Name,Client Name,Customer Name,Delivery Location,Payment Method,Total Delivery Charge,Total Outsource Charge,MS Profit,Settlement Amount,Settlement Status\n';
+    
     filteredOrders.forEach(order => {
       const driverName = order.outsources?.name || order.outsource_name || 'Unknown Driver';
       const clientName = order.clients?.name || order.client_name || 'Unknown Client';
-      const customerName = order.customer_name || 'N/A';
-      const deliveryLocation = order.delivery_location || 'N/A';
-      const paymentMethod = order.payment_mode || 'N/A';
       const totalAmount = Number(order.total_amount_received) || 0;
       const itemCharge = Number(order.item_charge) || 0;
       const outsourceCharge = Number(order.outsource_charges) || 0;
-      const deliveryCharge = Math.max(0, totalAmount - itemCharge);
-
-      // MS Profit = (Total Amount - Item Charge) - Outsource Charge
-      const msProfit = deliveryCharge - outsourceCharge;
-
-      // Text Logic
-      const isCOD = paymentMethod.toUpperCase().includes('COD') || paymentMethod.toUpperCase().includes('COP') || paymentMethod.toUpperCase().includes('CASH');
-      const isOnline = paymentMethod.toUpperCase().includes('ONLINE');
-
-      let balanceAmount = '';
-      let whoHolds = '';
-      let status = '';
-
-      if (isCOD) {
-        balanceAmount = deliveryCharge.toString();
-        whoHolds = 'Driver holds MS Cash';
-        status = 'Collect';
-      } else if (isOnline) {
-        balanceAmount = outsourceCharge.toString();
-        whoHolds = 'MS holds Driver Cash';
-        status = 'Pay';
-      } else {
-        balanceAmount = '0';
-        whoHolds = 'Settled';
-        status = 'Settled';
-      }
-
-      csvContent += `${format(new Date(order.created_at), 'yyyy-MM-dd')},${order.id},${driverName},${clientName},${customerName},${deliveryLocation},${paymentMethod},${deliveryCharge},${outsourceCharge},${msProfit},${balanceAmount},"${whoHolds}",${status}\n`;
+      const deliveryCharge = totalAmount - itemCharge;
+      const msEarning = deliveryCharge - outsourceCharge;
+      
+      csvContent += `${format(new Date(order.created_at), 'yyyy-MM-dd')},${order.id},${driverName},${clientName},${order.customer_name || 'Unknown'},${order.delivery_location || 'Unknown'},${order.payment_mode || 'Unknown'},${deliveryCharge},${outsourceCharge},${msEarning},${order.settlement_amount || 0},${order.settlement_status || 'Pending'}\n`;
     });
 
-    // Section 2: Settlement Summary (Total)
-    csvContent += '\nSettlement Summary\n';
-    csvContent += 'Outsource Name,Total Earned (By Outsource),Cash Held by Outsource,Cash Held by MS,Final Balance,Status(Pay/Collect)\n';
-
-    settlementData.driverRows.forEach(driver => {
-      csvContent += `${driver.name},${driver.earned},${driver.cashHeldByOutsource},${driver.cashHeldByMS},${driver.finalBalance},${driver.status}\n`;
+    // Section 2: Monthly Settlement Summary
+    csvContent += '\nMonthly Settlement Summary\n';
+    csvContent += 'Outsource Name,Cash Held by Outsource,Actual Earning (Outsource),Cash Held by MS,Actual Earning (MS),Total Settlement Amount,Settlement Status,PAID/COLLECTED Details\n';
+    
+    Object.values(settlementData.drivers).forEach(driver => {
+      const statusText = driver.settlementAmount > 0.01 ? 'Pending' : 'Settled';
+      const paidDetails = driver.settlementAmount > 0.01 ? `AED ${driver.settlementAmount} PAID/COLLECTED, Balance: AED ${driver.settlementAmount}` : 'None';
+      
+      csvContent += `${driver.name},${formatCurrency(driver.cashHeldByOutsource)},${formatCurrency(driver.actualEarning)},${formatCurrency(driver.cashHeldByMS)},${formatCurrency(driver.actualEarningMS)},${formatCurrency(driver.settlementAmount)},${statusText},${paidDetails}\n`;
     });
 
-    // Generate Blob and trigger download
+    // Download CSV
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `MS_Settlements_Master_Report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    link.style.visibility = 'hidden';
+    link.href = url;
+    link.download = `settlement-report-${format(new Date(), 'yyyy-MM-dd')}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
-  // UI Structure & Early Returns (CRITICAL)
-  
-  // If dbError is true, return giant red error box
-  if (dbError) {
+  if (isLoading) {
     return (
-      <div className="p-8">
-        <div className="bg-red-100 border-l-4 border-red-600 text-red-900 p-6 rounded shadow-lg font-mono">
-          <h2 className="text-xl font-bold mb-2 uppercase">Database Connection Failed</h2>
-          <p className="mb-4">Supabase refused to return orders. Exact error message:</p>
-          <pre className="bg-red-50 p-4 rounded border border-red-200 overflow-x-auto">
-            {dbError}
-          </pre>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="ml-4 text-gray-600">Loading settlement data...</p>
       </div>
     );
   }
 
-  // If isLoading is true, return spinner
-  if (isLoading) {
+  if (dbError) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4 animate-spin"></div>
-          <p className="text-gray-600 font-medium">Loading settlement data...</p>
+          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-bold text-red-600 mb-2">Database Error</h3>
+          <p className="text-gray-600">{dbError}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -472,187 +394,217 @@ const Settlements: React.FC = () => {
                     : 'text-gray-500 hover:text-gray-900'
                 }`}
               >
-                {tab === 'all' ? 'All Time' : tab.charAt(0).toUpperCase() + tab.slice(1) + 'ly'}
+                {tab === 'all' ? 'All Time' : tab.charAt(0).toUpperCase() + tab.slice(1)}
               </button>
             ))}
           </div>
         </div>
 
-        {/* 4 Top Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Total Earned */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+        {/* Live Cash Drawer Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <div className="bg-blue-50 p-3 rounded-xl">
-                <TrendingUp className="w-6 h-6 text-blue-600" />
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <Users className="w-6 h-6 text-blue-600" />
               </div>
-              <span className="text-sm text-gray-500 font-medium">Total Earned</span>
+              <TrendingUp className="w-5 h-5 text-green-500" />
             </div>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.totalEarned)}</p>
-            <p className="text-sm text-gray-500 mt-1">By Outsource Drivers</p>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Cash Held by Outsource</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.cashHeldByOutsource)}</p>
+            </div>
           </div>
 
-          {/* Cash Held by Outsource */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <div className="bg-green-50 p-3 rounded-xl">
-                <Users className="w-6 h-6 text-green-600" />
+              <div className="p-3 bg-green-50 rounded-lg">
+                <Scale className="w-6 h-6 text-green-600" />
               </div>
-              <span className="text-sm text-gray-500 font-medium">Cash Held by Outsource</span>
+              <TrendingUp className="w-5 h-5 text-green-500" />
             </div>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.cashHeldByOutsource)}</p>
-            <p className="text-sm text-gray-500 mt-1">COD/COP Orders</p>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Actual Earning (Outsource)</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.actualEarning)}</p>
+            </div>
           </div>
 
-          {/* Cash Held by MS */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <div className="bg-purple-50 p-3 rounded-xl">
+              <div className="p-3 bg-purple-50 rounded-lg">
                 <CreditCard className="w-6 h-6 text-purple-600" />
               </div>
-              <span className="text-sm text-gray-500 font-medium">Cash Held by MS</span>
+              <TrendingUp className="w-5 h-5 text-green-500" />
             </div>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.cashHeldByMS)}</p>
-            <p className="text-sm text-gray-500 mt-1">Online Orders</p>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Cash Held by MS</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.cashHeldByMS)}</p>
+            </div>
           </div>
 
-          {/* Final Balance */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <div className="bg-orange-50 p-3 rounded-xl">
-                <Scale className="w-6 h-6 text-orange-600" />
+              <div className="p-3 bg-orange-50 rounded-lg">
+                <TrendingUp className="w-6 h-6 text-orange-600" />
               </div>
-              <span className="text-sm text-gray-500 font-medium">Final Balance</span>
+              <TrendingUp className="w-5 h-5 text-green-500" />
             </div>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.finalBalance)}</p>
-            <p className="text-sm text-gray-500 mt-1">Settlement Amount</p>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Actual Earning (MS)</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(settlementData.actualEarningMS)}</p>
+            </div>
           </div>
         </div>
 
-        {/* 7-Column Table */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Driver Ledger</h2>
-            <p className="text-sm text-gray-500">Individual driver settlement details</p>
+        {/* Outsource Ledger Table */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <Scale className="w-6 h-6 text-blue-600" />
+              Outsource Ledger
+            </h2>
           </div>
           
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Outsource Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Earned</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cash Held by Outsource</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actual Earning (Outsource)</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cash Held by MS</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Final Balance</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actual Earning (MS)</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Settlement Amount</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PAID/COLLECTED</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {settlementData.driverRows.length > 0 ? (
-                  settlementData.driverRows.map((driver, index) => (
-                    <tr key={index} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 font-medium text-gray-900">{driver.name}</td>
-                      <td className="px-6 py-4 text-green-600 font-medium">{formatCurrency(driver.earned)}</td>
-                      <td className="px-6 py-4 text-blue-600 font-medium">{formatCurrency(driver.cashHeldByOutsource)}</td>
-                      <td className="px-6 py-4 text-purple-600 font-medium">{formatCurrency(driver.cashHeldByMS)}</td>
-                      <td className="px-6 py-4 font-bold text-gray-900">{formatCurrency(driver.finalBalance)}</td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          driver.actionType === 'settled' 
-                            ? 'bg-gray-100 text-gray-800' 
-                            : driver.actionType === 'collect' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
+              <tbody className="bg-white divide-y divide-gray-200">
+                {settlementData.drivers.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                      No settlement data available
+                    </td>
+                  </tr>
+                ) : (
+                  settlementData.drivers.map((driver, index) => (
+                    <tr key={driver.name} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{driver.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(driver.cashHeldByOutsource)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(driver.actualEarning)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(driver.cashHeldByMS)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(driver.actualEarningMS)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{formatCurrency(driver.settlementAmount)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {driver.paidCollectedAmount > 0 ? `AED ${driver.paidCollectedAmount}` : 'None'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          driver.status === 'Settled' 
+                            ? 'bg-green-100 text-green-800' 
+                            : driver.status === 'Pay to Outsource'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-blue-100 text-blue-800'
                         }`}>
                           {driver.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <button 
-                          onClick={() => openSettlementModal(driver)}
-                          disabled={driver.actionType === 'settled'}
-                          className={`px-4 py-2 rounded text-sm font-medium text-white ${
-                            driver.actionType === 'pay' ? 'bg-red-600 hover:bg-red-700' : 
-                            driver.actionType === 'collect' ? 'bg-green-600 hover:bg-green-700' : 
-                            'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          }`}
-                        >
-                          {driver.actionType === 'pay' ? 'Pay' : driver.actionType === 'collect' ? 'Collect' : 'Settled'}
-                        </button>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {driver.status === 'Settled' ? (
+                          <span className="text-gray-400">Settled</span>
+                        ) : (
+                          <button
+                            onClick={() => openSettlementModal(driver)}
+                            className={`px-4 py-2 rounded text-white text-sm font-medium transition-colors ${
+                              driver.status === 'Pay to Outsource' 
+                                ? 'bg-red-600 hover:bg-red-700' 
+                                : 'bg-blue-600 hover:bg-blue-700'
+                            }`}
+                          >
+                            {driver.status === 'Pay to Outsource' ? 'Pay' : 'Collect'}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))
-                ) : (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                      No settlement data available
-                    </td>
-                  </tr>
                 )}
               </tbody>
             </table>
           </div>
         </div>
-      </div>
 
-      {/* SETTLEMENT POPUP MODAL */}
-      {selectedDriver && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm px-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
-            {/* Header */}
-            <div className={`px-6 py-4 border-b ${selectedDriver.actionType === 'pay' ? 'bg-red-50' : 'bg-green-50'}`}>
-              <h3 className="text-lg font-bold text-gray-900">
-                {selectedDriver.actionType === 'pay' ? 'Process Payment To' : 'Collect Payment From'}: {selectedDriver.name}
-              </h3>
-            </div>
-            
-            {/* Body */}
-            <div className="p-6">
-              <div className="flex justify-between mb-4 text-sm text-gray-600">
-                <span>Current Pending Balance:</span>
-                <span className={`font-bold ${selectedDriver.actionType === 'pay' ? 'text-red-600' : 'text-green-600'}`}>
-                  ${selectedDriver.finalBalance.toFixed(2)}
-                </span>
+        {/* Settlement Modal */}
+        {selectedDriver && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm px-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+              {/* Header */}
+              <div className={`px-6 py-4 border-b ${
+                selectedDriver.status === 'Pay to Outsource' ? 'bg-red-50' : 'bg-blue-50'
+              }`}>
+                <h3 className="text-lg font-bold text-gray-900">
+                  {selectedDriver.status === 'Pay to Outsource' ? `Pay to ${selectedDriver.name}` : `Collect from ${selectedDriver.name}`}
+                </h3>
               </div>
               
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Settlement Amount ($)</label>
-                <input 
-                  type="number" 
-                  step="0.01"
-                  min="0"
-                  value={settlementAmount}
-                  onChange={(e) => setSettlementAmount(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-lg font-semibold"
-                  placeholder="0.00"
-                />
+              {/* Body */}
+              <div className="p-6">
+                <div className="flex justify-between mb-4 text-sm text-gray-600">
+                  <span>Current Settlement Amount:</span>
+                  <span className={`font-bold ${
+                    selectedDriver.status === 'Pay to Outsource' ? 'text-red-600' : 'text-blue-600'
+                  }`}>
+                    {formatCurrency(selectedDriver.settlementAmount)}
+                  </span>
+                </div>
+                
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Settlement Amount ($)</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    min="0"
+                    value={settlementAmount}
+                    onChange={(e) => setSettlementAmount(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-lg font-semibold"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+              
+              {/* Footer */}
+              <div className="px-6 py-4 bg-gray-50 flex justify-end space-x-3 border-t">
+                <button 
+                  onClick={closeSettlementModal}
+                  disabled={isSettling}
+                  className="px-4 py-2 rounded-lg text-gray-600 font-medium hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleProcessSettlement}
+                  disabled={isSettling || !settlementAmount || parseFloat(settlementAmount) <= 0}
+                  className={`px-6 py-2 rounded-lg text-white font-medium transition-colors flex items-center ${
+                    selectedDriver.status === 'Pay to Outsource' 
+                      ? 'bg-red-600 hover:bg-red-700' 
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  } disabled:opacity-50`}
+                >
+                  {isSettling ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      {selectedDriver.status === 'Pay to Outsource' ? 'Pay' : 'Collect'}
+                    </>
+                  )}
+                </button>
               </div>
             </div>
-            
-            {/* Footer */}
-            <div className="px-6 py-4 bg-gray-50 flex justify-end space-x-3 border-t">
-              <button 
-                onClick={closeSettlementModal}
-                disabled={isSettling}
-                className="px-4 py-2 rounded-lg text-gray-600 font-medium hover:bg-gray-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleProcessSettlement}
-                disabled={isSettling || !settlementAmount || parseFloat(settlementAmount) <= 0}
-                className={`px-6 py-2 rounded-lg text-white font-medium transition-colors flex items-center ${
-                  selectedDriver.actionType === 'pay' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
-                } disabled:opacity-50`}
-              >
-                {isSettling ? 'Processing...' : `Confirm ${selectedDriver.actionType === 'pay' ? 'Pay' : 'Collect'}`}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
