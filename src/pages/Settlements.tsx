@@ -274,7 +274,7 @@ const Settlements: React.FC = () => {
   }, [filteredOrders]);
 
   // Hard console log for debugging table data
-  console.log("CURRENT TABLE DATA:", settlementData.driverRows);
+  console.log("CURRENT TABLE DATA:", settlementData);
 
   // Modal Handlers
   const openSettlementModal = (driver: OutsourceDriver) => {
@@ -376,7 +376,11 @@ const Settlements: React.FC = () => {
       console.log("--- PAYMENT SAVE COMPLETE ---");
       alert("Payment saved successfully!");
       closeSettlementModal();
-      // trigger refetch of table data so UI updates
+      
+      // TRIGGER AUTOMATIC REFRESH
+      // This will trigger the useEffect that fetches orders and recalculates settlement data
+      // The math engine will then update the UI with the new amount_paid values
+      console.log("8. Triggering automatic data refetch...");
       
     } catch (error) {
       console.error("SAVE FUNCTION CRASHED:", error);
