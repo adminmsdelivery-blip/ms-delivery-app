@@ -563,31 +563,33 @@ const Settlements: React.FC = () => {
                         {row.paidCollectedAmount > 0 ? row.paidCollectedAmount : row.paidCollectedAmount}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {/* 1. The Status Cell with Visual Debugger */}
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          row.isSettled ? 'bg-gray-100 text-gray-800' : 
-                          row.statusText.includes('Pay') ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                          row.isSettled ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
                         }`}>
-                          {row.statusText}
+                          {row.isSettled && row.cashHeldByOutsource > row.actualEarning ? "Collected from Outsource" : 
+                           row.isSettled && row.actualEarning > row.cashHeldByOutsource ? "Paid to Outsource" : 
+                           row.statusText}
                         </span>
+                      
+                        {/* TEMP DEBUG TEXT - This will tell us exactly why it is failing */}
+                        <div className="text-xs text-red-500 mt-1 font-bold">
+                          Math Bal: ${row.settlementAmount} | isSettled: {row.isSettled ? "TRUE" : "FALSE"}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {row.isSettled ? (
-                          <span className="text-gray-400">Settled</span>
-                        ) : (
-                          <button
-                            onClick={() => openSettlementModal(row)}
-                            disabled={row.isSettled}
-                            className={`px-4 py-2 rounded font-medium transition-colors ${
-                              row.isSettled
-                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                                : row.statusText.includes('Pay') 
-                                ? 'bg-red-600 text-white hover:bg-red-700' 
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
-                            }`}
-                          >
-                            {row.isSettled ? "Settled" : (row.statusText.includes('Collect') ? "Collect" : "Pay")}
-                          </button>
-                        )}
+                        {/* 2. The Action Button (Hard-Locked) */}
+                        <button 
+                          onClick={() => openSettlementModal(row)}
+                          disabled={row.isSettled === true}
+                          className={`px-4 py-2 rounded font-medium transition-colors ${
+                            row.isSettled === true
+                              ? 'bg-gray-300 text-gray-600 cursor-not-allowed opacity-70' 
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          }`}
+                        >
+                          {row.isSettled ? "Settled" : "Collect/Pay"}
+                        </button>
                       </td>
                     </tr>
                   ))
