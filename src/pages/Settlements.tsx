@@ -418,12 +418,22 @@ const Settlements: React.FC = () => {
 
       // 3. Calculate remaining settlement amount for this order
       let orderDebt = 0;
-      if (isDriverCash) orderDebt = msProfit; // Driver physically has the cash, owes MS their profit
-      else orderDebt = outsourceCharge;       // MS physically has the cash, owes Driver their fee
+      let actionDirection = "-";
+
+      if (isDriverCash) {
+        orderDebt = msProfit; 
+        actionDirection = "COLLECT"; // Driver has the cash, MS must collect profit
+      } else {
+        orderDebt = outsourceCharge;       
+        actionDirection = "PAY";     // MS has the cash, MS must pay the driver fee
+      }
       
       const remainingSettlement = Math.max(0, orderDebt - amountPaid);
+      
+      // If the order is fully settled, we can optionally show it as cleared
+      const finalActionLabel = remainingSettlement > 0 ? actionDirection : "-";
 
-      // 4. Map to the exact requested 14 columns
+      // 4. Map to the exact requested columns
       return {
         "Order Date": order.created_at ? new Date(order.created_at).toLocaleDateString() : "N/A",
         "Order ID": order.id || "N/A",
@@ -438,6 +448,7 @@ const Settlements: React.FC = () => {
         "Total MS holding": msHolding.toFixed(2),
         "MS Profit": msProfit.toFixed(2),
         "Settlement Amount": remainingSettlement.toFixed(2),
+        "Pay/Collect": finalActionLabel, // <--- NEW COLUMN INSERTED HERE
         "Settlement Status": order.settlement_status || "Pending"
       };
     });
