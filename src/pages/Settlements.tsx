@@ -156,6 +156,7 @@ const Settlements: React.FC = () => {
       const totalAmount = Number(order.total_amount_received) || 0;
       const itemCharge = Number(order.item_charge) || 0;
       const outsourceCharge = Number(order.outsource_charges) || 0;
+      const paidOnThisOrder = Number(order.amount_paid) || 0; // Calculate from amount_paid column
       
       // 2. Base Order Calculations
       const deliveryCharge = Math.max(0, totalAmount - itemCharge);
@@ -171,7 +172,7 @@ const Settlements: React.FC = () => {
       actualEarning += outsourceCharge;
       actualEarningMS += msEarning;
 
-      // 4. Per-Driver Aggregation
+      // 4. Initialize driver if not exists
       if (!driverMap[driverName]) {
         driverMap[driverName] = {
           name: driverName,
@@ -193,6 +194,7 @@ const Settlements: React.FC = () => {
       driverMap[driverName].actualEarning += outsourceCharge;
       driverMap[driverName].cashHeldByMS += isMSCash ? deliveryCharge : 0;
       driverMap[driverName].actualEarningMS += msEarning;
+      driverMap[driverName].totalPaidSoFar += paidOnThisOrder; // Add amount from this order
     });
 
     // 5. Calculate Settlement Status and Amounts with Dynamic Cash Shift
@@ -381,6 +383,37 @@ const Settlements: React.FC = () => {
       // TRIGGER AUTOMATIC REFRESH
       setRefreshTrigger(prev => prev + 1); // Increment trigger to force useEffect to refetch data
       console.log("8. Triggering automatic data refetch...");
+      
+      // Additional direct refetch for immediate UI update
+      const fetchData = async () => {
+        try {
+          setIsLoading(true);
+          setDbError(null);
+
+          // Query relational tables to get names
+          const { data, error } = await supabase
+            .from('orders')
+            .select('*, outsources(name), clients(name)');
+
+          if (error) {
+            console.error('Supabase Error:', error);
+            setDbError(error.message || JSON.stringify(error));
+            setOrders([]);
+            return;
+          }
+
+          // Ensure setOrders only receives an array
+          setOrders(data || []);
+        } catch (error) {
+          console.error('Fetch Error:', error);
+          setDbError(error.message || JSON.stringify(error));
+          setOrders([]);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      await fetchData(); // Direct refetch for immediate UI update
       
     } catch (error) {
       console.error("SAVE FUNCTION CRASHED:", error);
