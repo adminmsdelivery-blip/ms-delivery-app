@@ -65,6 +65,7 @@ const Settlements: React.FC = () => {
   const [selectedDriver, setSelectedDriver] = useState<OutsourceDriver | null>(null);
   const [settlementAmount, setSettlementAmount] = useState('');
   const [isSettling, setIsSettling] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Data Fetching with Error Guards
   useEffect(() => {
@@ -97,7 +98,7 @@ const Settlements: React.FC = () => {
     };
 
     fetchData();
-  }, []);
+  }, [refreshTrigger]); // Add refreshTrigger to dependency array
 
   // Time Filter Logic (useMemo)
   const filteredOrders = useMemo(() => {
@@ -378,8 +379,7 @@ const Settlements: React.FC = () => {
       closeSettlementModal();
       
       // TRIGGER AUTOMATIC REFRESH
-      // This will trigger the useEffect that fetches orders and recalculates settlement data
-      // The math engine will then update the UI with the new amount_paid values
+      setRefreshTrigger(prev => prev + 1); // Increment trigger to force useEffect to refetch data
       console.log("8. Triggering automatic data refetch...");
       
     } catch (error) {
