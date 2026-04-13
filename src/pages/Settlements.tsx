@@ -607,8 +607,8 @@ const Settlements: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {row.paidCollectedAmount > 0 ? row.paidCollectedAmount : row.paidCollectedAmount}
                       </td>
+                      {/* The Clean Status Cell */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {/* 1. The Status Cell with Visual Debugger */}
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                           row.isSettled ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
                         }`}>
@@ -616,11 +616,6 @@ const Settlements: React.FC = () => {
                            row.isSettled && row.actualEarning > row.cashHeldByOutsource ? "Paid to Outsource" : 
                            row.statusText}
                         </span>
-                      
-                        {/* TEMP DEBUG TEXT - This will tell us exactly why it is failing */}
-                        <div className="text-xs text-red-500 mt-1 font-bold">
-                          Math Bal: ${row.settlementAmount} | isSettled: {row.isSettled ? "TRUE" : "FALSE"}
-                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         {/* 2. The Action Button (Hard-Locked) */}
