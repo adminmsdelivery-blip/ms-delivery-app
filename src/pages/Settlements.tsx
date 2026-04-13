@@ -292,26 +292,42 @@ const Settlements: React.FC = () => {
     setIsSettling(true);
     
     try {
+      console.log("--- STARTING PAYMENT SAVE ---");
+      console.log("1. Target Driver:", selectedDriver);
+      console.log("2. Payment Amount to Apply:", settlementAmount);
+
       const paymentAmount = parseFloat(settlementAmount);
       
       // 1. Fetch all pending orders for this specific driver
       const { data: pendingOrders, error: fetchError } = await supabase
         .from('orders')
-        .select('*')
-        // Ensure you use correct column name for your driver
-        .or(`outsource_name.eq."${selectedDriver.name}",outsources.name.eq."${selectedDriver.name}"`)
-        .neq('settlement_status', 'Settled')
-        .order('created_at', { ascending: true });
+        .select('*, outsources(name)')
+        .neq('settlement_status', 'Settled');
 
       if (fetchError) throw fetchError;
-      if (!pendingOrders || pendingOrders.length === 0) return;
+      
+      // Filter down to just this driver's orders in JavaScript to avoid Supabase .or() syntax bugs
+      const driverOrders = pendingOrders.filter(order => {
+        const oName = order.outsources?.name || order.outsource_name;
+        return oName === selectedDriver.name;
+      });
+
+      console.log("3. Pending Orders Found for this driver:", driverOrders);
+
+      if (!driverOrders || driverOrders.length === 0) {
+        console.error("CRITICAL ERROR: No pending orders found for this driver in the database!");
+        alert("Error: Could not find any pending orders to apply this payment to.");
+        return;
+      }
 
       let remainingPayment = paymentAmount;
 
       // 2. Distribute payment across their pending orders
-      for (const order of pendingOrders) {
+      for (const order of driverOrders) {
         if (remainingPayment <= 0) break;
-
+        
+        console.log(`4. Processing Order ID: ${order.id} | Remaining Payment to distribute: ${remainingPayment}`);
+        
         // Calculate what this specific order needs to be settled
         const deliveryCharge = Number(order.total_amount_received || 0) - Number(order.item_charge || 0);
         const msProfit = deliveryCharge - Number(order.outsource_charges || 0);
@@ -327,12 +343,16 @@ const Settlements: React.FC = () => {
         const alreadyPaidOnOrder = Number(order.amount_paid || 0);
         const unpaidOnOrder = Math.max(0, orderDebt - alreadyPaidOnOrder);
 
+        console.log(`5. Order Debt Analysis - ID: ${order.id}, Total Debt: ${orderDebt}, Already Paid: ${alreadyPaidOnOrder}, Unpaid: ${unpaidOnOrder}`);
+
         if (unpaidOnOrder > 0) {
           const paymentToApply = Math.min(remainingPayment, unpaidOnOrder);
           const newTotalPaid = alreadyPaidOnOrder + paymentToApply;
           
           // If order is now fully paid off, mark it Settled
           const newStatus = (newTotalPaid >= orderDebt) ? 'Settled' : order.settlement_status;
+
+          console.log(`6. Attempting to update Supabase -> Order ID: ${order.id}, New amount_paid: ${newTotalPaid}, New Status: ${newStatus}`);
 
           // 3. Update specific order in Supabase
           const { error: updateError } = await supabase
@@ -343,19 +363,24 @@ const Settlements: React.FC = () => {
             })
             .eq('id', order.id);
 
-          if (updateError) throw updateError;
-
+          if (updateError) {
+            console.error("SUPABASE UPDATE REJECTED:", updateError);
+            throw updateError;
+          }
+          
+          console.log("7. Order successfully updated in database!");
           remainingPayment -= paymentToApply;
         }
       }
 
+      console.log("--- PAYMENT SAVE COMPLETE ---");
       alert("Payment saved successfully!");
       closeSettlementModal();
       // trigger refetch of table data so UI updates
       
     } catch (error) {
-      console.error("Settlement failed:", error);
-      alert("Failed to save payment.");
+      console.error("SAVE FUNCTION CRASHED:", error);
+      alert(`Failed to save payment: ${error.message}`);
     } finally {
       setIsSettling(false);
     }
