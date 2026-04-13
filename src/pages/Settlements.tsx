@@ -273,6 +273,9 @@ const Settlements: React.FC = () => {
     };
   }, [filteredOrders]);
 
+  // Hard console log for debugging table data
+  console.log("CURRENT TABLE DATA:", driverRows);
+
   // Modal Handlers
   const openSettlementModal = (driver: OutsourceDriver) => {
     setSelectedDriver(driver);
@@ -548,46 +551,41 @@ const Settlements: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  settlementData.drivers.map((driver, index) => (
-                    <tr key={driver.name} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{driver.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(driver.cashHeldByOutsource)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(driver.actualEarning)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(driver.cashHeldByMS)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(driver.actualEarningMS)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{formatCurrency(driver.settlementAmount)}</td>
+                  settlementData.drivers.map((row, index) => (
+                    <tr key={row.name} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(row.cashHeldByOutsource)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(row.actualEarning)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(row.cashHeldByMS)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(row.actualEarningMS)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{formatCurrency(row.settlementAmount)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {driver.paidCollectedAmount > 0 ? driver.paidCollectedAmount : driver.paidCollectedAmount}
+                        {row.paidCollectedAmount > 0 ? row.paidCollectedAmount : row.paidCollectedAmount}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          driver.statusText === 'Settled' || driver.statusText === 'Paid to Outsource' || driver.statusText === 'Collected'
-                            ? 'bg-green-100 text-green-800' 
-                            : driver.statusText === 'Partial Paid' || driver.statusText === 'Partial Collected'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : driver.statusText === 'Collect from Outsource'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-red-100 text-red-800'
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          row.isSettled ? 'bg-gray-100 text-gray-800' : 
+                          row.statusText.includes('Pay') ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
                         }`}>
-                          {driver.statusText}
+                          {row.statusText}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {driver.isSettled ? (
+                        {row.isSettled ? (
                           <span className="text-gray-400">Settled</span>
                         ) : (
                           <button
-                            onClick={() => openSettlementModal(driver)}
-                            disabled={driver.isSettled}
-                            className={`px-4 py-2 rounded text-white text-sm font-medium transition-colors ${
-                              driver.isSettled
-                                ? 'bg-gray-400 cursor-not-allowed' // Greyed out when settled
-                                : driver.statusText === 'Pay to Outsource' 
-                                ? 'bg-red-600 hover:bg-red-700' 
-                                : 'bg-blue-600 hover:bg-blue-700'
+                            onClick={() => openSettlementModal(row)}
+                            disabled={row.isSettled}
+                            className={`px-4 py-2 rounded font-medium transition-colors ${
+                              row.isSettled
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                : row.statusText.includes('Pay') 
+                                ? 'bg-red-600 text-white hover:bg-red-700' 
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
                             }`}
                           >
-                            {driver.statusText === 'Pay to Outsource' ? 'Pay' : 'Collect'}
+                            {row.isSettled ? "Settled" : (row.statusText.includes('Collect') ? "Collect" : "Pay")}
                           </button>
                         )}
                       </td>
