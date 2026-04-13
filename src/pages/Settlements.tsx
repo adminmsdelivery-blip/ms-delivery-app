@@ -396,8 +396,7 @@ const Settlements: React.FC = () => {
   const exportMasterReport = () => {
     let csvContent = '';
 
-    // Section 1: Line-by-Line Audit with 14 detailed columns
-    csvContent += 'Order Date,Order ID,Outsource Name,Client Name,Customer Name,Delivery Location,Payment Method,Total Delivery Charge,Total Outsource holdings,Total Outsource Charge,Total MS holding,MS Profit,Settlement Amount,Settlement Status\n';
+    // Section 1: Line-by-Line Audit with 15 detailed columns
     
     const detailedExportData = filteredOrders.map(order => {
       // 1. Calculate the core math for THIS specific order
