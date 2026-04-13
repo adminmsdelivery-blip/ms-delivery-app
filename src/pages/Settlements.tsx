@@ -416,12 +416,23 @@ const Settlements: React.FC = () => {
     csvContent += 'Outsource Name,Cash Held by Outsource,Actual Earning (Outsource),Cash Held by MS,Actual Earning (MS),Total Settlement Amount,Settlement Status,PAID/COLLECTED Details\n';
     
     settlementData.drivers.forEach(driver => {
-      const statusText = driver.status;
-      const paidDetails = driver.paidCollectedAmount > 0 
-        ? `AED ${driver.paidCollectedAmount} PAID/COLLECTED${driver.settlementAmount > 0.01 ? `, Balance: AED ${driver.settlementAmount}` : ''}`
-        : 'None';
+      // 1. Determine Settlement Status
+      const csvSettlementStatus = driver.isSettled ? "Settled" : "Pending";
+
+      // 2. Determine exact PAID/COLLECTED text
+      let csvPaidDetails = "None";
+      if (driver.paidCollectedAmount && driver.paidCollectedAmount > 0) {
+        // Check the statusText to see which direction the money flowed
+        const actionWord = driver.statusText.includes("Collect") ? "COLLECTED" : "PAID";
+        
+        if (driver.isSettled) {
+          csvPaidDetails = `AED ${driver.paidCollectedAmount} ${actionWord}`;
+        } else {
+          csvPaidDetails = `AED ${driver.paidCollectedAmount} ${actionWord} (Bal: AED ${driver.settlementAmount})`;
+        }
+      }
       
-      csvContent += `${driver.name},${formatCurrency(driver.cashHeldByOutsource)},${formatCurrency(driver.actualEarning)},${formatCurrency(driver.cashHeldByMS)},${formatCurrency(driver.actualEarningMS)},${formatCurrency(driver.settlementAmount)},${statusText},${paidDetails}\n`;
+      csvContent += `${driver.name},${formatCurrency(driver.cashHeldByOutsource)},${formatCurrency(driver.actualEarning)},${formatCurrency(driver.cashHeldByMS)},${formatCurrency(driver.actualEarningMS)},${formatCurrency(driver.settlementAmount)},${csvSettlementStatus},${csvPaidDetails}\n`;
     });
 
     // Download CSV
