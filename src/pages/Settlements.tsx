@@ -396,19 +396,59 @@ const Settlements: React.FC = () => {
   const exportMasterReport = () => {
     let csvContent = '';
 
-    // Section 1: Line-by-Line Audit
-    csvContent += 'Order Date,Order ID,Outsource Name,Client Name,Customer Name,Delivery Location,Payment Method,Total Delivery Charge,Total Outsource Charge,MS Profit,Settlement Amount,Settlement Status\n';
+    // Section 1: Line-by-Line Audit with 14 detailed columns
+    csvContent += 'Order Date,Order ID,Outsource Name,Client Name,Customer Name,Delivery Location,Payment Method,Total Delivery Charge,Total Outsource holdings,Total Outsource Charge,Total MS holding,MS Profit,Settlement Amount,Settlement Status\n';
     
-    filteredOrders.forEach(order => {
-      const driverName = order.outsources?.name || order.outsource_name || 'Unknown Driver';
-      const clientName = order.clients?.name || order.client_name || 'Unknown Client';
-      const totalAmount = Number(order.total_amount_received) || 0;
-      const itemCharge = Number(order.item_charge) || 0;
-      const outsourceCharge = Number(order.outsource_charges) || 0;
-      const deliveryCharge = totalAmount - itemCharge;
-      const msEarning = deliveryCharge - outsourceCharge;
+    const detailedExportData = filteredOrders.map(order => {
+      // 1. Calculate the core math for THIS specific order
+      const totalReceived = Number(order.total_amount_received || 0);
+      const itemCharge = Number(order.item_charge || 0);
+      const outsourceCharge = Number(order.outsource_charges || 0);
+      const amountPaid = Number(order.amount_paid || 0);
+
+      const deliveryCharge = totalReceived - itemCharge;
+      const msProfit = deliveryCharge - outsourceCharge;
+
+      const pMethod = String(order.payment_mode || '').toUpperCase();
+      const isDriverCash = pMethod.includes('COD') || pMethod.includes('COP') || pMethod.includes('CASH');
+
+      // 2. Calculate holdings for this order
+      const outsourceHolding = isDriverCash ? deliveryCharge : 0;
+      const msHolding = !isDriverCash ? deliveryCharge : 0;
+
+      // 3. Calculate remaining settlement amount for this order
+      let orderDebt = 0;
+      if (isDriverCash) orderDebt = msProfit; // Driver physically has the cash, owes MS their profit
+      else orderDebt = outsourceCharge;       // MS physically has the cash, owes Driver their fee
       
-      csvContent += `${format(new Date(order.created_at), 'yyyy-MM-dd')},${order.id},${driverName},${clientName},${order.customer_name || 'Unknown'},${order.delivery_location || 'Unknown'},${order.payment_mode || 'Unknown'},${deliveryCharge},${outsourceCharge},${msEarning},${order.settlement_amount || 0},${order.settlement_status || 'Pending'}\n`;
+      const remainingSettlement = Math.max(0, orderDebt - amountPaid);
+
+      // 4. Map to the exact requested 14 columns
+      return {
+        "Order Date": order.created_at ? new Date(order.created_at).toLocaleDateString() : "N/A",
+        "Order ID": order.id || "N/A",
+        "Outsource Name": order.outsources?.name || order.outsource_name || "N/A",
+        "Client Name": order.clients?.name || order.client_name || "N/A",
+        "Customer Name": order.customer_name || "N/A", 
+        "Delivery Location": order.delivery_location || order.delivery_address || "N/A",
+        "Payment Method": order.payment_mode || "N/A",
+        "Total Delivery Charge": deliveryCharge.toFixed(2),
+        "Total Outsource holdings": outsourceHolding.toFixed(2),
+        "Total Outsource Charge": outsourceCharge.toFixed(2),
+        "Total MS holding": msHolding.toFixed(2),
+        "MS Profit": msProfit.toFixed(2),
+        "Settlement Amount": remainingSettlement.toFixed(2),
+        "Settlement Status": order.settlement_status || "Pending"
+      };
+    });
+
+    // Convert detailedExportData to CSV format
+    const headers = Object.keys(detailedExportData[0] || []);
+    csvContent += headers.join(',') + '\n';
+    
+    detailedExportData.forEach(row => {
+      const values = headers.map(header => row[header] || 'N/A');
+      csvContent += values.join(',') + '\n';
     });
 
     // Section 2: Monthly Settlement Summary
