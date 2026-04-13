@@ -39,8 +39,9 @@ interface OutsourceDriver {
   actualEarningMS: number;
   settlementAmount: number;
   paidCollectedAmount: number;
-  amount_paid_so_far?: number; // Track partial payments
-  status: 'Pay to Outsource' | 'Collect from Outsource' | 'Settled' | 'PAID' | 'Partial Paid';
+  totalPaidSoFar?: number; // Track total payments made
+  isSettled: boolean; // Track settlement state
+  status: 'Pay to Outsource' | 'Collect from Outsource' | 'Settled' | 'PAID' | 'Partial Paid' | 'Partial Collected' | 'Collected from Outsource' | 'Paid to Outsource';
 }
 
 // Settlement Data Interface
@@ -178,7 +179,7 @@ const Settlements: React.FC = () => {
           actualEarningMS: 0,
           settlementAmount: 0,
           paidCollectedAmount: 0,
-          amount_paid_so_far: 0,
+          totalPaidSoFar: 0,
           status: 'Settled'
         };
       }
@@ -190,48 +191,67 @@ const Settlements: React.FC = () => {
       driverMap[driverName].actualEarningMS += msEarning;
     });
 
-    // 5. Calculate Settlement Status and Amounts
-    const drivers = Object.values(driverMap).map(driver => {
-      // Calculate initial debt and remaining balance
-      const initialDebt = Math.abs(driver.actualEarning - driver.cashHeldByOutsource);
-      const amountAlreadyPaid = Number(driver.amount_paid_so_far) || 0;
-      const remainingBalance = Math.max(0, initialDebt - amountAlreadyPaid);
-      
+    // 5. Calculate Settlement Status and Amounts with Dynamic Cash Shift
+    const driverRows = Object.values(driverMap).map(driver => {
+      // 1. Initial State
+      const initialDriverCash = driver.cashHeldByOutsource;
+      const initialMsCash = driver.cashHeldByMS;
+      const driverEarned = driver.actualEarning;
+      const msEarned = driver.actualEarningMS;
+
+      const initialDebt = Math.abs(initialDriverCash - driverEarned);
+      const amountPaid = Number(driver.totalPaidSoFar) || 0;
+      const remainingBalance = Math.max(0, initialDebt - amountPaid);
+
+      // 2. The Dynamic Cash Shift
+      let finalDriverCash = initialDriverCash;
+      let finalMsCash = initialMsCash;
       let statusText = "";
-      let isSettled = false;
+      let isSettled = remainingBalance === 0;
 
-      // Determine Status Text
-      if (initialDebt === 0) {
-        statusText = "Settled";
-        isSettled = true;
-      } else if (remainingBalance === 0 && amountAlreadyPaid > 0) {
-        statusText = "PAID";
-        isSettled = true;
-      } else if (remainingBalance > 0 && amountAlreadyPaid > 0) {
-        statusText = "Partial Paid";
-        isSettled = false;
+      if (initialDriverCash > driverEarned) {
+        // Driver owed MS -> Driver paid MS
+        finalDriverCash -= amountPaid;
+        finalMsCash += amountPaid;
+
+        if (isSettled && amountPaid > 0) statusText = "Collected from Outsource";
+        else if (amountPaid > 0) statusText = "Partial Collected";
+        else statusText = "Collect from Outsource";
+
+      } else if (driverEarned > initialDriverCash) {
+        // MS owed Driver -> MS paid Driver
+        finalDriverCash += amountPaid;
+        finalMsCash -= amountPaid;
+
+        if (isSettled && amountPaid > 0) statusText = "Paid to Outsource";
+        else if (amountPaid > 0) statusText = "Partial Paid";
+        else statusText = "Pay to Outsource";
+        
       } else {
-        // No payments made yet
-        statusText = driver.cashHeldByOutsource > driver.actualEarning ? "Collect from Outsource" : "Pay to Outsource";
-        isSettled = false;
+        statusText = "Settled"; // Started at 0 debt
       }
 
-      // The string that will display in the PAID/COLLECTED column
-      let displayAmount = "";
-      if (isSettled || remainingBalance === 0) {
-        displayAmount = "0"; // Full payment made, no remaining balance
-      } else if (amountAlreadyPaid > 0) {
-        displayAmount = remainingBalance.toString(); // Partial payment made, show remaining
+      // 3. Formatting PAID/COLLECTED Column
+      let displayAmount = "-";
+      if (isSettled) {
+        displayAmount = "-"; 
+      } else if (amountPaid > 0) {
+        displayAmount = `$${amountPaid.toFixed(2)}`; // Show partial amount paid so far
       } else {
-        displayAmount = "None"; // No payments made
+        displayAmount = "None";
       }
 
-      // Update driver properties
-      driver.status = statusText as any;
-      driver.settlementAmount = remainingBalance;
-      driver.paidCollectedAmount = amountAlreadyPaid;
-
-      return driver;
+      return {
+        name: driver.name,
+        cashHeldByOutsource: finalDriverCash, // Passing shifted cash
+        actualEarning: driverEarned,
+        cashHeldByMS: finalMsCash,          // Passing shifted cash
+        actualEarningMS: msEarned,
+        settlementAmount: remainingBalance,
+        paidCollectedAmount: amountPaid,
+        status: statusText as any,
+        isSettled: isSettled
+      };
     });
 
     return {
@@ -239,7 +259,7 @@ const Settlements: React.FC = () => {
       actualEarning,
       cashHeldByMS,
       actualEarningMS,
-      drivers
+      drivers: driverRows
     };
   }, [filteredOrders]);
 
@@ -337,7 +357,7 @@ const Settlements: React.FC = () => {
     csvContent += '\nMonthly Settlement Summary\n';
     csvContent += 'Outsource Name,Cash Held by Outsource,Actual Earning (Outsource),Cash Held by MS,Actual Earning (MS),Total Settlement Amount,Settlement Status,PAID/COLLECTED Details\n';
     
-    Object.values(settlementData.drivers).forEach(driver => {
+    settlementData.drivers.forEach(driver => {
       const statusText = driver.status;
       const paidDetails = driver.paidCollectedAmount > 0 
         ? `AED ${driver.paidCollectedAmount} PAID/COLLECTED${driver.settlementAmount > 0.01 ? `, Balance: AED ${driver.settlementAmount}` : ''}`
@@ -527,13 +547,13 @@ const Settlements: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(driver.actualEarningMS)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{formatCurrency(driver.settlementAmount)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {driver.paidCollectedAmount > 0 ? `AED ${driver.paidCollectedAmount}` : 'None'}
+                        {driver.paidCollectedAmount > 0 ? driver.paidCollectedAmount : driver.paidCollectedAmount}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          driver.status === 'Settled' || driver.status === 'PAID'
+                          driver.status === 'Settled' || driver.status === 'Paid to Outsource' || driver.status === 'Collected from Outsource'
                             ? 'bg-green-100 text-green-800' 
-                            : driver.status === 'Partial Paid'
+                            : driver.status === 'Partial Paid' || driver.status === 'Partial Collected'
                             ? 'bg-yellow-100 text-yellow-800'
                             : driver.status === 'Collect from Outsource'
                             ? 'bg-blue-100 text-blue-800'
@@ -543,7 +563,7 @@ const Settlements: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {driver.status === 'Settled' || driver.status === 'PAID' ? (
+                        {driver.isSettled ? (
                           <span className="text-gray-400">Settled</span>
                         ) : (
                           <button
