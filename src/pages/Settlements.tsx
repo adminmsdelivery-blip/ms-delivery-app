@@ -221,11 +221,11 @@ const Settlements: React.FC = () => {
         finalMsCash += amountPaid;
 
         if (isSettled && amountPaid > 0) {
-          (driver as any).statusText = "Collected from Outsource";
+          statusText = "Collected from Outsource";
         } else if (amountPaid > 0) {
-          (driver as any).statusText = "Partial Collected";
+          statusText = "Partial Collected";
         } else {
-          (driver as any).statusText = "Collect from Outsource";
+          statusText = "Collect from Outsource";
         }
 
       } else if (driverEarned > initialDriverCash) {
@@ -233,16 +233,12 @@ const Settlements: React.FC = () => {
         finalDriverCash += amountPaid;
         finalMsCash -= amountPaid;
 
-        if (isSettled && amountPaid > 0) {
-          (driver as any).statusText = "Paid to Outsource";
-        } else if (amountPaid > 0) {
-          (driver as any).statusText = "Partial Paid";
-        } else {
-          (driver as any).statusText = "Pay to Outsource";
-        }
+        if (isSettled) statusText = "Settled";
+        else if (amountPaid > 0) statusText = "Partial Paid";
+        else statusText = "Pay to Outsource";
         
       } else {
-        (driver as any).statusText = "Settled"; // Started at 0 debt
+        statusText = "Settled"; // Started at 0 debt
       }
 
       // 3. Formatting PAID/COLLECTED Column
