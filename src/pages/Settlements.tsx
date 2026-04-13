@@ -41,7 +41,7 @@ interface OutsourceDriver {
   paidCollectedAmount: number;
   totalPaidSoFar?: number; // Track total payments made
   isSettled: boolean; // Track settlement state
-  status: 'Pay to Outsource' | 'Collect from Outsource' | 'Settled' | 'PAID' | 'Partial Paid' | 'Partial Collected' | 'Collected from Outsource' | 'Paid to Outsource';
+  status: 'Pay to Outsource' | 'Collect from Outsource' | 'Settled' | 'Collected' | 'Paid to Outsource' | 'Partial Paid' | 'Partial Collected';
 }
 
 // Settlement Data Interface
@@ -552,7 +552,7 @@ const Settlements: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          driver.status === 'Settled' || driver.status === 'Paid to Outsource' || driver.status === 'Collected from Outsource'
+                          driver.status === 'Settled' || driver.status === 'Paid to Outsource' || driver.status === 'Collected'
                             ? 'bg-green-100 text-green-800' 
                             : driver.status === 'Partial Paid' || driver.status === 'Partial Collected'
                             ? 'bg-yellow-100 text-yellow-800'
@@ -564,7 +564,7 @@ const Settlements: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {driver.isSettled ? (
+                        {(driver.status === 'Settled' || driver.status === 'Collected' || driver.status === 'Paid to Outsource') ? (
                           <span className="text-gray-400">Settled</span>
                         ) : (
                           <button
