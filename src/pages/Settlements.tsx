@@ -180,6 +180,7 @@ const Settlements: React.FC = () => {
           settlementAmount: 0,
           paidCollectedAmount: 0,
           totalPaidSoFar: 0,
+          isSettled: false,
           status: 'Settled'
         };
       }
@@ -214,7 +215,7 @@ const Settlements: React.FC = () => {
         finalDriverCash -= amountPaid;
         finalMsCash += amountPaid;
 
-        if (isSettled && amountPaid > 0) statusText = "Collected from Outsource";
+        if (isSettled && amountPaid > 0) statusText = "Collected";
         else if (amountPaid > 0) statusText = "Partial Collected";
         else statusText = "Collect from Outsource";
 
