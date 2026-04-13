@@ -384,37 +384,6 @@ const Settlements: React.FC = () => {
       setRefreshTrigger(prev => prev + 1); // Increment trigger to force useEffect to refetch data
       console.log("8. Triggering automatic data refetch...");
       
-      // Additional direct refetch for immediate UI update
-      const fetchData = async () => {
-        try {
-          setIsLoading(true);
-          setDbError(null);
-
-          // Query relational tables to get names
-          const { data, error } = await supabase
-            .from('orders')
-            .select('*, outsources(name), clients(name)');
-
-          if (error) {
-            console.error('Supabase Error:', error);
-            setDbError(error.message || JSON.stringify(error));
-            setOrders([]);
-            return;
-          }
-
-          // Ensure setOrders only receives an array
-          setOrders(data || []);
-        } catch (error) {
-          console.error('Fetch Error:', error);
-          setDbError(error.message || JSON.stringify(error));
-          setOrders([]);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      await fetchData(); // Direct refetch for immediate UI update
-      
     } catch (error) {
       console.error("SAVE FUNCTION CRASHED:", error);
       alert(`Failed to save payment: ${error.message}`);
