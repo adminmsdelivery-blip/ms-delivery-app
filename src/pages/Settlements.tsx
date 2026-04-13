@@ -41,6 +41,7 @@ interface OutsourceDriver {
   paidCollectedAmount: number;
   totalPaidSoFar?: number; // Track total payments made
   isSettled: boolean; // Track settlement state
+  statusText: string; // Status text for display
   status: 'Pay to Outsource' | 'Collect from Outsource' | 'Settled' | 'Collected' | 'Paid to Outsource' | 'Partial Paid' | 'Partial Collected';
 }
 
@@ -204,18 +205,19 @@ const Settlements: React.FC = () => {
       const amountPaid = Number(driver.totalPaidSoFar) || 0;
       const remainingBalance = Math.max(0, initialDebt - amountPaid);
 
+      // Bulletproof zero check to avoid floating point errors
+      const isSettled = remainingBalance <= 0.01; // Treat anything less than a penny as settled
+
       // 2. The Dynamic Cash Shift
       let finalDriverCash = initialDriverCash;
       let finalMsCash = initialMsCash;
       let statusText = "";
-      let isSettled = remainingBalance === 0;
-
       if (initialDriverCash > driverEarned) {
         // Driver owed MS -> Driver paid MS
         finalDriverCash -= amountPaid;
         finalMsCash += amountPaid;
 
-        if (isSettled && amountPaid > 0) statusText = "Collected";
+        if (isSettled && amountPaid > 0) statusText = "Collected from Outsource";
         else if (amountPaid > 0) statusText = "Partial Collected";
         else statusText = "Collect from Outsource";
 
@@ -230,16 +232,6 @@ const Settlements: React.FC = () => {
         
       } else {
         statusText = "Settled"; // Started at 0 debt
-      }
-
-      // 3. Formatting PAID/COLLECTED Column
-      let displayAmount = "-";
-      if (isSettled) {
-        displayAmount = "-"; 
-      } else if (amountPaid > 0) {
-        displayAmount = `$${amountPaid.toFixed(2)}`; // Show partial amount paid so far
-      } else {
-        displayAmount = "None";
       }
 
       return {
@@ -552,30 +544,33 @@ const Settlements: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          driver.status === 'Settled' || driver.status === 'Paid to Outsource' || driver.status === 'Collected'
+                          driver.statusText === 'Settled' || driver.statusText === 'Paid to Outsource' || driver.statusText === 'Collected'
                             ? 'bg-green-100 text-green-800' 
-                            : driver.status === 'Partial Paid' || driver.status === 'Partial Collected'
+                            : driver.statusText === 'Partial Paid' || driver.statusText === 'Partial Collected'
                             ? 'bg-yellow-100 text-yellow-800'
-                            : driver.status === 'Collect from Outsource'
+                            : driver.statusText === 'Collect from Outsource'
                             ? 'bg-blue-100 text-blue-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {driver.status}
+                          {driver.statusText}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {(driver.status === 'Settled' || driver.status === 'Collected' || driver.status === 'Paid to Outsource') ? (
+                        {driver.isSettled ? (
                           <span className="text-gray-400">Settled</span>
                         ) : (
                           <button
                             onClick={() => openSettlementModal(driver)}
+                            disabled={driver.isSettled}
                             className={`px-4 py-2 rounded text-white text-sm font-medium transition-colors ${
-                              driver.status === 'Pay to Outsource' 
+                              driver.isSettled
+                                ? 'bg-gray-400 cursor-not-allowed' // Greyed out when settled
+                                : driver.statusText === 'Pay to Outsource' 
                                 ? 'bg-red-600 hover:bg-red-700' 
                                 : 'bg-blue-600 hover:bg-blue-700'
                             }`}
                           >
-                            {driver.status === 'Pay to Outsource' ? 'Pay' : 'Collect'}
+                            {driver.statusText === 'Pay to Outsource' ? 'Pay' : 'Collect'}
                           </button>
                         )}
                       </td>
