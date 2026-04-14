@@ -34,9 +34,61 @@ export default function OrdersList() {
     });
   }, [orders]);
 
+  // --- FILTER LOGIC ---
+  const filteredOrders = useMemo(() => {
+    return processedOrders.filter(order => {
+      const matchesSearch = 
+        order.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.delivery_location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.clients?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.outsources?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      return matchesSearch;
+    });
+  }, [processedOrders, searchTerm]);
+
+  // --- CSV EXPORT FUNCTION ---
+  const handleExportCSV = () => {
+    const csvData = filteredOrders.map(order => ({
+      "Order ID": order.id || "N/A",
+      "Order Date": order.created_at ? new Date(order.created_at).toLocaleDateString() : "N/A",
+      "Customer Name": order.customer_name || "N/A",
+      "Customer Contact": order.customer_contact_number || "N/A",
+      "Client Name": order.clients?.name || "N/A",
+      "Outsource Name": order.outsources?.name || "N/A",
+      "Pickup Location": order.pickup_location || "N/A",
+      "Delivery Location": order.delivery_location || "N/A",
+      "Payment Mode": order.payment_mode || "N/A",
+      "Payment Status": order.payment_status || "N/A",
+      "Total Charges Received": Number(order.total_amount_received || 0).toFixed(2),
+      "Item Charges": Number(order.item_charge || 0).toFixed(2),
+      "Delivery Charges": order.deliveryCharge?.toFixed(2) || "0.00",
+      "Outsource Charges": Number(order.outsource_charges || 0).toFixed(2),
+      "MS Profit": order.msProfit?.toFixed(2) || "0.00",
+      "Pay/Collect Action": order.action || "N/A"
+    }));
+
+    // Convert to CSV
+    const headers = Object.keys(csvData[0] || {});
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => headers.map(header => `"${row[header] || 'N/A'}"`).join(','))
+    ].join('\n');
+
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `MS_Delivery_Orders_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   // --- SELECTION HANDLERS ---
   const handleSelectAll = (e) => {
-    if (e.target.checked) setSelectedOrders(processedOrders.map(o => o.id));
+    if (e.target.checked) setSelectedOrders(filteredOrders.map(o => o.id));
     else setSelectedOrders([]);
   };
 
@@ -99,7 +151,10 @@ export default function OrdersList() {
             </div>
 
             {/* Indigo Primary Button */}
-            <button className="bg-[#635BFF] hover:bg-[#524be0] text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm shadow-indigo-500/30 transition-all flex items-center gap-2 whitespace-nowrap">
+            <button 
+              onClick={handleExportCSV}
+              className="bg-[#635BFF] hover:bg-[#524be0] text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm shadow-indigo-500/30 transition-all flex items-center gap-2 whitespace-nowrap"
+            >
               <span>Export CSV</span>
             </button>
           </div>
@@ -147,7 +202,7 @@ export default function OrdersList() {
               <thead className="bg-white">
                 <tr>
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest w-10">
-                    <input type="checkbox" className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" onChange={handleSelectAll} checked={selectedOrders.length === processedOrders.length && processedOrders.length > 0} />
+                    <input type="checkbox" className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" onChange={handleSelectAll} checked={selectedOrders.length === filteredOrders.length && filteredOrders.length > 0} />
                   </th>
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Order ID</th>
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Customer</th>
@@ -163,7 +218,7 @@ export default function OrdersList() {
 
               {/* Table Body */}
               <tbody className="divide-y divide-gray-50">
-                {processedOrders.map((order) => (
+                {filteredOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-[#f8fafc] transition-colors duration-150 group">
                     
                     <td className="px-6 py-4">
