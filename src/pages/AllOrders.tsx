@@ -1,96 +1,147 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { 
-  Search, Trash2, Edit, Download, X, Filter,
-  Calendar, User, MapPin, DollarSign, CreditCard
-} from 'lucide-react';
+import { Search, Download, Edit, Trash2, User, MapPin, CreditCard, DollarSign } from 'lucide-react';
+
+interface Order {
+  id: string;
+  order_number: string;
+  created_at: string;
+  customer_name: string;
+  customer_contact_number?: string;
+  pickup_location?: string;
+  delivery_location?: string;
+  payment_mode: string;
+  payment_status: string;
+  total_amount_received: number;
+  item_charge: number;
+  outsource_charges: number;
+  clients?: { name: string };
+  outsources?: { name: string };
+  remark?: string;
+}
+
+interface MathCalculations {
+  calculatedDeliveryCharge: number;
+  calculatedProfit: number;
+  payCollectAction: string;
+  settlementAmount: number;
+}
 
 export default function AllOrders() {
-  const [orders, setOrders] = useState<any[]>([]);
+  // State & Filtering Architecture
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
-
-  // Edit Modal States
+  const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
+  const [timeframe, setTimeframe] = useState('All-Time');
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingOrder, setEditingOrder] = useState<any>(null);
 
-  // Core Math Engine - Strictly enforced calculations
-  const calculateOrderMath = (order: any) => {
-    const totalReceived = Number(order.total_amount_received || 0);
-    const itemCharge = Number(order.item_charge || 0);
-    const outsourceCharge = Number(order.outsource_charges || 0);
+  // The Core Math Engine (Strictly Enforced)
+  const calculateOrderMath = (order: Order): MathCalculations => {
+    const calculatedDeliveryCharge = Number(order.total_amount_received || 0) - Number(order.item_charge || 0);
+    const calculatedProfit = calculatedDeliveryCharge - Number(order.outsource_charges || 0);
     
-    const calculatedDeliveryCharge = totalReceived - itemCharge;
-    const calculatedProfit = calculatedDeliveryCharge - outsourceCharge;
-    
-    const pMethod = String(order.payment_mode || '').toUpperCase();
-    const isDriverCash = pMethod.includes('CASH') || pMethod.includes('COD') || pMethod.includes('COP');
-    
-    let payCollectAction = "-";
+    // Pay/Collect Action Logic
+    let payCollectAction = 'PAY';
     let settlementAmount = 0;
     
-    if (isDriverCash) {
-      payCollectAction = "COLLECT";
-      settlementAmount = calculatedProfit;
-    } else {
-      payCollectAction = "PAY";
-      settlementAmount = outsourceCharge;
+    if (order.payment_mode?.toLowerCase().includes('cash') || order.payment_mode?.toLowerCase().includes('cod')) {
+      payCollectAction = 'COLLECT';
+      settlementAmount = calculatedProfit; // Debt = MS Profit
+    } else if (order.payment_mode?.toLowerCase().includes('online')) {
+      payCollectAction = 'PAY';
+      settlementAmount = Number(order.outsource_charges || 0); // Debt = Outsource Charge
     }
     
     return {
       calculatedDeliveryCharge,
       calculatedProfit,
       payCollectAction,
-      settlementAmount,
-      isDriverCash
+      settlementAmount
     };
   };
 
+  // Timeframe Filtering Logic
+  const getTimeframeFilter = () => {
+    const now = new Date();
+    switch (timeframe) {
+      case 'Weekly':
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return weekAgo.toISOString();
+      case 'Monthly':
+        const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        return monthAgo.toISOString();
+      case 'Yearly':
+        const yearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        return yearAgo.toISOString();
+      default:
+        return null;
+    }
+  };
+
+  // Fetch orders with timeframe filtering
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [timeframe]);
 
   async function fetchOrders() {
     setLoading(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from('orders')
       .select(`*, clients (name), outsources (name)`)
       .order('created_at', { ascending: false });
 
+    const timeframeFilter = getTimeframeFilter();
+    if (timeframeFilter) {
+      query = query.gte('created_at', timeframeFilter);
+    }
+
+    const { data, error } = await query;
     if (!error) setOrders(data || []);
     setLoading(false);
   }
 
-  // Auto-calculate when editing order fields change
-  useEffect(() => {
-    if (editingOrder && (editingOrder.total_amount_received !== undefined || 
-        editingOrder.item_charge !== undefined || 
-        editingOrder.outsource_charges !== undefined)) {
-      const math = calculateOrderMath(editingOrder);
-      setEditingOrder(prev => ({
-        ...prev,
-        delivery_charges: math.calculatedDeliveryCharge,
-        estimated_profit: math.calculatedProfit
-      }));
-    }
-  }, [editingOrder?.total_amount_received, editingOrder?.item_charge, editingOrder?.outsource_charges]);
-
-  // Filter logic
+  // Filter orders based on search term
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
       order.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.outsources?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.clients?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === 'All' || 
-      (statusFilter === 'Pending' && order.payment_status !== 'Settled') ||
-      (statusFilter === 'Settled' && order.payment_status === 'Settled');
-    
-    return matchesSearch && matchesStatus;
+    return matchesSearch;
   });
 
-  // Delete logic
+  // Bulk selection logic
+  const toggleSelectAll = () => {
+    if (selectedOrders.length === filteredOrders.length) {
+      setSelectedOrders([]);
+    } else {
+      setSelectedOrders(filteredOrders.map(o => o.id));
+    }
+  };
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedOrders(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  // Bulk delete logic
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete ${selectedOrders.length} order(s)?`)) return;
+    
+    const { error } = await supabase.from('orders').delete().in('id', selectedOrders);
+    if (error) {
+      alert(error.message);
+    } else {
+      setOrders(prev => prev.filter(o => !selectedOrders.includes(o.id)));
+      setSelectedOrders([]);
+    }
+  };
+
+  // Single delete logic
   const handleDelete = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this order?')) return;
     
@@ -102,23 +153,26 @@ export default function AllOrders() {
     }
   };
 
-  // Edit logic with database safety
-  const openEditModal = (order: any) => {
-    setEditingOrder({ ...order });
+  // Edit modal functions
+  const openEditModal = (order: Order) => {
+    setEditingOrder(order);
     setIsEditModalOpen(true);
   };
 
+  // Database Safety (Edit Modal fixes)
   const handleUpdateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!editingOrder) return;
     
     // Database Update Safety - Remove generated columns
     const updatePayload = {
       customer_name: editingOrder.customer_name,
-      customer_contact_number: editingOrder.customer_contact_number || editingOrder.customer_contact,
+      customer_contact_number: editingOrder.customer_contact_number,
       pickup_location: editingOrder.pickup_location,
-      delivery_location: editingOrder.delivery_location || editingOrder.drop_location,
-      total_amount_received: editingOrder.total_amount_received || editingOrder.delivery_charges,
-      item_charge: editingOrder.item_charge || 0,
+      delivery_location: editingOrder.delivery_location,
+      total_amount_received: editingOrder.total_amount_received,
+      item_charge: editingOrder.item_charge,
       outsource_charges: editingOrder.outsource_charges,
       payment_mode: editingOrder.payment_mode,
       payment_status: editingOrder.payment_status,
@@ -138,24 +192,24 @@ export default function AllOrders() {
     }
   };
 
-  // Flawless CSV Export with exact columns
+  // Flawless CSV Export
   const handleExportCSV = () => {
     const csvData = filteredOrders.map(order => {
       const math = calculateOrderMath(order);
       
       return {
         "Order Date": order.created_at ? new Date(order.created_at).toLocaleDateString() : "N/A",
-        "Order ID": order.id || "N/A",
-        "Outsource Name": order.outsources?.name || order.outsource_name || "N/A",
-        "Client Name": order.clients?.name || order.client_name || "N/A",
+        "Order ID": order.order_number || "N/A",
+        "Outsource Name": order.outsources?.name || "N/A",
+        "Client Name": order.clients?.name || "N/A",
         "Customer Name": order.customer_name || "N/A",
-        "Delivery Location": order.delivery_location || order.delivery_address || "N/A",
+        "Delivery Location": order.delivery_location || "N/A",
         "Payment Method": order.payment_mode || "N/A",
         "Total Amount Received": Number(order.total_amount_received || 0).toFixed(2),
         "Item Charge": Number(order.item_charge || 0).toFixed(2),
-        "Delivery Charges": math.calculatedDeliveryCharge.toFixed(2),
+        "Delivery Charges (Calculated)": math.calculatedDeliveryCharge.toFixed(2),
         "Outsource Charges": Number(order.outsource_charges || 0).toFixed(2),
-        "MS Profit": math.calculatedProfit.toFixed(2),
+        "MS Profit (Calculated)": math.calculatedProfit.toFixed(2),
         "Settlement Amount": math.settlementAmount.toFixed(2),
         "Pay/Collect": math.payCollectAction,
         "Settlement Status": order.payment_status || "Pending"
@@ -166,7 +220,7 @@ export default function AllOrders() {
     const headers = Object.keys(csvData[0] || {});
     const csvContent = [
       headers.join(','),
-      ...csvData.map(row => headers.map(header => row[header] || 'N/A').join(','))
+      ...csvData.map(row => headers.map(header => `"${row[header] || 'N/A'}"`).join(','))
     ].join('\n');
 
     // Download CSV
@@ -179,7 +233,21 @@ export default function AllOrders() {
     window.URL.revokeObjectURL(url);
   };
 
-  // Status badge component
+  // Pay/Collect badge component
+  const PayCollectBadge = ({ action }: { action: string }) => {
+    const isCollect = action === 'COLLECT';
+    return (
+      <span className={`text-xs font-medium px-2 py-1 rounded ${
+        isCollect 
+          ? 'text-orange-600 bg-orange-50' 
+          : 'text-blue-600 bg-blue-50'
+      }`}>
+        {action}
+      </span>
+    );
+  };
+
+  // Settlement status badge
   const StatusBadge = ({ status }: { status: string }) => {
     const isSettled = status === 'Settled';
     return (
@@ -195,37 +263,40 @@ export default function AllOrders() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top Bar */}
+      {/* Top Navigation & Bulk Actions */}
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 py-4">
-            <h1 className="text-2xl font-bold text-gray-900">Orders Listing</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Orders Management</h1>
             
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-              {/* Search */}
+              {/* Search Input */}
               <div className="relative flex-1 sm:flex-initial">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
                   type="text"
-                  placeholder="Search by ID, Name, Client..."
+                  placeholder="Search by ID, Driver, Client..."
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
               
-              {/* Status Filter */}
-              <div className="relative">
-                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <select
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="All">All Status</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Settled">Settled</option>
-                </select>
+              {/* Segmented Control for Timeframes */}
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                {['Weekly', 'Monthly', 'Yearly', 'All-Time'].map((option) => (
+                  <button
+                    key={option}
+                    onClick={() => setTimeframe(option)}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      timeframe === option 
+                        ? 'bg-white text-gray-900 shadow-sm' 
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    {option}
+                  </button>
+                ))}
               </div>
               
               {/* Export CSV */}
@@ -239,6 +310,36 @@ export default function AllOrders() {
             </div>
           </div>
         </div>
+
+        {/* Bulk Action Bar */}
+        {selectedOrders.length > 0 && (
+          <div className="bg-red-50 border-b border-red-200">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-red-900">
+                    {selectedOrders.length} Items Selected
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleBulkDelete}
+                    className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                  >
+                    <Trash2 size={16} />
+                    Delete Selected
+                  </button>
+                  <button
+                    onClick={() => setSelectedOrders([])}
+                    className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Content */}
@@ -249,59 +350,82 @@ export default function AllOrders() {
           </div>
         ) : (
           <>
-            {/* Mobile View - Cards */}
-            <div className="md:hidden space-y-4">
+            {/* Mobile UI (Card View) */}
+            <div className="block md:hidden space-y-4">
               {filteredOrders.map((order) => {
                 const math = calculateOrderMath(order);
+                const isSelected = selectedOrders.includes(order.id);
                 return (
-                  <div key={order.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                    {/* Header */}
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{order.order_number}</h3>
-                        <p className="text-sm text-gray-500">
-                          {new Date(order.created_at).toLocaleDateString()}
-                        </p>
+                  <div key={order.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
+                    {/* Card Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelectOne(order.id)}
+                          className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
+                        />
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{order.order_number}</h3>
+                          <p className="text-sm text-gray-500">
+                            {new Date(order.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
                       </div>
                       <StatusBadge status={order.payment_status || 'Pending'} />
                     </div>
                     
-                    {/* Client/Location */}
-                    <div className="space-y-2 mb-3">
-                      <div className="flex items-center gap-2 text-sm">
+                    {/* Card Body - Grid Layout */}
+                    <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+                      <div className="flex items-center gap-2">
                         <User size={14} className="text-gray-400" />
+                        <span className="text-gray-700">{order.outsources?.name || 'N/A'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <DollarSign size={14} className="text-gray-400" />
+                        <span className="text-gray-700">{order.clients?.name || 'N/A'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin size={14} className="text-gray-400" />
                         <span className="text-gray-700">{order.customer_name}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <MapPin size={14} className="text-gray-400" />
-                        <span className="text-gray-700">{order.delivery_location}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <DollarSign size={14} className="text-gray-400" />
-                        <span className="text-gray-700">{order.clients?.name}</span>
+                      <div className="flex items-center gap-2">
+                        <CreditCard size={14} className="text-gray-400" />
+                        <span className="text-gray-700">{order.payment_mode}</span>
                       </div>
                     </div>
                     
-                    {/* Financial Summary */}
-                    <div className="bg-gray-50 rounded-lg p-3 mb-3">
-                      <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div>
-                          <p className="text-gray-500">Total Received</p>
-                          <p className="font-semibold text-gray-900">
+                    {/* Card Footer - Financial Summary */}
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Total Received</span>
+                          <span className="font-medium text-gray-900">
                             AED {Number(order.total_amount_received || 0).toFixed(2)}
-                          </p>
+                          </span>
                         </div>
-                        <div>
-                          <p className="text-gray-500">MS Profit</p>
-                          <p className={`font-semibold ${math.calculatedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Outsource Charge</span>
+                          <span className="font-medium text-gray-900">
+                            AED {Number(order.outsource_charges || 0).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm font-semibold">
+                          <span className="text-gray-700">MS Profit</span>
+                          <span className={`font-semibold ${math.calculatedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             AED {math.calculatedProfit.toFixed(2)}
-                          </p>
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Pay/Collect</span>
+                          <PayCollectBadge action={math.payCollectAction} />
                         </div>
                       </div>
                     </div>
                     
-                    {/* Actions */}
-                    <div className="flex gap-2">
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 mt-4">
                       <button
                         onClick={() => openEditModal(order)}
                         className="flex-1 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
@@ -321,116 +445,129 @@ export default function AllOrders() {
               })}
             </div>
 
-            {/* Desktop View - Table */}
+            {/* Desktop UI (Table View) */}
             <div className="hidden md:block">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Date
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Order ID
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Driver
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Client
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Customer
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Location
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Pay Method
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Total Received
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Outsource Charge
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          MS Profit
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Settlement Status
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredOrders.map((order) => {
-                        const math = calculateOrderMath(order);
-                        return (
-                          <tr key={order.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {new Date(order.created_at).toLocaleDateString()}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {order.order_number}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {order.outsources?.name || 'Unassigned'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {order.clients?.name || 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {order.customer_name || 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {order.delivery_location || 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              <div className="flex items-center gap-1">
-                                <CreditCard size={14} />
-                                {order.payment_mode || 'N/A'}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              AED {Number(order.total_amount_received || 0).toFixed(2)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              AED {Number(order.outsource_charges || 0).toFixed(2)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              <span className={`font-semibold ${math.calculatedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                AED {math.calculatedProfit.toFixed(2)}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <StatusBadge status={order.payment_status || 'Pending'} />
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white">
-                              <div className="flex justify-end gap-2">
-                                <button
-                                  onClick={() => openEditModal(order)}
-                                  className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50"
-                                >
-                                  <Edit size={16} />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(order.id)}
-                                  className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+              <div className="w-full overflow-x-auto bg-white shadow-sm rounded-xl border border-gray-200 mt-6">
+                <table className="w-full min-w-max text-left">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                        <input
+                          type="checkbox"
+                          checked={selectedOrders.length === filteredOrders.length && filteredOrders.length > 0}
+                          onChange={toggleSelectAll}
+                          className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                        />
+                      </th>
+                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                        Date
+                      </th>
+                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                        Order ID
+                      </th>
+                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                        Driver
+                      </th>
+                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                        Client
+                      </th>
+                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                        Customer
+                      </th>
+                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                        Location
+                      </th>
+                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                        Pay Method
+                      </th>
+                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                        Total Received
+                      </th>
+                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                        Outsource Charge
+                      </th>
+                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                        MS Profit
+                      </th>
+                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                        Pay/Collect
+                      </th>
+                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider sticky right-0 bg-gray-50">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredOrders.map((order) => {
+                      const math = calculateOrderMath(order);
+                      const isSelected = selectedOrders.includes(order.id);
+                      return (
+                        <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap border-r border-gray-100">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelectOne(order.id)}
+                              className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                            />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-r border-gray-100">
+                            {new Date(order.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-100">
+                            {order.order_number}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-r border-gray-100">
+                            {order.outsources?.name || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-r border-gray-100">
+                            {order.clients?.name || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-r border-gray-100">
+                            {order.customer_name || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-r border-gray-100">
+                            {order.delivery_location || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-r border-gray-100">
+                            <div className="flex items-center gap-1">
+                              <CreditCard size={14} />
+                              {order.payment_mode || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-100">
+                            AED {Number(order.total_amount_received || 0).toFixed(2)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-100">
+                            AED {Number(order.outsource_charges || 0).toFixed(2)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 border-r border-gray-100">
+                            AED {math.calculatedProfit.toFixed(2)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap border-r border-gray-100">
+                            <PayCollectBadge action={math.payCollectAction} />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white border-l border-gray-100">
+                            <div className="flex justify-end gap-2">
+                              <button
+                                onClick={() => openEditModal(order)}
+                                className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50"
+                              >
+                                <Edit size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(order.id)}
+                                className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           </>
@@ -457,7 +594,9 @@ export default function AllOrders() {
                       onClick={() => setIsEditModalOpen(false)}
                       className="text-gray-400 hover:text-gray-500"
                     >
-                      <X size={24} />
+                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                     </button>
                   </div>
                   
@@ -481,7 +620,7 @@ export default function AllOrders() {
                         </label>
                         <input
                           type="tel"
-                          value={editingOrder.customer_contact_number || editingOrder.customer_contact || ''}
+                          value={editingOrder.customer_contact_number || ''}
                           onChange={(e) => setEditingOrder({...editingOrder, customer_contact_number: e.target.value})}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                         />
@@ -507,7 +646,7 @@ export default function AllOrders() {
                         </label>
                         <input
                           type="text"
-                          value={editingOrder.delivery_location || editingOrder.drop_location || ''}
+                          value={editingOrder.delivery_location || ''}
                           onChange={(e) => setEditingOrder({...editingOrder, delivery_location: e.target.value})}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                         />
@@ -522,7 +661,7 @@ export default function AllOrders() {
                         </label>
                         <input
                           type="number"
-                          value={editingOrder.total_amount_received || editingOrder.delivery_charges || ''}
+                          value={editingOrder.total_amount_received || ''}
                           onChange={(e) => setEditingOrder({...editingOrder, total_amount_received: Number(e.target.value)})}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           min="0"
@@ -564,7 +703,8 @@ export default function AllOrders() {
                         </label>
                         <input
                           type="number"
-                          value={editingOrder.delivery_charges || ''}
+                          value={editingOrder.total_amount_received && editingOrder.item_charge ? 
+                            Number(editingOrder.total_amount_received) - Number(editingOrder.item_charge) : 0}
                           readOnly
                           className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 font-semibold"
                         />
@@ -619,17 +759,17 @@ export default function AllOrders() {
                 
                 <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                   <button
-                    type="submit"
-                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
-                  >
-                    Save Changes
-                  </button>
-                  <button
                     type="button"
                     onClick={() => setIsEditModalOpen(false)}
                     className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                   >
                     Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
+                  >
+                    Save Changes
                   </button>
                 </div>
               </form>
