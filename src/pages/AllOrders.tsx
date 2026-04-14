@@ -119,12 +119,12 @@ export default function OrdersList() {
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Order ID</th>
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Customer</th>
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Location</th>
+                  <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Total Charges</th>
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Item Charges</th>
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Delivery Charges</th>
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Outsource Charges</th>
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">MS Profit</th>
-                  <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Status</th>
-                  <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest sticky right-0 bg-white shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.02)]">Action</th>
+                  <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest sticky right-0 bg-white shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.02)]">Actions</th>
                 </tr>
               </thead>
 
@@ -146,24 +146,22 @@ export default function OrdersList() {
                     
                     <td className="px-6 py-4 text-sm text-gray-600">{order.delivery_location}</td>
                     
+                    <td className="px-6 py-4 text-sm text-gray-600 text-right font-medium">AED {order.total_amount_received?.toFixed(2)}</td>
+                    
                     <td className="px-6 py-4 text-sm text-gray-600 text-right font-medium">AED {order.item_charge?.toFixed(2)}</td>
                     
                     <td className="px-6 py-4 text-sm text-gray-600 text-right font-medium">AED {order.deliveryCharge?.toFixed(2)}</td>
                     
                     <td className="px-6 py-4 text-sm text-gray-600 text-right font-medium">AED {order.outsource_charges?.toFixed(2)}</td>
                     
-                    <td className="px-6 py-4 text-sm text-gray-900 font-semibold text-right">AED {order.msProfit?.toFixed(2)}</td>
-                    
-                    <td className="px-6 py-4 text-center">
-                      {order.action === 'PAY' ? (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold bg-[#eef2fa] text-[#4b72d1]">PAY</span>
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold bg-[#fff4eb] text-[#e38c40]">COLLECT</span>
-                      )}
+                    <td className="px-6 py-4 text-sm text-gray-900 font-semibold text-right">
+                      <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded-md">
+                        AED {order.msProfit?.toFixed(2)}
+                      </span>
                     </td>
                     
                     <td className="px-6 py-4 sticky right-0 bg-white group-hover:bg-[#f8fafc] transition-colors duration-150 text-center shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.02)]">
-                      <button className="text-gray-400 hover:text-indigo-600 transition-colors mr-2">
+                      <button className="text-gray-400 hover:text-blue-600 transition-colors mr-2">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                       </button>
                       <button className="text-gray-400 hover:text-red-600 transition-colors">
