@@ -537,10 +537,10 @@ const Settlements: React.FC = () => {
             </div>
             <button
               onClick={exportMasterReport}
-              className="bg-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm"
+              className="bg-[#442DD8] hover:bg-[#3925b8] text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm shadow-indigo-500/30 transition-all flex items-center gap-2 whitespace-nowrap"
             >
               <Download className="w-5 h-5" />
-              Export Master Report
+              Export CSV
             </button>
           </div>
         </div>

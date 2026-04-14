@@ -235,7 +235,7 @@ export default function OrdersList() {
             {/* Indigo Primary Button */}
             <button 
               onClick={handleExportCSV}
-              className="bg-[#635BFF] hover:bg-[#524be0] text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm shadow-indigo-500/30 transition-all flex items-center gap-2 whitespace-nowrap"
+              className="bg-[#442DD8] hover:bg-[#3925b8] text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm shadow-indigo-500/30 transition-all flex items-center gap-2 whitespace-nowrap"
             >
               <span>Export CSV</span>
             </button>
