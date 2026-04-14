@@ -45,7 +45,19 @@ const Profile: React.FC = () => {
         .single();
 
       if (error && error.code !== 'PGRST116') { // Not found error
-        throw error;
+        console.error('Database error:', error);
+        // Fallback to localStorage if database fails
+        const savedProfile = localStorage.getItem('ms_delivery_profile');
+        if (savedProfile) {
+          const parsed = JSON.parse(savedProfile);
+          setProfile({
+            company_name: parsed.company_name || '',
+            owner_name: parsed.owner_name || '',
+            email: parsed.email || '',
+            logo_url: parsed.logo_url || ''
+          });
+        }
+        return;
       }
 
       if (data) {
@@ -91,7 +103,7 @@ const Profile: React.FC = () => {
 
     setUploading(true);
     try {
-      // Upload to Supabase Storage
+      // Try to upload to Supabase Storage
       const fileExt = file.name.split('.').pop();
       const fileName = `company-logo-${Date.now()}.${fileExt}`;
       
@@ -99,7 +111,19 @@ const Profile: React.FC = () => {
         .from('company-logos')
         .upload(fileName, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        // Fallback to local preview if storage fails
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = reader.result as string;
+          setProfile({ ...profile, logo_url: dataUrl });
+          setUploading(false);
+          alert('Logo uploaded locally. Storage upload failed, but your logo is saved locally.');
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
@@ -110,8 +134,15 @@ const Profile: React.FC = () => {
       setUploading(false);
     } catch (error) {
       console.error('Error uploading logo:', error);
-      alert('Failed to upload logo');
-      setUploading(false);
+      // Fallback to local preview if storage fails
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        setProfile({ ...profile, logo_url: dataUrl });
+        setUploading(false);
+        alert('Logo uploaded locally. Storage upload failed, but your logo is saved locally.');
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -132,15 +163,23 @@ const Profile: React.FC = () => {
         .select()
         .single();
 
-      if (error) throw error;
-
-      // Also save to localStorage as backup
-      localStorage.setItem('ms_delivery_profile', JSON.stringify(profile));
+      if (error) {
+        console.error('Database save error:', error);
+        // Fallback to localStorage if database fails
+        localStorage.setItem('ms_delivery_profile', JSON.stringify(profile));
+        alert('Profile saved locally. Database save failed, but your data is safe locally.');
+      } else {
+        // Also save to localStorage as backup
+        localStorage.setItem('ms_delivery_profile', JSON.stringify(profile));
+      }
       
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (error: any) {
-      alert(error.message);
+      console.error('Save error:', error);
+      // Fallback to localStorage if database fails
+      localStorage.setItem('ms_delivery_profile', JSON.stringify(profile));
+      alert('Profile saved locally. Database save failed, but your data is safe locally.');
     } finally {
       setSaving(false);
     }
