@@ -229,7 +229,7 @@ export default function OrdersList() {
               <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
             </div>
             
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full relative z-50">
               <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg leading-6 font-medium text-gray-900">
@@ -468,9 +468,9 @@ export default function OrdersList() {
 
       {/* Success Popup */}
       {showSuccessPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+        <div className="fixed inset-0 z-60 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black bg-opacity-50"></div>
-          <div className="relative bg-white rounded-2xl p-8 max-w-md w-full mx-4 transform transition-all duration-300 scale-100">
+          <div className="relative bg-white rounded-2xl p-8 max-w-md w-full mx-4 transform transition-all duration-300 scale-100 z-60">
             <div className="flex flex-col items-center text-center">
               {/* Success Icon */}
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
