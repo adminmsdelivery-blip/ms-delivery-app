@@ -424,21 +424,23 @@ const Settlements: React.FC = () => {
         actionDirection = "COLLECT"; // Driver has the cash, MS must collect profit
       } else {
         orderDebt = outsourceCharge;       
-        actionDirection = "PAY";     // MS has the cash, MS must pay the driver fee
-      }
-    }
-        "Total Amount Received": totalReceived.toFixed(2),
-        "Item Charge": itemCharge.toFixed(2),
-        "Delivery Charges": calcDeliveryCharge.toFixed(2), 
-        "Outsource Charges": outsourceCharge.toFixed(2),
-        "Total Outsource holdings": outsourceHolding.toFixed(2),
-        "Total MS holding": msHolding.toFixed(2),
-        "MS Profit": calcProfit.toFixed(2),  // <-- CRITICAL: Renamed Header and Forced Math
-        "Settlement Amount": remainingSettlement.toFixed(2),
-        "Pay/Collect": finalActionLabel,
-        "Settlement Status": order.settlement_status || "Pending"
-      };
-    });
+        actionDirection = "PAY"; // MS has the cash, MS must pay the driver fee
+      } 
+
+    return {
+      "Order Number": order.order_number || order.tracking_number || "N/A",
+      "Total Amount Received": totalReceived.toFixed(2),
+      "Item Charge": itemCharge.toFixed(2),
+      "Delivery Charges": calcDeliveryCharge.toFixed(2),
+      "Outsource Charges": outsourceCharge.toFixed(2),
+      "Total Outsource holdings": outsourceHolding.toFixed(2),
+      "Total MS holding": msHolding.toFixed(2),
+      "MS Profit": calcProfit.toFixed(2), 
+      "Settlement Amount": remainingSettlement.toFixed(2),
+      "Pay/Collect": finalActionLabel,
+      "Settlement Status": order.settlement_status || "Pending"
+    };
+  }); // <-- Your bottom brackets should now be happy and have no red squigglies!
 
     // Convert detailedExportData to CSV format
     const headers = Object.keys(detailedExportData[0] || []);
