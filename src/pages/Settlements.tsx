@@ -426,19 +426,7 @@ const Settlements: React.FC = () => {
         orderDebt = outsourceCharge;       
         actionDirection = "PAY";     // MS has the cash, MS must pay the driver fee
       }
-      
-      const remainingSettlement = Math.max(0, orderDebt - amountPaid);
-      const finalActionLabel = remainingSettlement > 0 ? actionDirection : "-";
-
-      // 2. Return the strictly formatted object
-      return {
-        "Order Date": order.created_at ? new Date(order.created_at).toLocaleDateString() : "N/A",
-        "Order ID": order.id || "N/A",
-        "Outsource Name": order.outsources?.name || order.outsource_name || "N/A",
-        "Client Name": order.clients?.name || order.client_name || "N/A",
-        "Customer Name": order.customer_name || "N/A", 
-        "Delivery Location": order.delivery_location || order.delivery_address || "N/A",
-        "Payment Method": order.payment_mode || "N/A",
+    }
         "Total Amount Received": totalReceived.toFixed(2),
         "Item Charge": itemCharge.toFixed(2),
         "Delivery Charges": calcDeliveryCharge.toFixed(2), 

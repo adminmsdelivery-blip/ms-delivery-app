@@ -132,7 +132,7 @@ export default function OrdersList() {
   // --- CSV EXPORT FUNCTION ---
   const handleExportCSV = () => {
     const csvData = filteredOrders.map(order => ({
-      "Order ID": order.id || "N/A",
+      "Order Number": order.order_number || order.tracking_number || "N/A",
       "Order Date": order.created_at ? new Date(order.created_at).toLocaleDateString() : "N/A",
       "Customer Name": order.customer_name || "N/A",
       "Customer Contact": order.customer_contact_number || "N/A",
