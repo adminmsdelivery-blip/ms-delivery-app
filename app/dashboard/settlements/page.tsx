@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../src/lib/supabase';
-import { Wallet, ArrowUpRight, ArrowDownLeft, FileSpreadsheet } from 'lucide-react';
+import { Wallet, ArrowUpRight, ArrowDownLeft, FileSpreadsheet, Download } from 'lucide-react';
 
 export default function SettlementsPage() {
   const [loading, setLoading] = useState(true);
@@ -46,7 +46,7 @@ export default function SettlementsPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Financial Settlements</h1>
         <button className="bg-[#442DD8] hover:bg-[#3925b8] text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm shadow-indigo-500/30 transition-all flex items-center gap-2 whitespace-nowrap">
-          <FileSpreadsheet size={20} /> Export CSV
+          <Download className="w-5 h-5" /> Export CSV
         </button>
       </div>
 
