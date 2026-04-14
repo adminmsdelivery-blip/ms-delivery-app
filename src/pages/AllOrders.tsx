@@ -12,6 +12,8 @@ export default function OrdersList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('All-Time');
   const [selectedOrders, setSelectedOrders] = useState([]);
+  const [editingOrder, setEditingOrder] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // --- MATH ENGINE ---
   const processedOrders = useMemo(() => {
@@ -40,6 +42,33 @@ export default function OrdersList() {
   const handleSelectOne = (e, id) => {
     if (e.target.checked) setSelectedOrders(prev => [...prev, id]);
     else setSelectedOrders(prev => prev.filter(item => item !== id));
+  };
+
+  // --- EDIT MODAL FUNCTIONS ---
+  const openEditModal = (order) => {
+    setEditingOrder({...order});
+    setIsEditModalOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setEditingOrder(null);
+    setIsEditModalOpen(false);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingOrder) {
+      setOrders(prev => prev.map(order => 
+        order.id === editingOrder.id ? editingOrder : order
+      ));
+      closeEditModal();
+    }
+  };
+
+  const handleInputChange = (field, value) => {
+    setEditingOrder(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   return (
@@ -162,10 +191,7 @@ export default function OrdersList() {
                     
                     <td className="px-6 py-4 sticky right-0 bg-white group-hover:bg-[#f8fafc] transition-colors duration-150 text-center shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.02)]">
                       <button 
-                        onClick={() => {
-                          alert(`Edit order: ${order.id}`);
-                          // TODO: Implement edit modal functionality
-                        }}
+                        onClick={() => openEditModal(order)}
                         className="text-gray-400 hover:text-blue-600 transition-colors mr-2"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
@@ -190,6 +216,135 @@ export default function OrdersList() {
           
         </div>
       </div>
+
+      {/* Edit Modal */}
+      {isEditModalOpen && editingOrder && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900">
+                    Edit Order {editingOrder.id}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={closeEditModal}
+                    className="text-gray-400 hover:text-gray-500"
+                  >
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Customer Name
+                    </label>
+                    <input
+                      type="text"
+                      value={editingOrder.customer_name || ''}
+                      onChange={(e) => handleInputChange('customer_name', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Delivery Location
+                    </label>
+                    <input
+                      type="text"
+                      value={editingOrder.delivery_location || ''}
+                      onChange={(e) => handleInputChange('delivery_location', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Total Amount Received
+                      </label>
+                      <input
+                        type="number"
+                        value={editingOrder.total_amount_received || ''}
+                        onChange={(e) => handleInputChange('total_amount_received', Number(e.target.value))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Item Charge
+                      </label>
+                      <input
+                        type="number"
+                        value={editingOrder.item_charge || ''}
+                        onChange={(e) => handleInputChange('item_charge', Number(e.target.value))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Outsource Charges
+                      </label>
+                      <input
+                        type="number"
+                        value={editingOrder.outsource_charges || ''}
+                        onChange={(e) => handleInputChange('outsource_charges', Number(e.target.value))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Payment Mode
+                      </label>
+                      <select
+                        value={editingOrder.payment_mode || ''}
+                        onChange={(e) => handleInputChange('payment_mode', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                      >
+                        <option value="Cash on Delivery (COD)">Cash on Delivery (COD)</option>
+                        <option value="Cash on Pickup (COP)">Cash on Pickup (COP)</option>
+                        <option value="Online Payment">Online Payment</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={handleSaveEdit}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Save Changes
+                </button>
+                <button
+                  type="button"
+                  onClick={closeEditModal}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
