@@ -115,7 +115,6 @@ export default function AllOrders() {
         total_amount_received: editingOrder.total_amount_received || editingOrder.delivery_charges,
         item_charge: editingOrder.item_charge || 0,
         outsource_charges: editingOrder.outsource_charges,
-        estimated_profit: editingOrder.estimated_profit,
         payment_mode: editingOrder.payment_mode,
         payment_status: editingOrder.payment_status,
         remark: editingOrder.remark

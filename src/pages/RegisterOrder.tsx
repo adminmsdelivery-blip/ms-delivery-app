@@ -95,7 +95,7 @@ const RegisterOrder: React.FC = () => {
     setLoading(true);
     try {
       // Remove estimated_profit from submission as it's calculated by database DEFAULT constraint
-      const { estimated_profit, ...orderData } = formData;
+      const { ...orderData } = formData; // Spread all formData properties except estimated_profit
 
       const { error } = await supabase.from('orders').insert([orderData]);
 
