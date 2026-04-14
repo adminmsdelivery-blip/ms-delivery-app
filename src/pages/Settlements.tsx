@@ -399,29 +399,28 @@ const Settlements: React.FC = () => {
     // Section 1: Line-by-Line Audit with 15 detailed columns
     
     const detailedExportData = filteredOrders.map(order => {
-      // 1. Extract raw numbers safely
+      // 1. Force strict local math calculation
       const totalReceived = Number(order.total_amount_received || 0);
       const itemCharge = Number(order.item_charge || 0);
       const outsourceCharge = Number(order.outsource_charges || 0);
       const amountPaid = Number(order.amount_paid || 0);
 
-      // 2. FORCE the calculations (Do not use order.delivery_charges directly)
-      const calculatedDeliveryCharge = totalReceived - itemCharge;
-      const calculatedProfit = calculatedDeliveryCharge - outsourceCharge;
+      const calcDeliveryCharge = totalReceived - itemCharge;
+      const calcProfit = calcDeliveryCharge - outsourceCharge;
 
       const pMethod = String(order.payment_mode || '').toUpperCase();
       const isDriverCash = pMethod.includes('COD') || pMethod.includes('COP') || pMethod.includes('CASH');
 
-      // 3. Calculate holdings for this order using forced calculations
-      const outsourceHolding = isDriverCash ? calculatedDeliveryCharge : 0;
-      const msHolding = !isDriverCash ? calculatedDeliveryCharge : 0;
+      // Calculate holdings for this order
+      const outsourceHolding = isDriverCash ? calcDeliveryCharge : 0;
+      const msHolding = !isDriverCash ? calcDeliveryCharge : 0;
 
-      // 4. Calculate remaining settlement amount for this order
+      // Calculate remaining settlement amount for this order
       let orderDebt = 0;
       let actionDirection = "-";
 
       if (isDriverCash) {
-        orderDebt = calculatedProfit; 
+        orderDebt = calcProfit; 
         actionDirection = "COLLECT"; // Driver has the cash, MS must collect profit
       } else {
         orderDebt = outsourceCharge;       
@@ -429,11 +428,9 @@ const Settlements: React.FC = () => {
       }
       
       const remainingSettlement = Math.max(0, orderDebt - amountPaid);
-      
-      // If the order is fully settled, we can optionally show it as cleared
       const finalActionLabel = remainingSettlement > 0 ? actionDirection : "-";
 
-      // 5. Map to the exact requested columns using forced calculations
+      // 2. Return the strictly formatted object
       return {
         "Order Date": order.created_at ? new Date(order.created_at).toLocaleDateString() : "N/A",
         "Order ID": order.id || "N/A",
@@ -442,11 +439,13 @@ const Settlements: React.FC = () => {
         "Customer Name": order.customer_name || "N/A", 
         "Delivery Location": order.delivery_location || order.delivery_address || "N/A",
         "Payment Method": order.payment_mode || "N/A",
-        "Total Delivery Charge": calculatedDeliveryCharge.toFixed(2),
+        "Total Amount Received": totalReceived.toFixed(2),
+        "Item Charge": itemCharge.toFixed(2),
+        "Delivery Charges": calcDeliveryCharge.toFixed(2), 
+        "Outsource Charges": outsourceCharge.toFixed(2),
         "Total Outsource holdings": outsourceHolding.toFixed(2),
-        "Total Outsource Charge": outsourceCharge.toFixed(2),
         "Total MS holding": msHolding.toFixed(2),
-        "MS Profit": calculatedProfit.toFixed(2),
+        "MS Profit": calcProfit.toFixed(2),  // <-- CRITICAL: Renamed Header and Forced Math
         "Settlement Amount": remainingSettlement.toFixed(2),
         "Pay/Collect": finalActionLabel,
         "Settlement Status": order.settlement_status || "Pending"
