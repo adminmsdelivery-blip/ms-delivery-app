@@ -1,14 +1,33 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 
 // Dummy data for testing the UI instantly (Replace with your Supabase fetch)
-const DUMMY_ORDERS = [
+const INITIAL_DUMMY_ORDERS = [
   { id: 'ORD-095042', created_at: '2026-04-13', outsources: { name: 'abc services' }, clients: { name: 'Monika bakery' }, customer_name: 'sdasdasd', delivery_location: 'bhawanipur colony', payment_mode: 'Cash on Delivery (COD)', total_amount_received: 50, item_charge: 15, outsource_charges: 27 },
   { id: 'ORD-606238', created_at: '2026-04-11', outsources: { name: 'abc services' }, clients: { name: 'Monika bakery' }, customer_name: 'sdfsdfdsfd', delivery_location: 'bhawanipur colony', payment_mode: 'Online Payment', total_amount_received: 250, item_charge: 45, outsource_charges: 20 },
   { id: 'ORD-562758', created_at: '2026-04-11', outsources: { name: 'abc services' }, clients: { name: 'lucky bakery' }, customer_name: 'dsdafsdf', delivery_location: 'bhawanipur colony', payment_mode: 'Cash on Pickup (COP)', total_amount_received: 200, item_charge: 35, outsource_charges: 40 },
 ];
 
 export default function OrdersList() {
-  const [orders, setOrders] = useState(DUMMY_ORDERS); // NOTE: Replace DUMMY_ORDERS with your Supabase state
+  // --- LOCAL STORAGE INITIALIZATION ---
+  const getStoredOrders = () => {
+    try {
+      const stored = localStorage.getItem('ms_delivery_orders');
+      return stored ? JSON.parse(stored) : INITIAL_DUMMY_ORDERS;
+    } catch (error) {
+      console.error('Error loading orders from localStorage:', error);
+      return INITIAL_DUMMY_ORDERS;
+    }
+  };
+
+  const storeOrders = (orders) => {
+    try {
+      localStorage.setItem('ms_delivery_orders', JSON.stringify(orders));
+    } catch (error) {
+      console.error('Error saving orders to localStorage:', error);
+    }
+  };
+
+  const [orders, setOrders] = useState(getStoredOrders());
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('All-Time');
   const [selectedOrders, setSelectedOrders] = useState([]);
@@ -110,9 +129,11 @@ export default function OrdersList() {
 
   const handleSaveEdit = () => {
     if (editingOrder) {
-      setOrders(prev => prev.map(order => 
+      const updatedOrders = orders.map(order => 
         order.id === editingOrder.id ? editingOrder : order
-      ));
+      );
+      setOrders(updatedOrders);
+      storeOrders(updatedOrders);
       closeEditModal();
       setShowSuccessPopup(true);
       // Hide success popup after 3 seconds
@@ -258,7 +279,9 @@ export default function OrdersList() {
                       <button 
                         onClick={() => {
                           if (window.confirm(`Are you sure you want to delete order: ${order.id}?`)) {
-                            setOrders(prev => prev.filter(o => o.id !== order.id));
+                            const updatedOrders = orders.filter(o => o.id !== order.id);
+                            setOrders(updatedOrders);
+                            storeOrders(updatedOrders);
                           }
                         }}
                         className="text-gray-400 hover:text-red-600 transition-colors"
