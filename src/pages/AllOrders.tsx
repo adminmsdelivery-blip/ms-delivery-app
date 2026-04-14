@@ -211,13 +211,11 @@ export default function OrdersList() {
   };
 
   return (
-    /* 1. MAIN PAGE WRAPPER - Soft blue-gray background to make the white card pop */
-    <div className="min-h-screen w-full bg-[#f4f7f9] p-4 sm:p-6 lg:p-8 font-sans text-gray-800">
-      
-      <div className="max-w-[1600px] mx-auto space-y-6">
+    <div className="w-full space-y-6">
+      <div className="max-w-[1600px] mx-auto">
         
         {/* 2. TOP HEADER SECTION */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 mb-6">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900">Orders Listing</h1>
           
           <div className="flex flex-col sm:flex-row gap-3">
@@ -670,4 +668,4 @@ export default function OrdersList() {
       )}
     </div>
   );
-}
+};
