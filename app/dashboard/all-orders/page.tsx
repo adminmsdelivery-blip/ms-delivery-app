@@ -76,7 +76,7 @@ export default function AllOrdersPage() {
               <Trash2 size={18} /> Delete Selected ({selectedIds.length})
             </button>
           )}
-          <button onClick={handleExportCSV} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+          <button onClick={handleExportCSV} className="bg-[#442DD8] text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-[#3925b8] transition-colors">
             <Download size={18} /> Export Excel
           </button>
         </div>

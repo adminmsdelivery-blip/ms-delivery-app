@@ -110,7 +110,7 @@ export default function OutsourcePage() {
             {selectedIds.length === outsources.length ? "Deselect All" : "Select All"}
           </button>
 
-          <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 shadow-sm">
+          <button className="bg-[#442DD8] text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-[#3925b8] shadow-sm">
             <Plus size={20} /> Add New
           </button>
         </div>
@@ -219,7 +219,7 @@ export default function OutsourcePage() {
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold shadow-md"
+                  className="flex-1 px-4 py-2.5 bg-[#442DD8] text-white rounded-lg hover:bg-[#3925b8] font-bold shadow-md"
                 >
                   Save Changes
                 </button>

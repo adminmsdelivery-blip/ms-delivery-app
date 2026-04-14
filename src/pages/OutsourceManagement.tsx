@@ -126,7 +126,7 @@ const OutsourceManagement: React.FC = () => {
             setFormData({ name: '', phone: '', vehicle_details: '' });
             setIsModalOpen(true);
           }}
-          className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
+          className="bg-[#442DD8] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#3925b8] transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
         >
           <Plus className="w-5 h-5" />
           Add New Outsource
@@ -266,7 +266,7 @@ const OutsourceManagement: React.FC = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 mt-4 flex items-center justify-center gap-2"
+                  className="w-full bg-[#442DD8] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[#3925b8] transition-all shadow-lg shadow-indigo-200 mt-4 flex items-center justify-center gap-2"
                 >
                   <Save className="w-5 h-5" />
                   {editingOutsource ? 'Update Partner' : 'Save Partner'}

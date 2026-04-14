@@ -508,7 +508,7 @@ const Settlements: React.FC = () => {
           <p className="text-gray-600">{dbError}</p>
           <button 
             onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="mt-4 px-4 py-2 bg-[#442DD8] text-white rounded-lg hover:bg-[#3925b8] transition-colors"
           >
             Retry
           </button>
@@ -554,7 +554,7 @@ const Settlements: React.FC = () => {
                 onClick={() => setTimeFilter(tab)}
                 className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${
                   timeFilter === tab 
-                    ? 'bg-blue-600 text-white shadow' 
+                    ? 'bg-[#442DD8] text-white shadow' 
                     : 'text-gray-500 hover:text-gray-900'
                 }`}
               >
@@ -680,7 +680,7 @@ const Settlements: React.FC = () => {
                           className={`px-4 py-2 rounded font-medium transition-colors ${
                             row.isSettled === true
                               ? 'bg-gray-300 text-gray-600 cursor-not-allowed opacity-70' 
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                              : 'bg-[#442DD8] text-white hover:bg-[#3925b8]'
                           }`}
                         >
                           {row.isSettled ? "Settled" : "Collect/Pay"}
@@ -747,7 +747,7 @@ const Settlements: React.FC = () => {
                   className={`px-6 py-2 rounded-lg text-white font-medium transition-colors flex items-center ${
                     selectedDriver.status === 'Pay to Outsource' 
                       ? 'bg-red-600 hover:bg-red-700' 
-                      : 'bg-blue-600 hover:bg-blue-700'
+                      : 'bg-[#442DD8] hover:bg-[#3925b8]'
                   } disabled:opacity-50`}
                 >
                   {isSettling ? (
