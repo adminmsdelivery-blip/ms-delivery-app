@@ -185,7 +185,7 @@ const Settlements: React.FC = () => {
           totalPaidSoFar: 0,
           isSettled: false,
           statusText: "Settled",
-          status: 'Pay to Outsource' | 'Collect from Outsource' | 'Settled' | 'Collected' | 'Paid to Outsource' | 'Partial Paid' | 'Partial Collected'
+          status: 'Pay to Outsource'
         };
       }
 
@@ -425,7 +425,11 @@ const Settlements: React.FC = () => {
       } else {
         orderDebt = outsourceCharge;       
         actionDirection = "PAY"; // MS has the cash, MS must pay the driver fee
-      } 
+      }
+
+      // Calculate remaining settlement amount for this order
+      const remainingSettlement = Math.max(0, orderDebt - amountPaid);
+      const finalActionLabel = remainingSettlement > 0 ? actionDirection : "-";
 
     return {
       "Order Number": order.order_number || order.tracking_number || "N/A",
