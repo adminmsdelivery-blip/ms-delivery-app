@@ -42,9 +42,9 @@ export default function SettlementsPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Financial Settlements</h1>
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col gap-4 mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold">Financial Settlements</h1>
         <button className="bg-[#442DD8] hover:bg-[#3925b8] text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm shadow-indigo-500/30 transition-all flex items-center gap-2 whitespace-nowrap">
           <Download className="w-5 h-5" /> Export CSV
         </button>

@@ -217,12 +217,12 @@ export default function OrdersList() {
       <div className="max-w-[1600px] mx-auto space-y-6">
         
         {/* 2. TOP HEADER SECTION */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Orders Listing</h1>
+        <div className="flex flex-col gap-4">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900">Orders Listing</h1>
           
-          <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="flex flex-col sm:flex-row gap-3">
             {/* Soft Search Bar */}
-            <div className="relative w-full md:w-64">
+            <div className="relative flex-1">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
               </span>
@@ -251,12 +251,12 @@ export default function OrdersList() {
           <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
             
             {/* Segmented Control Tabs */}
-            <div className="flex bg-gray-50/80 p-1 rounded-xl border border-gray-100">
+            <div className="flex bg-gray-50/80 p-1 rounded-xl border border-gray-100 overflow-x-auto">
               {['Weekly', 'Monthly', 'Yearly', 'All-Time'].map(tab => (
                 <button 
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all whitespace-nowrap ${
                     activeTab === tab 
                       ? 'bg-white text-indigo-600 shadow-sm' 
                       : 'text-gray-500 hover:text-gray-700'

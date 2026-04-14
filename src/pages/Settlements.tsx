@@ -521,18 +521,18 @@ const Settlements: React.FC = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div className="flex flex-col gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Financial Settlements</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Financial Settlements</h1>
             <p className="text-gray-500 text-sm mt-1">Track cash flow between MS Delivery and Outsource Drivers</p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
                 placeholder="Search drivers..."
-                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <button

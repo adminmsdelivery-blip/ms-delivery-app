@@ -124,17 +124,17 @@ const Clients: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Clients</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Clients</h1>
           <p className="text-gray-500 text-sm">{clients.length} Registered Business Partners</p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           {selectedIds.length > 0 && (
             <button
               onClick={() => handleDelete(selectedIds)}
-              className="bg-red-50 text-red-600 px-4 py-3 rounded-xl font-bold hover:bg-red-100 transition-all flex items-center gap-2 border border-red-100"
+              className="bg-red-50 text-red-600 px-4 py-2 rounded-lg font-bold hover:bg-red-100 transition-all flex items-center gap-2 border border-red-100"
             >
               <Trash2 className="w-5 h-5" />
               Delete ({selectedIds.length})
@@ -152,20 +152,20 @@ const Clients: React.FC = () => {
       </div>
 
       {/* Search & Select All */}
-      <div className="flex flex-col md:flex-row gap-4 items-center">
-        <div className="relative flex-1 w-full">
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
             placeholder="Search clients by name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-100 bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+            className="w-full pl-12 pr-4 py-3 rounded-2xl border border-gray-100 bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
           />
         </div>
         <button 
           onClick={toggleSelectAll}
-          className="whitespace-nowrap px-6 py-4 bg-white border border-gray-100 rounded-2xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all"
+          className="whitespace-nowrap px-4 py-3 bg-white border border-gray-100 rounded-2xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all"
         >
           {selectedIds.length === filteredClients.length && filteredClients.length > 0 ? "Deselect All" : "Select All"}
         </button>
