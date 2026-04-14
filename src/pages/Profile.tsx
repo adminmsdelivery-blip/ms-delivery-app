@@ -38,7 +38,27 @@ const Profile: React.FC = () => {
 
   const fetchProfile = async () => {
     try {
-      // Since profiles table doesn't exist, use localStorage for now
+      // Fetch profile from database
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // Not found error
+        throw error;
+      }
+
+      if (data) {
+        setProfile({
+          company_name: data.company_name || '',
+          owner_name: data.owner_name || '',
+          email: data.email || '',
+          logo_url: data.logo_url || ''
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      // Check localStorage as fallback
       const savedProfile = localStorage.getItem('ms_delivery_profile');
       if (savedProfile) {
         const parsed = JSON.parse(savedProfile);
@@ -49,15 +69,6 @@ const Profile: React.FC = () => {
           logo_url: parsed.logo_url || ''
         });
       }
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-      // Ensure we have default values even if localStorage fails
-      setProfile({
-        company_name: '',
-        owner_name: '',
-        email: '',
-        logo_url: ''
-      });
     } finally {
       setLoading(false);
     }
@@ -80,14 +91,23 @@ const Profile: React.FC = () => {
 
     setUploading(true);
     try {
-      // For now, use local preview. In production, upload to Supabase Storage
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const dataUrl = reader.result as string;
-        setProfile({ ...profile, logo_url: dataUrl });
-        setUploading(false);
-      };
-      reader.readAsDataURL(file);
+      // Upload to Supabase Storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `company-logo-${Date.now()}.${fileExt}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('company-logos')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('company-logos')
+        .getPublicUrl(fileName);
+
+      setProfile({ ...profile, logo_url: publicUrl });
+      setUploading(false);
     } catch (error) {
       console.error('Error uploading logo:', error);
       alert('Failed to upload logo');
@@ -99,7 +119,22 @@ const Profile: React.FC = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      // Save to localStorage since profiles table doesn't exist
+      // Save to database
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert({
+          company_name: profile.company_name,
+          owner_name: profile.owner_name,
+          email: profile.email,
+          logo_url: profile.logo_url,
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Also save to localStorage as backup
       localStorage.setItem('ms_delivery_profile', JSON.stringify(profile));
       
       setShowSuccess(true);

@@ -1,16 +1,79 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Truck, User, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { supabase } from '../lib/supabase';
+
+interface ProfileData {
+  company_name: string;
+  owner_name: string;
+  email: string;
+  logo_url: string;
+}
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [profile, setProfile] = useState<ProfileData>({
+    company_name: '',
+    owner_name: '',
+    email: '',
+    logo_url: ''
+  });
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Load company profile from database with localStorage fallback
+    const loadProfile = async () => {
+      try {
+        // Try to fetch from database first
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .single();
+
+        if (data && !error) {
+          setProfile({
+            company_name: data.company_name || '',
+            owner_name: data.owner_name || '',
+            email: data.email || '',
+            logo_url: data.logo_url || ''
+          });
+        } else {
+          // Fallback to localStorage
+          const savedProfile = localStorage.getItem('ms_delivery_profile');
+          if (savedProfile) {
+            const parsed = JSON.parse(savedProfile);
+            setProfile({
+              company_name: parsed.company_name || '',
+              owner_name: parsed.owner_name || '',
+              email: parsed.email || '',
+              logo_url: parsed.logo_url || ''
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error loading profile in Login:', error);
+        // Fallback to localStorage
+        const savedProfile = localStorage.getItem('ms_delivery_profile');
+        if (savedProfile) {
+          const parsed = JSON.parse(savedProfile);
+          setProfile({
+            company_name: parsed.company_name || '',
+            owner_name: parsed.owner_name || '',
+            email: parsed.email || '',
+            logo_url: parsed.logo_url || ''
+          });
+        }
+      }
+    };
+
+    loadProfile();
+  }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,11 +113,25 @@ const Login: React.FC = () => {
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
             className="inline-block bg-indigo-600 p-4 rounded-3xl shadow-xl shadow-indigo-200"
           >
-            <Truck className="w-10 h-10 text-white" />
+            {profile.logo_url ? (
+              <img src={profile.logo_url} alt="Company Logo" className="w-10 h-10 object-cover rounded-xl" />
+            ) : (
+              <Truck className="w-10 h-10 text-white" />
+            )}
           </motion.div>
           <div>
             <h1 className="text-3xl font-bold text-gray-900 tracking-tight italic">
-              MS <span className="text-indigo-600 font-black not-italic">DELIVERY</span>
+              {profile.company_name ? (
+                <>
+                  {profile.company_name.split(' ')[0]} <span className="text-indigo-600 font-black not-italic">
+                    {profile.company_name.split(' ').slice(1).join(' ') || 'DELIVERY'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  MS <span className="text-indigo-600 font-black not-italic">DELIVERY</span>
+                </>
+              )}
             </h1>
             <p className="text-gray-500 mt-1 font-medium">Logistics Management Portal</p>
           </div>

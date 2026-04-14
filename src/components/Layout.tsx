@@ -39,22 +39,52 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   });
 
   useEffect(() => {
-    // Load profile from localStorage with error handling
-    try {
-      const savedProfile = localStorage.getItem('ms_delivery_profile');
-      if (savedProfile) {
-        const parsed = JSON.parse(savedProfile);
-        setProfile({
-          company_name: parsed.company_name || '',
-          owner_name: parsed.owner_name || '',
-          email: parsed.email || '',
-          logo_url: parsed.logo_url || ''
-        });
+    // Load profile from database with localStorage fallback
+    const loadProfile = async () => {
+      try {
+        // Try to fetch from database first
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .single();
+
+        if (data && !error) {
+          setProfile({
+            company_name: data.company_name || '',
+            owner_name: data.owner_name || '',
+            email: data.email || '',
+            logo_url: data.logo_url || ''
+          });
+        } else {
+          // Fallback to localStorage
+          const savedProfile = localStorage.getItem('ms_delivery_profile');
+          if (savedProfile) {
+            const parsed = JSON.parse(savedProfile);
+            setProfile({
+              company_name: parsed.company_name || '',
+              owner_name: parsed.owner_name || '',
+              email: parsed.email || '',
+              logo_url: parsed.logo_url || ''
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error loading profile in Layout:', error);
+        // Fallback to localStorage
+        const savedProfile = localStorage.getItem('ms_delivery_profile');
+        if (savedProfile) {
+          const parsed = JSON.parse(savedProfile);
+          setProfile({
+            company_name: parsed.company_name || '',
+            owner_name: parsed.owner_name || '',
+            email: parsed.email || '',
+            logo_url: parsed.logo_url || ''
+          });
+        }
       }
-    } catch (error) {
-      console.error('Error loading profile in Layout:', error);
-      // Keep default values if localStorage fails
-    }
+    };
+
+    loadProfile();
   }, []);
 
   const handleLogout = () => {
