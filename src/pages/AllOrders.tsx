@@ -12,6 +12,12 @@ export default function OrdersList() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
+  // --- HELPER FUNCTIONS ---
+  const getOrderNumber = (orderId) => {
+    // Remove ORD- prefix if present, otherwise return as is
+    return orderId?.replace(/^ORD-/i, '') || orderId;
+  };
+
   // --- DATABASE OPERATIONS ---
   const fetchOrders = async () => {
     setLoading(true);
@@ -54,11 +60,12 @@ export default function OrdersList() {
     }
   };
 
-  const updateOrder = async (updatedOrder) => {
+  const updateOrder = async (updatedOrder, originalId) => {
     try {
       const { error } = await supabase
         .from('orders')
         .update({
+          id: updatedOrder.id,
           customer_name: updatedOrder.customer_name,
           customer_contact_number: updatedOrder.customer_contact_number,
           pickup_location: updatedOrder.pickup_location,
@@ -70,13 +77,13 @@ export default function OrdersList() {
           payment_status: updatedOrder.payment_status,
           remark: updatedOrder.remark
         })
-        .eq('id', updatedOrder.id);
+        .eq('id', originalId); // Use original ID for WHERE clause
       
       if (error) throw error;
       
       // Update local state
       setOrders(prev => prev.map(order => 
-        order.id === updatedOrder.id ? updatedOrder : order
+        order.id === originalId ? updatedOrder : order
       ));
       return true;
     } catch (error) {
@@ -184,7 +191,8 @@ export default function OrdersList() {
 
   const handleSaveEdit = async () => {
     if (editingOrder) {
-      const success = await updateOrder(editingOrder);
+      const originalId = editingOrder.id;
+      const success = await updateOrder(editingOrder, originalId);
       if (success) {
         closeEditModal();
         setShowSuccessPopup(true);
@@ -317,7 +325,7 @@ export default function OrdersList() {
                       <input type="checkbox" className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" checked={selectedOrders.includes(order.id)} onChange={(e) => handleSelectOne(e, order.id)} />
                     </td>
                     
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{order.id}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{getOrderNumber(order.id)}</td>
                     
                     <td className="px-6 py-4 text-sm text-gray-600">
                       <div className="font-medium text-gray-900">{order.customer_name}</div>
@@ -405,9 +413,10 @@ export default function OrdersList() {
                       </label>
                       <input
                         type="text"
-                        value={editingOrder.id || ''}
-                        disabled
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600"
+                        value={getOrderNumber(editingOrder.id) || ''}
+                        onChange={(e) => handleInputChange('id', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Enter order ID (text and numbers allowed)"
                       />
                     </div>
                     <div>
