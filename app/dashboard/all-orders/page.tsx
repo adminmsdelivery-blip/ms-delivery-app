@@ -30,6 +30,41 @@ export default function AllOrdersPage() {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
+  const handleExportCSV = () => {
+    const csvData = orders.map(order => ({
+      "Order Number": order.order_number || order.tracking_number || "N/A",
+      "Order Date": order.created_at ? new Date(order.created_at).toLocaleDateString() : "N/A",
+      "Customer Name": order.customer_name || "N/A",
+      "Customer Contact": order.customer_contact_number || "N/A",
+      "Client Name": order.clients?.name || "N/A",
+      "Outsource Name": order.outsources?.name || "N/A",
+      "Pickup Location": order.pickup_location || "N/A",
+      "Delivery Location": order.delivery_location || "N/A",
+      "Payment Mode": order.payment_mode || "N/A",
+      "Total Charges Received": `AED ${Number(order.total_amount_received || 0).toFixed(2)}`,
+      "Item Charges": `AED ${Number(order.item_charge || 0).toFixed(2)}`,
+      "Delivery Charges": `AED ${Number((order.total_amount_received || 0) - (order.item_charge || 0)).toFixed(2)}`,
+      "Outsource Charges": `AED ${Number(order.outsource_charges || 0).toFixed(2)}`,
+      "MS Profit": `AED ${Number(order.estimated_profit || 0).toFixed(2)}`
+    }));
+
+    // Convert to CSV
+    const headers = Object.keys(csvData[0] || {});
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => headers.map(header => `"${row[header] || 'N/A'}"`).join(','))
+    ].join('\n');
+
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `MS_Delivery_Orders_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -40,7 +75,7 @@ export default function AllOrdersPage() {
               <Trash2 size={18} /> Delete Selected ({selectedIds.length})
             </button>
           )}
-          <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+          <button onClick={handleExportCSV} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
             <Download size={18} /> Export Excel
           </button>
         </div>
