@@ -237,10 +237,10 @@ export default function AllOrders() {
   const PayCollectBadge = ({ action }: { action: string }) => {
     const isCollect = action === 'COLLECT';
     return (
-      <span className={`text-xs font-medium px-2 py-1 rounded ${
+      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
         isCollect 
-          ? 'text-orange-600 bg-orange-50' 
-          : 'text-blue-600 bg-blue-50'
+          ? 'bg-orange-50 text-orange-600 border border-orange-100/50' 
+          : 'bg-blue-50 text-blue-600 border border-blue-100/50'
       }`}>
         {action}
       </span>
@@ -262,7 +262,7 @@ export default function AllOrders() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Top Navigation & Bulk Actions */}
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -276,14 +276,14 @@ export default function AllOrders() {
                 <input
                   type="text"
                   placeholder="Search by ID, Driver, Client..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 bg-gray-50 border-transparent focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-lg"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
               
               {/* Segmented Control for Timeframes */}
-              <div className="flex bg-gray-100 rounded-lg p-1">
+              <div className="flex space-x-1 bg-gray-50/80 p-1 rounded-xl">
                 {['Weekly', 'Monthly', 'Yearly', 'All-Time'].map((option) => (
                   <button
                     key={option}
@@ -302,7 +302,7 @@ export default function AllOrders() {
               {/* Export CSV */}
               <button
                 onClick={handleExportCSV}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg px-4 py-2 shadow-sm transition-colors flex items-center gap-2"
               >
                 <Download size={18} />
                 Export CSV
@@ -447,11 +447,11 @@ export default function AllOrders() {
 
             {/* Desktop UI (Table View) */}
             <div className="hidden md:block">
-              <div className="w-full overflow-x-auto bg-white shadow-sm rounded-xl border border-gray-200 mt-6">
+              <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
                 <table className="w-full min-w-max text-left">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead className="border-b border-gray-100">
                     <tr>
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
                         <input
                           type="checkbox"
                           checked={selectedOrders.length === filteredOrders.length && filteredOrders.length > 0}
@@ -459,40 +459,40 @@ export default function AllOrders() {
                           className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
                         />
                       </th>
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
                         Date
                       </th>
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
                         Order ID
                       </th>
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
                         Driver
                       </th>
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
                         Client
                       </th>
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
                         Customer
                       </th>
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
                         Location
                       </th>
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
                         Pay Method
                       </th>
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
                         Total Received
                       </th>
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
                         Outsource Charge
                       </th>
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
                         MS Profit
                       </th>
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
                         Pay/Collect
                       </th>
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider sticky right-0 bg-gray-50">
+                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap sticky right-0 bg-white">
                         Actions
                       </th>
                     </tr>
@@ -502,8 +502,8 @@ export default function AllOrders() {
                       const math = calculateOrderMath(order);
                       const isSelected = selectedOrders.includes(order.id);
                       return (
-                        <tr key={order.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap border-r border-gray-100">
+                        <tr key={order.id} className="border-b border-gray-50 hover:bg-slate-50/50 transition-colors duration-150 cursor-default">
+                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
                             <input
                               type="checkbox"
                               checked={isSelected}
@@ -511,43 +511,43 @@ export default function AllOrders() {
                               className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
                             />
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-r border-gray-100">
+                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
                             {new Date(order.created_at).toLocaleDateString()}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-100">
+                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
                             {order.order_number}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-r border-gray-100">
+                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
                             {order.outsources?.name || 'N/A'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-r border-gray-100">
+                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
                             {order.clients?.name || 'N/A'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-r border-gray-100">
+                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
                             {order.customer_name || 'N/A'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-r border-gray-100">
+                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
                             {order.delivery_location || 'N/A'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-r border-gray-100">
+                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
                             <div className="flex items-center gap-1">
                               <CreditCard size={14} />
                               {order.payment_mode || 'N/A'}
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-100">
+                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
                             AED {Number(order.total_amount_received || 0).toFixed(2)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-100">
+                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
                             AED {Number(order.outsource_charges || 0).toFixed(2)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 border-r border-gray-100">
+                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
                             AED {math.calculatedProfit.toFixed(2)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap border-r border-gray-100">
+                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
                             <PayCollectBadge action={math.payCollectAction} />
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white border-l border-gray-100">
+                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap text-right font-medium sticky right-0 bg-white border-l border-gray-100">
                             <div className="flex justify-end gap-2">
                               <button
                                 onClick={() => openEditModal(order)}
