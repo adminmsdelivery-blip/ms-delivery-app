@@ -129,7 +129,7 @@ export default function OrdersList() {
     });
   }, [processedOrders, searchTerm]);
 
-  // --- CSV EXPORT FUNCTION ---
+  // --- CSV EXPORT FUNCTION - Updated with Order Number ---
   const handleExportCSV = () => {
     const csvData = filteredOrders.map(order => ({
       "Order Number": order.tracking_number || order.order_number || "N/A",
