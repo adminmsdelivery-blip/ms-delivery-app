@@ -2,9 +2,9 @@ import React, { useState, useMemo } from 'react';
 
 // Dummy data for testing the UI instantly (Replace with your Supabase fetch)
 const DUMMY_ORDERS = [
-  { id: 'ORD-095042', created_at: '2026-04-13', outsources: { name: 'abc services' }, clients: { name: 'Monika bakery' }, customer_name: 'sdasdasd', delivery_location: 'bhawanipur colony', payment_mode: 'Cash on Delivery (COD)', total_amount_received: 50, item_charge: 0, outsource_charges: 27 },
-  { id: 'ORD-606238', created_at: '2026-04-11', outsources: { name: 'abc services' }, clients: { name: 'Monika bakery' }, customer_name: 'sdfsdfdsfd', delivery_location: 'bhawanipur colony', payment_mode: 'Online Payment', total_amount_received: 250, item_charge: 0, outsource_charges: 20 },
-  { id: 'ORD-562758', created_at: '2026-04-11', outsources: { name: 'abc services' }, clients: { name: 'lucky bakery' }, customer_name: 'dsdafsdf', delivery_location: 'bhawanipur colony', payment_mode: 'Cash on Pickup (COP)', total_amount_received: 200, item_charge: 0, outsource_charges: 40 },
+  { id: 'ORD-095042', created_at: '2026-04-13', outsources: { name: 'abc services' }, clients: { name: 'Monika bakery' }, customer_name: 'sdasdasd', delivery_location: 'bhawanipur colony', payment_mode: 'Cash on Delivery (COD)', total_amount_received: 50, item_charge: 15, outsource_charges: 27 },
+  { id: 'ORD-606238', created_at: '2026-04-11', outsources: { name: 'abc services' }, clients: { name: 'Monika bakery' }, customer_name: 'sdfsdfdsfd', delivery_location: 'bhawanipur colony', payment_mode: 'Online Payment', total_amount_received: 250, item_charge: 45, outsource_charges: 20 },
+  { id: 'ORD-562758', created_at: '2026-04-11', outsources: { name: 'abc services' }, clients: { name: 'lucky bakery' }, customer_name: 'dsdafsdf', delivery_location: 'bhawanipur colony', payment_mode: 'Cash on Pickup (COP)', total_amount_received: 200, item_charge: 35, outsource_charges: 40 },
 ];
 
 export default function OrdersList() {
