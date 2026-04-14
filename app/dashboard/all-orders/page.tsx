@@ -31,6 +31,7 @@ export default function AllOrdersPage() {
   };
 
   const handleExportCSV = () => {
+    // CSV Export with Order Number (not UUID)
     const csvData = orders.map(order => ({
       "Order Number": order.order_number || order.tracking_number || "N/A",
       "Order Date": order.created_at ? new Date(order.created_at).toLocaleDateString() : "N/A",
