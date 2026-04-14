@@ -165,8 +165,8 @@ const RegisterOrder: React.FC = () => {
                   name="order_number"
                   value={formData.order_number}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                  readOnly
+                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                  placeholder="Enter order number (e.g., ORD-12345)"
                 />
               </div>
             </div>
