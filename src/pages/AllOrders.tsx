@@ -1,39 +1,94 @@
 import React, { useState, useMemo, useEffect } from 'react';
-
-// Dummy data for testing the UI instantly (Replace with your Supabase fetch)
-const INITIAL_DUMMY_ORDERS = [
-  { id: 'ORD-095042', created_at: '2026-04-13', outsources: { name: 'abc services' }, clients: { name: 'Monika bakery' }, customer_name: 'sdasdasd', delivery_location: 'bhawanipur colony', payment_mode: 'Cash on Delivery (COD)', total_amount_received: 50, item_charge: 15, outsource_charges: 27 },
-  { id: 'ORD-606238', created_at: '2026-04-11', outsources: { name: 'abc services' }, clients: { name: 'Monika bakery' }, customer_name: 'sdfsdfdsfd', delivery_location: 'bhawanipur colony', payment_mode: 'Online Payment', total_amount_received: 250, item_charge: 45, outsource_charges: 20 },
-  { id: 'ORD-562758', created_at: '2026-04-11', outsources: { name: 'abc services' }, clients: { name: 'lucky bakery' }, customer_name: 'dsdafsdf', delivery_location: 'bhawanipur colony', payment_mode: 'Cash on Pickup (COP)', total_amount_received: 200, item_charge: 35, outsource_charges: 40 },
-];
+import { supabase } from '../lib/supabase';
 
 export default function OrdersList() {
-  // --- LOCAL STORAGE INITIALIZATION ---
-  const getStoredOrders = () => {
-    try {
-      const stored = localStorage.getItem('ms_delivery_orders');
-      return stored ? JSON.parse(stored) : INITIAL_DUMMY_ORDERS;
-    } catch (error) {
-      console.error('Error loading orders from localStorage:', error);
-      return INITIAL_DUMMY_ORDERS;
-    }
-  };
-
-  const storeOrders = (orders) => {
-    try {
-      localStorage.setItem('ms_delivery_orders', JSON.stringify(orders));
-    } catch (error) {
-      console.error('Error saving orders to localStorage:', error);
-    }
-  };
-
-  const [orders, setOrders] = useState(getStoredOrders());
+  // --- STATE MANAGEMENT ---
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('All-Time');
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [editingOrder, setEditingOrder] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+
+  // --- DATABASE OPERATIONS ---
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`*, clients (name), outsources (name)`)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      // Fallback to dummy data if database fails
+      setOrders([
+        { id: 'ORD-095042', created_at: '2026-04-13', outsources: { name: 'abc services' }, clients: { name: 'Monika bakery' }, customer_name: 'sdasdasd', delivery_location: 'bhawanipur colony', payment_mode: 'Cash on Delivery (COD)', total_amount_received: 50, item_charge: 15, outsource_charges: 27 },
+        { id: 'ORD-606238', created_at: '2026-04-11', outsources: { name: 'abc services' }, clients: { name: 'Monika bakery' }, customer_name: 'sdfsdfdsfd', delivery_location: 'bhawanipur colony', payment_mode: 'Online Payment', total_amount_received: 250, item_charge: 45, outsource_charges: 20 },
+        { id: 'ORD-562758', created_at: '2026-04-11', outsources: { name: 'abc services' }, clients: { name: 'lucky bakery' }, customer_name: 'dsdafsdf', delivery_location: 'bhawanipur colony', payment_mode: 'Cash on Pickup (COP)', total_amount_received: 200, item_charge: 35, outsource_charges: 40 },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteOrder = async (orderId) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setOrders(prev => prev.filter(order => order.id !== orderId));
+      return true;
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      return false;
+    }
+  };
+
+  const updateOrder = async (updatedOrder) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          customer_name: updatedOrder.customer_name,
+          customer_contact_number: updatedOrder.customer_contact_number,
+          pickup_location: updatedOrder.pickup_location,
+          delivery_location: updatedOrder.delivery_location,
+          total_amount_received: updatedOrder.total_amount_received,
+          item_charge: updatedOrder.item_charge,
+          outsource_charges: updatedOrder.outsource_charges,
+          payment_mode: updatedOrder.payment_mode,
+          payment_status: updatedOrder.payment_status,
+          remark: updatedOrder.remark
+        })
+        .eq('id', updatedOrder.id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setOrders(prev => prev.map(order => 
+        order.id === updatedOrder.id ? updatedOrder : order
+      ));
+      return true;
+    } catch (error) {
+      console.error('Error updating order:', error);
+      return false;
+    }
+  };
+
+  // --- INITIAL LOAD ---
+  useEffect(() => {
+    fetchOrders();
+  }, []);
 
   // --- MATH ENGINE ---
   const processedOrders = useMemo(() => {
@@ -127,17 +182,17 @@ export default function OrdersList() {
     setIsEditModalOpen(false);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (editingOrder) {
-      const updatedOrders = orders.map(order => 
-        order.id === editingOrder.id ? editingOrder : order
-      );
-      setOrders(updatedOrders);
-      storeOrders(updatedOrders);
-      closeEditModal();
-      setShowSuccessPopup(true);
-      // Hide success popup after 3 seconds
-      setTimeout(() => setShowSuccessPopup(false), 3000);
+      const success = await updateOrder(editingOrder);
+      if (success) {
+        closeEditModal();
+        setShowSuccessPopup(true);
+        // Hide success popup after 3 seconds
+        setTimeout(() => setShowSuccessPopup(false), 3000);
+      } else {
+        alert('Failed to update order. Please try again.');
+      }
     }
   };
 
@@ -239,7 +294,23 @@ export default function OrdersList() {
 
               {/* Table Body */}
               <tbody className="divide-y divide-gray-50">
-                {filteredOrders.map((order) => (
+                {loading ? (
+                  <tr>
+                    <td colSpan="10" className="px-6 py-12 text-center text-gray-500">
+                      <div className="flex flex-col items-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-3"></div>
+                        <span>Loading orders...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan="10" className="px-6 py-12 text-center text-gray-500">
+                      No orders found matching your search criteria.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-[#f8fafc] transition-colors duration-150 group">
                     
                     <td className="px-6 py-4">
@@ -277,11 +348,12 @@ export default function OrdersList() {
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                       </button>
                       <button 
-                        onClick={() => {
+                        onClick={async () => {
                           if (window.confirm(`Are you sure you want to delete order: ${order.id}?`)) {
-                            const updatedOrders = orders.filter(o => o.id !== order.id);
-                            setOrders(updatedOrders);
-                            storeOrders(updatedOrders);
+                            const success = await deleteOrder(order.id);
+                            if (!success) {
+                              alert('Failed to delete order. Please try again.');
+                            }
                           }
                         }}
                         className="text-gray-400 hover:text-red-600 transition-colors"
@@ -291,7 +363,8 @@ export default function OrdersList() {
                     </td>
 
                   </tr>
-                ))}
+                ))
+                )}
               </tbody>
             </table>
           </div>
