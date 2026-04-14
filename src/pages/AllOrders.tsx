@@ -1,782 +1,181 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { Search, Download, Edit, Trash2, User, MapPin, CreditCard, DollarSign } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
 
-interface Order {
-  id: string;
-  order_number: string;
-  created_at: string;
-  customer_name: string;
-  customer_contact_number?: string;
-  pickup_location?: string;
-  delivery_location?: string;
-  payment_mode: string;
-  payment_status: string;
-  total_amount_received: number;
-  item_charge: number;
-  outsource_charges: number;
-  clients?: { name: string };
-  outsources?: { name: string };
-  remark?: string;
-}
+// Dummy data for testing the UI instantly (Replace with your Supabase fetch)
+const DUMMY_ORDERS = [
+  { id: 'ORD-095042', created_at: '2026-04-13', outsources: { name: 'abc services' }, clients: { name: 'Monika bakery' }, customer_name: 'sdasdasd', delivery_location: 'bhawanipur colony', payment_mode: 'Cash on Delivery (COD)', total_amount_received: 50, item_charge: 0, outsource_charges: 27 },
+  { id: 'ORD-606238', created_at: '2026-04-11', outsources: { name: 'abc services' }, clients: { name: 'Monika bakery' }, customer_name: 'sdfsdfdsfd', delivery_location: 'bhawanipur colony', payment_mode: 'Online Payment', total_amount_received: 250, item_charge: 0, outsource_charges: 20 },
+  { id: 'ORD-562758', created_at: '2026-04-11', outsources: { name: 'abc services' }, clients: { name: 'lucky bakery' }, customer_name: 'dsdafsdf', delivery_location: 'bhawanipur colony', payment_mode: 'Cash on Pickup (COP)', total_amount_received: 200, item_charge: 0, outsource_charges: 40 },
+];
 
-interface MathCalculations {
-  calculatedDeliveryCharge: number;
-  calculatedProfit: number;
-  payCollectAction: string;
-  settlementAmount: number;
-}
-
-export default function AllOrders() {
-  // State & Filtering Architecture
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function OrdersList() {
+  const [orders, setOrders] = useState(DUMMY_ORDERS); // NOTE: Replace DUMMY_ORDERS with your Supabase state
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
-  const [timeframe, setTimeframe] = useState('All-Time');
-  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('All-Time');
+  const [selectedOrders, setSelectedOrders] = useState([]);
 
-  // The Core Math Engine (Strictly Enforced)
-  const calculateOrderMath = (order: Order): MathCalculations => {
-    const calculatedDeliveryCharge = Number(order.total_amount_received || 0) - Number(order.item_charge || 0);
-    const calculatedProfit = calculatedDeliveryCharge - Number(order.outsource_charges || 0);
-    
-    // Pay/Collect Action Logic
-    let payCollectAction = 'PAY';
-    let settlementAmount = 0;
-    
-    if (order.payment_mode?.toLowerCase().includes('cash') || order.payment_mode?.toLowerCase().includes('cod')) {
-      payCollectAction = 'COLLECT';
-      settlementAmount = calculatedProfit; // Debt = MS Profit
-    } else if (order.payment_mode?.toLowerCase().includes('online')) {
-      payCollectAction = 'PAY';
-      settlementAmount = Number(order.outsource_charges || 0); // Debt = Outsource Charge
-    }
-    
-    return {
-      calculatedDeliveryCharge,
-      calculatedProfit,
-      payCollectAction,
-      settlementAmount
-    };
-  };
-
-  // Timeframe Filtering Logic
-  const getTimeframeFilter = () => {
-    const now = new Date();
-    switch (timeframe) {
-      case 'Weekly':
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        return weekAgo.toISOString();
-      case 'Monthly':
-        const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
-        return monthAgo.toISOString();
-      case 'Yearly':
-        const yearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-        return yearAgo.toISOString();
-      default:
-        return null;
-    }
-  };
-
-  // Fetch orders with timeframe filtering
-  useEffect(() => {
-    fetchOrders();
-  }, [timeframe]);
-
-  async function fetchOrders() {
-    setLoading(true);
-    let query = supabase
-      .from('orders')
-      .select(`*, clients (name), outsources (name)`)
-      .order('created_at', { ascending: false });
-
-    const timeframeFilter = getTimeframeFilter();
-    if (timeframeFilter) {
-      query = query.gte('created_at', timeframeFilter);
-    }
-
-    const { data, error } = await query;
-    if (!error) setOrders(data || []);
-    setLoading(false);
-  }
-
-  // Filter orders based on search term
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = 
-      order.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.outsources?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.clients?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return matchesSearch;
-  });
-
-  // Bulk selection logic
-  const toggleSelectAll = () => {
-    if (selectedOrders.length === filteredOrders.length) {
-      setSelectedOrders([]);
-    } else {
-      setSelectedOrders(filteredOrders.map(o => o.id));
-    }
-  };
-
-  const toggleSelectOne = (id: string) => {
-    setSelectedOrders(prev => 
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    );
-  };
-
-  // Bulk delete logic
-  const handleBulkDelete = async () => {
-    if (!window.confirm(`Are you sure you want to delete ${selectedOrders.length} order(s)?`)) return;
-    
-    const { error } = await supabase.from('orders').delete().in('id', selectedOrders);
-    if (error) {
-      alert(error.message);
-    } else {
-      setOrders(prev => prev.filter(o => !selectedOrders.includes(o.id)));
-      setSelectedOrders([]);
-    }
-  };
-
-  // Single delete logic
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this order?')) return;
-    
-    const { error } = await supabase.from('orders').delete().eq('id', id);
-    if (error) {
-      alert(error.message);
-    } else {
-      setOrders(prev => prev.filter(o => o.id !== id));
-    }
-  };
-
-  // Edit modal functions
-  const openEditModal = (order: Order) => {
-    setEditingOrder(order);
-    setIsEditModalOpen(true);
-  };
-
-  // Database Safety (Edit Modal fixes)
-  const handleUpdateOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!editingOrder) return;
-    
-    // Database Update Safety - Remove generated columns
-    const updatePayload = {
-      customer_name: editingOrder.customer_name,
-      customer_contact_number: editingOrder.customer_contact_number,
-      pickup_location: editingOrder.pickup_location,
-      delivery_location: editingOrder.delivery_location,
-      total_amount_received: editingOrder.total_amount_received,
-      item_charge: editingOrder.item_charge,
-      outsource_charges: editingOrder.outsource_charges,
-      payment_mode: editingOrder.payment_mode,
-      payment_status: editingOrder.payment_status,
-      remark: editingOrder.remark
-    };
-    
-    const { error } = await supabase
-      .from('orders')
-      .update(updatePayload)
-      .eq('id', editingOrder.id);
-
-    if (error) {
-      alert("Failed to update: " + error.message);
-    } else {
-      setIsEditModalOpen(false);
-      fetchOrders();
-    }
-  };
-
-  // Flawless CSV Export
-  const handleExportCSV = () => {
-    const csvData = filteredOrders.map(order => {
-      const math = calculateOrderMath(order);
+  // --- MATH ENGINE ---
+  const processedOrders = useMemo(() => {
+    return orders.map(order => {
+      const total = Number(order.total_amount_received || 0);
+      const item = Number(order.item_charge || 0);
+      const outsource = Number(order.outsource_charges || 0);
       
-      return {
-        "Order Date": order.created_at ? new Date(order.created_at).toLocaleDateString() : "N/A",
-        "Order ID": order.order_number || "N/A",
-        "Outsource Name": order.outsources?.name || "N/A",
-        "Client Name": order.clients?.name || "N/A",
-        "Customer Name": order.customer_name || "N/A",
-        "Delivery Location": order.delivery_location || "N/A",
-        "Payment Method": order.payment_mode || "N/A",
-        "Total Amount Received": Number(order.total_amount_received || 0).toFixed(2),
-        "Item Charge": Number(order.item_charge || 0).toFixed(2),
-        "Delivery Charges (Calculated)": math.calculatedDeliveryCharge.toFixed(2),
-        "Outsource Charges": Number(order.outsource_charges || 0).toFixed(2),
-        "MS Profit (Calculated)": math.calculatedProfit.toFixed(2),
-        "Settlement Amount": math.settlementAmount.toFixed(2),
-        "Pay/Collect": math.payCollectAction,
-        "Settlement Status": order.payment_status || "Pending"
-      };
+      const deliveryCharge = total - item;
+      const msProfit = deliveryCharge - outsource;
+      
+      const pMethod = String(order.payment_mode || '').toUpperCase();
+      const isCash = pMethod.includes('COD') || pMethod.includes('COP') || pMethod.includes('CASH');
+      const action = isCash ? 'COLLECT' : 'PAY';
+
+      return { ...order, deliveryCharge, msProfit, action };
     });
+  }, [orders]);
 
-    // Convert to CSV without duplicate headers
-    const headers = Object.keys(csvData[0] || {});
-    const csvContent = [
-      headers.join(','),
-      ...csvData.map(row => headers.map(header => `"${row[header] || 'N/A'}"`).join(','))
-    ].join('\n');
-
-    // Download CSV
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `MS_Delivery_Orders_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+  // --- SELECTION HANDLERS ---
+  const handleSelectAll = (e) => {
+    if (e.target.checked) setSelectedOrders(processedOrders.map(o => o.id));
+    else setSelectedOrders([]);
   };
 
-  // Pay/Collect badge component
-  const PayCollectBadge = ({ action }: { action: string }) => {
-    const isCollect = action === 'COLLECT';
-    return (
-      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
-        isCollect 
-          ? 'bg-orange-50 text-orange-600 border border-orange-100/50' 
-          : 'bg-blue-50 text-blue-600 border border-blue-100/50'
-      }`}>
-        {action}
-      </span>
-    );
-  };
-
-  // Settlement status badge
-  const StatusBadge = ({ status }: { status: string }) => {
-    const isSettled = status === 'Settled';
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-        isSettled 
-          ? 'bg-green-100 text-green-800 border border-green-200' 
-          : 'bg-orange-100 text-orange-800 border border-orange-200'
-      }`}>
-        {status || 'Pending'}
-      </span>
-    );
+  const handleSelectOne = (e, id) => {
+    if (e.target.checked) setSelectedOrders(prev => [...prev, id]);
+    else setSelectedOrders(prev => prev.filter(item => item !== id));
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Top Navigation & Bulk Actions */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 py-4">
-            <h1 className="text-2xl font-bold text-gray-900">Orders Management</h1>
+    /* 1. MAIN PAGE WRAPPER - Soft blue-gray background to make the white card pop */
+    <div className="min-h-screen w-full bg-[#f4f7f9] p-4 sm:p-6 lg:p-8 font-sans text-gray-800">
+      
+      <div className="max-w-[1600px] mx-auto space-y-6">
+        
+        {/* 2. TOP HEADER SECTION */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Orders Listing</h1>
+          
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            {/* Soft Search Bar */}
+            <div className="relative w-full md:w-64">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              </span>
+              <input 
+                type="text" 
+                placeholder="Search order" 
+                className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm"
+              />
+            </div>
+
+            {/* Indigo Primary Button */}
+            <button className="bg-[#635BFF] hover:bg-[#524be0] text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm shadow-indigo-500/30 transition-all flex items-center gap-2 whitespace-nowrap">
+              <span>Export CSV</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 3. THE MAIN WHITE CARD */}
+        <div className="bg-white rounded-[20px] shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+          
+          {/* Card Header (Tabs & Bulk Action) */}
+          <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
             
-            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-              {/* Search Input */}
-              <div className="relative flex-1 sm:flex-initial">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input
-                  type="text"
-                  placeholder="Search by ID, Driver, Client..."
-                  className="w-full pl-10 pr-4 py-2 bg-gray-50 border-transparent focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-lg"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+            {/* Segmented Control Tabs */}
+            <div className="flex bg-gray-50/80 p-1 rounded-xl border border-gray-100">
+              {['Weekly', 'Monthly', 'Yearly', 'All-Time'].map(tab => (
+                <button 
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-4 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                    activeTab === tab 
+                      ? 'bg-white text-indigo-600 shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* Bulk Action Slide-in */}
+            {selectedOrders.length > 0 && (
+              <div className="flex items-center gap-3 animate-fade-in">
+                <span className="text-sm font-medium text-gray-600">{selectedOrders.length} selected</span>
+                <button className="text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg text-sm font-medium border border-red-100 transition-colors">
+                  Delete Selected
+                </button>
               </div>
+            )}
+          </div>
+
+          {/* 4. THE TABLE */}
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-left border-collapse whitespace-nowrap">
               
-              {/* Segmented Control for Timeframes */}
-              <div className="flex space-x-1 bg-gray-50/80 p-1 rounded-xl">
-                {['Weekly', 'Monthly', 'Yearly', 'All-Time'].map((option) => (
-                  <button
-                    key={option}
-                    onClick={() => setTimeframe(option)}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                      timeframe === option 
-                        ? 'bg-white text-gray-900 shadow-sm' 
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    {option}
-                  </button>
+              {/* Soft, minimal headers */}
+              <thead className="bg-white">
+                <tr>
+                  <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest w-10">
+                    <input type="checkbox" className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" onChange={handleSelectAll} checked={selectedOrders.length === processedOrders.length && processedOrders.length > 0} />
+                  </th>
+                  <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Order ID</th>
+                  <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Customer</th>
+                  <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Location</th>
+                  <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Delivery Charges</th>
+                  <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Outsource Charges</th>
+                  <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">MS Profit</th>
+                  <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Status</th>
+                  <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest sticky right-0 bg-white shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.02)]">Action</th>
+                </tr>
+              </thead>
+
+              {/* Table Body */}
+              <tbody className="divide-y divide-gray-50">
+                {processedOrders.map((order) => (
+                  <tr key={order.id} className="hover:bg-[#f8fafc] transition-colors duration-150 group">
+                    
+                    <td className="px-6 py-4">
+                      <input type="checkbox" className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" checked={selectedOrders.includes(order.id)} onChange={(e) => handleSelectOne(e, order.id)} />
+                    </td>
+                    
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{order.id}</td>
+                    
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      <div className="font-medium text-gray-900">{order.customer_name}</div>
+                      <div className="text-xs text-gray-400">{order.clients?.name}</div>
+                    </td>
+                    
+                    <td className="px-6 py-4 text-sm text-gray-600">{order.delivery_location}</td>
+                    
+                    <td className="px-6 py-4 text-sm text-gray-600 text-right font-medium">AED {order.deliveryCharge?.toFixed(2)}</td>
+                    
+                    <td className="px-6 py-4 text-sm text-gray-600 text-right font-medium">AED {order.outsource_charges?.toFixed(2)}</td>
+                    
+                    <td className="px-6 py-4 text-sm text-gray-900 font-semibold text-right">AED {order.msProfit?.toFixed(2)}</td>
+                    
+                    <td className="px-6 py-4 text-center">
+                      {order.action === 'PAY' ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold bg-[#eef2fa] text-[#4b72d1]">PAY</span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold bg-[#fff4eb] text-[#e38c40]">COLLECT</span>
+                      )}
+                    </td>
+                    
+                    <td className="px-6 py-4 sticky right-0 bg-white group-hover:bg-[#f8fafc] transition-colors duration-150 text-center shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.02)]">
+                      <button className="text-gray-400 hover:text-indigo-600 transition-colors mr-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                      </button>
+                      <button className="text-gray-400 hover:text-red-600 transition-colors">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                      </button>
+                    </td>
+
+                  </tr>
                 ))}
-              </div>
-              
-              {/* Export CSV */}
-              <button
-                onClick={handleExportCSV}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg px-4 py-2 shadow-sm transition-colors flex items-center gap-2"
-              >
-                <Download size={18} />
-                Export CSV
-              </button>
-            </div>
+              </tbody>
+            </table>
           </div>
+          
         </div>
-
-        {/* Bulk Action Bar */}
-        {selectedOrders.length > 0 && (
-          <div className="bg-red-50 border-b border-red-200">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-red-900">
-                    {selectedOrders.length} Items Selected
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleBulkDelete}
-                    className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-                  >
-                    <Trash2 size={16} />
-                    Delete Selected
-                  </button>
-                  <button
-                    onClick={() => setSelectedOrders([])}
-                    className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="text-gray-500">Loading orders...</div>
-          </div>
-        ) : (
-          <>
-            {/* Mobile UI (Card View) */}
-            <div className="block md:hidden space-y-4">
-              {filteredOrders.map((order) => {
-                const math = calculateOrderMath(order);
-                const isSelected = selectedOrders.includes(order.id);
-                return (
-                  <div key={order.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
-                    {/* Card Header */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSelectOne(order.id)}
-                          className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
-                        />
-                        <div>
-                          <h3 className="font-semibold text-gray-900">{order.order_number}</h3>
-                          <p className="text-sm text-gray-500">
-                            {new Date(order.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                      <StatusBadge status={order.payment_status || 'Pending'} />
-                    </div>
-                    
-                    {/* Card Body - Grid Layout */}
-                    <div className="grid grid-cols-2 gap-3 text-sm mb-4">
-                      <div className="flex items-center gap-2">
-                        <User size={14} className="text-gray-400" />
-                        <span className="text-gray-700">{order.outsources?.name || 'N/A'}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <DollarSign size={14} className="text-gray-400" />
-                        <span className="text-gray-700">{order.clients?.name || 'N/A'}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <MapPin size={14} className="text-gray-400" />
-                        <span className="text-gray-700">{order.customer_name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CreditCard size={14} className="text-gray-400" />
-                        <span className="text-gray-700">{order.payment_mode}</span>
-                      </div>
-                    </div>
-                    
-                    {/* Card Footer - Financial Summary */}
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Total Received</span>
-                          <span className="font-medium text-gray-900">
-                            AED {Number(order.total_amount_received || 0).toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Outsource Charge</span>
-                          <span className="font-medium text-gray-900">
-                            AED {Number(order.outsource_charges || 0).toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm font-semibold">
-                          <span className="text-gray-700">MS Profit</span>
-                          <span className={`font-semibold ${math.calculatedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            AED {math.calculatedProfit.toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600">Pay/Collect</span>
-                          <PayCollectBadge action={math.payCollectAction} />
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 mt-4">
-                      <button
-                        onClick={() => openEditModal(order)}
-                        className="flex-1 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
-                      >
-                        <Edit size={16} />
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(order.id)}
-                        className="bg-red-50 text-red-600 px-3 py-2 rounded-lg hover:bg-red-100 transition-colors"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Desktop UI (Table View) */}
-            <div className="hidden md:block">
-              <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
-                <table className="w-full min-w-max text-left">
-                  <thead className="border-b border-gray-100">
-                    <tr>
-                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
-                        <input
-                          type="checkbox"
-                          checked={selectedOrders.length === filteredOrders.length && filteredOrders.length > 0}
-                          onChange={toggleSelectAll}
-                          className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-                        />
-                      </th>
-                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
-                        Date
-                      </th>
-                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
-                        Order ID
-                      </th>
-                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
-                        Driver
-                      </th>
-                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
-                        Client
-                      </th>
-                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
-                        Customer
-                      </th>
-                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
-                        Location
-                      </th>
-                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
-                        Pay Method
-                      </th>
-                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
-                        Total Received
-                      </th>
-                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
-                        Outsource Charge
-                      </th>
-                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
-                        MS Profit
-                      </th>
-                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap border-r border-gray-100">
-                        Pay/Collect
-                      </th>
-                      <th className="py-4 px-6 text-[11px] md:text-xs font-semibold tracking-wider text-gray-400 uppercase whitespace-nowrap sticky right-0 bg-white">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {filteredOrders.map((order) => {
-                      const math = calculateOrderMath(order);
-                      const isSelected = selectedOrders.includes(order.id);
-                      return (
-                        <tr key={order.id} className="border-b border-gray-50 hover:bg-slate-50/50 transition-colors duration-150 cursor-default">
-                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => toggleSelectOne(order.id)}
-                              className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-                            />
-                          </td>
-                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
-                            {new Date(order.created_at).toLocaleDateString()}
-                          </td>
-                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
-                            {order.order_number}
-                          </td>
-                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
-                            {order.outsources?.name || 'N/A'}
-                          </td>
-                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
-                            {order.clients?.name || 'N/A'}
-                          </td>
-                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
-                            {order.customer_name || 'N/A'}
-                          </td>
-                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
-                            {order.delivery_location || 'N/A'}
-                          </td>
-                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
-                            <div className="flex items-center gap-1">
-                              <CreditCard size={14} />
-                              {order.payment_mode || 'N/A'}
-                            </div>
-                          </td>
-                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
-                            AED {Number(order.total_amount_received || 0).toFixed(2)}
-                          </td>
-                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
-                            AED {Number(order.outsource_charges || 0).toFixed(2)}
-                          </td>
-                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
-                            AED {math.calculatedProfit.toFixed(2)}
-                          </td>
-                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap border-r border-gray-100">
-                            <PayCollectBadge action={math.payCollectAction} />
-                          </td>
-                          <td className="py-4 px-6 text-sm text-gray-700 whitespace-nowrap text-right font-medium sticky right-0 bg-white border-l border-gray-100">
-                            <div className="flex justify-end gap-2">
-                              <button
-                                onClick={() => openEditModal(order)}
-                                className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50"
-                              >
-                                <Edit size={16} />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(order.id)}
-                                className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Edit Modal */}
-      {isEditModalOpen && editingOrder && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-            
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <form onSubmit={handleUpdateOrder}>
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                      Edit Order {editingOrder.order_number}
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => setIsEditModalOpen(false)}
-                      className="text-gray-400 hover:text-gray-500"
-                    >
-                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    {/* Customer Info */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Customer Name
-                        </label>
-                        <input
-                          type="text"
-                          value={editingOrder.customer_name || ''}
-                          onChange={(e) => setEditingOrder({...editingOrder, customer_name: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Contact Number
-                        </label>
-                        <input
-                          type="tel"
-                          value={editingOrder.customer_contact_number || ''}
-                          onChange={(e) => setEditingOrder({...editingOrder, customer_contact_number: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Locations */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Pickup Location
-                        </label>
-                        <input
-                          type="text"
-                          value={editingOrder.pickup_location || ''}
-                          onChange={(e) => setEditingOrder({...editingOrder, pickup_location: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Delivery Location
-                        </label>
-                        <input
-                          type="text"
-                          value={editingOrder.delivery_location || ''}
-                          onChange={(e) => setEditingOrder({...editingOrder, delivery_location: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Financial Info */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Total Amount Received
-                        </label>
-                        <input
-                          type="number"
-                          value={editingOrder.total_amount_received || ''}
-                          onChange={(e) => setEditingOrder({...editingOrder, total_amount_received: Number(e.target.value)})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          min="0"
-                          step="0.01"
-                          onWheel={(e) => e.target.blur()}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Item Charge
-                        </label>
-                        <input
-                          type="number"
-                          value={editingOrder.item_charge || ''}
-                          onChange={(e) => setEditingOrder({...editingOrder, item_charge: Number(e.target.value)})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          min="0"
-                          step="0.01"
-                          onWheel={(e) => e.target.blur()}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Outsource Charges
-                        </label>
-                        <input
-                          type="number"
-                          value={editingOrder.outsource_charges || ''}
-                          onChange={(e) => setEditingOrder({...editingOrder, outsource_charges: Number(e.target.value)})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          min="0"
-                          step="0.01"
-                          onWheel={(e) => e.target.blur()}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Delivery Charges (Calculated)
-                        </label>
-                        <input
-                          type="number"
-                          value={editingOrder.total_amount_received && editingOrder.item_charge ? 
-                            Number(editingOrder.total_amount_received) - Number(editingOrder.item_charge) : 0}
-                          readOnly
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 font-semibold"
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Payment Info */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Payment Mode
-                        </label>
-                        <select
-                          value={editingOrder.payment_mode}
-                          onChange={(e) => setEditingOrder({...editingOrder, payment_mode: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                        >
-                          <option value="Cash on Delivery (COD)">Cash on Delivery (COD)</option>
-                          <option value="Cash on Pickup (COP)">Cash on Pickup (COP)</option>
-                          <option value="Online Payment">Online Payment</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Payment Status
-                        </label>
-                        <select
-                          value={editingOrder.payment_status}
-                          onChange={(e) => setEditingOrder({...editingOrder, payment_status: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                        >
-                          <option value="Pending">Pending</option>
-                          <option value="Settled">Settled</option>
-                        </select>
-                      </div>
-                    </div>
-                    
-                    {/* Remarks */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Remarks
-                      </label>
-                      <textarea
-                        value={editingOrder.remark || ''}
-                        onChange={(e) => setEditingOrder({...editingOrder, remark: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                        rows={3}
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditModalOpen(false)}
-                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
