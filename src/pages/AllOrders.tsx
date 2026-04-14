@@ -142,11 +142,11 @@ export default function OrdersList() {
       "Delivery Location": order.delivery_location || "N/A",
       "Payment Mode": order.payment_mode || "N/A",
       "Payment Status": order.payment_status || "N/A",
-      "Total Charges Received": Number(order.total_amount_received || 0).toFixed(2),
-      "Item Charges": Number(order.item_charge || 0).toFixed(2),
-      "Delivery Charges": order.deliveryCharge?.toFixed(2) || "0.00",
-      "Outsource Charges": Number(order.outsource_charges || 0).toFixed(2),
-      "MS Profit": order.msProfit?.toFixed(2) || "0.00",
+      "Total Charges Received": `AED ${Number(order.total_amount_received || 0).toFixed(2)}`,
+      "Item Charges": `AED ${Number(order.item_charge || 0).toFixed(2)}`,
+      "Delivery Charges": `AED ${order.deliveryCharge?.toFixed(2) || "0.00"}`,
+      "Outsource Charges": `AED ${Number(order.outsource_charges || 0).toFixed(2)}`,
+      "MS Profit": `AED ${order.msProfit?.toFixed(2) || "0.00"}`,
       "Pay/Collect Action": order.action || "N/A"
     }));
 

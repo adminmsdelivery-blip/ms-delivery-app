@@ -249,7 +249,7 @@ const Settlements: React.FC = () => {
       if (isSettled) {
         displayAmount = "-"; 
       } else if (amountPaid > 0) {
-        displayAmount = `$${amountPaid.toFixed(2)}`; // Show partial amount paid so far
+        displayAmount = `AED ${amountPaid.toFixed(2)}`; // Show partial amount paid so far
       } else {
         displayAmount = "None";
       }
