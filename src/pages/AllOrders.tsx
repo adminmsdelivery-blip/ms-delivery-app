@@ -65,7 +65,7 @@ export default function OrdersList() {
       const { error } = await supabase
         .from('orders')
         .update({
-          id: updatedOrder.id,
+          order_number: updatedOrder.order_number,
           customer_name: updatedOrder.customer_name,
           customer_contact_number: updatedOrder.customer_contact_number,
           pickup_location: updatedOrder.pickup_location,
@@ -288,7 +288,7 @@ export default function OrdersList() {
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest w-10">
                     <input type="checkbox" className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" onChange={handleSelectAll} checked={selectedOrders.length === filteredOrders.length && filteredOrders.length > 0} />
                   </th>
-                  <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Order ID</th>
+                  <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Order Number</th>
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Customer</th>
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Location</th>
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Total Charges Received</th>
@@ -325,7 +325,9 @@ export default function OrdersList() {
                       <input type="checkbox" className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" checked={selectedOrders.includes(order.id)} onChange={(e) => handleSelectOne(e, order.id)} />
                     </td>
                     
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{order.id ? order.id.split('-')[0].toUpperCase() : 'N/A'}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                      {order.order_number || order.tracking_number || "N/A"}
+                    </td>
                     
                     <td className="px-6 py-4 text-sm text-gray-600">
                       <div className="font-medium text-gray-900">{order.customer_name}</div>
@@ -409,14 +411,14 @@ export default function OrdersList() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Order ID
+                        Order Number
                       </label>
                       <input
                         type="text"
-                        value={editingOrder.id ? editingOrder.id.split('-')[0].toUpperCase() : ''}
-                        onChange={(e) => handleInputChange('id', e.target.value)}
+                        value={editingOrder.order_number || editingOrder.tracking_number || ''}
+                        onChange={(e) => handleInputChange('order_number', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder="Enter order ID (text and numbers allowed)"
+                        placeholder="Enter order number (text and numbers allowed)"
                       />
                     </div>
                     <div>
