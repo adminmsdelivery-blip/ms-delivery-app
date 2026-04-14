@@ -145,63 +145,92 @@ const OutsourceManagement: React.FC = () => {
         />
       </div>
 
-      {/* Outsource Grid */}
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredOutsources.map((outsource) => (
-            <motion.div
-              layout
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              key={outsource.id}
-              className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all group"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div className="bg-indigo-50 p-3 rounded-2xl text-indigo-600">
-                  <Truck className="w-6 h-6" />
-                </div>
-                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => handleEdit(outsource)}
-                    className="p-2 hover:bg-gray-50 rounded-xl text-gray-400 hover:text-indigo-600 transition-colors"
-                  >
-                    <Edit2 className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(outsource.id)}
-                    className="p-2 hover:bg-gray-50 rounded-xl text-gray-400 hover:text-red-600 transition-colors"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-              
-              <h3 className="text-xl font-bold text-gray-900 mb-4">{outsource.name}</h3>
-              
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 text-gray-500">
-                  <Phone className="w-4 h-4" />
-                  <span className="text-sm font-medium">{outsource.phone}</span>
-                </div>
-                <div className="flex items-center gap-3 text-gray-500">
-                  <Car className="w-4 h-4" />
-                  <span className="text-sm font-medium">{outsource.vehicle_details || 'No vehicle details'}</span>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-          {filteredOutsources.length === 0 && (
-            <div className="col-span-full text-center py-12 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
-              <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 font-medium">No outsource partners found.</p>
+      {/* Outsource Table */}
+      <div className="bg-white rounded-[20px] shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
+          <div className="flex bg-gray-50/80 p-1 rounded-xl border border-gray-100 overflow-x-auto">
+            <div className="px-3 py-1.5 text-xs font-medium rounded-lg bg-white text-indigo-600 shadow-sm whitespace-nowrap">
+              All Outsources
             </div>
-          )}
+          </div>
         </div>
-      )}
+        
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left border-collapse whitespace-nowrap">
+            <thead className="bg-white">
+              <tr>
+                <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Outsource Name</th>
+                <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Phone Number</th>
+                <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest sticky right-0 bg-white shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.02)]">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {loading ? (
+                <tr>
+                  <td colSpan="3" className="px-6 py-12 text-center text-gray-500">
+                    <div className="flex flex-col items-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-3"></div>
+                      <span>Loading outsources...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredOutsources.length === 0 ? (
+                <tr>
+                  <td colSpan="3" className="px-6 py-12 text-center text-gray-500">
+                    <div className="flex flex-col items-center">
+                      <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                      <span className="text-gray-500">No outsource partners found</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredOutsources.map((outsource, index) => (
+                  <tr key={outsource.id} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-indigo-50 p-2 rounded-lg text-indigo-600">
+                          <Truck className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-900 block">{outsource.name}</span>
+                          {outsource.vehicle_details && (
+                            <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                              <Car className="w-3 h-3" />
+                              <span>{outsource.vehicle_details}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-gray-400 shrink-0" />
+                        <span>{outsource.phone}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEdit(outsource)}
+                          className="p-2 hover:bg-gray-50 rounded-lg text-gray-400 hover:text-indigo-600 transition-colors"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(outsource.id)}
+                          className="p-2 hover:bg-gray-50 rounded-lg text-gray-400 hover:text-red-600 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* Modal */}
       <AnimatePresence>
