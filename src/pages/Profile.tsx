@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { 
   User, 
   Mail, 
@@ -38,39 +38,41 @@ const Profile: React.FC = () => {
 
   const fetchProfile = async () => {
     try {
-      // Fetch profile from database
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .single();
+      // Only try database if Supabase is configured
+      if (isSupabaseConfigured()) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .single();
 
-      if (error && error.code !== 'PGRST116') { // Not found error
-        console.error('Database error:', error);
-        // Fallback to localStorage if database fails
-        const savedProfile = localStorage.getItem('ms_delivery_profile');
-        if (savedProfile) {
-          const parsed = JSON.parse(savedProfile);
+        if (error && error.code !== 'PGRST116') { // Not found error
+          console.error('Database error:', error);
+        } else if (data) {
           setProfile({
-            company_name: parsed.company_name || '',
-            owner_name: parsed.owner_name || '',
-            email: parsed.email || '',
-            logo_url: parsed.logo_url || ''
+            company_name: data.company_name || '',
+            owner_name: data.owner_name || '',
+            email: data.email || '',
+            logo_url: data.logo_url || ''
           });
+          setLoading(false);
+          return;
         }
-        return;
       }
 
-      if (data) {
+      // Fallback to localStorage
+      const savedProfile = localStorage.getItem('ms_delivery_profile');
+      if (savedProfile) {
+        const parsed = JSON.parse(savedProfile);
         setProfile({
-          company_name: data.company_name || '',
-          owner_name: data.owner_name || '',
-          email: data.email || '',
-          logo_url: data.logo_url || ''
+          company_name: parsed.company_name || '',
+          owner_name: parsed.owner_name || '',
+          email: parsed.email || '',
+          logo_url: parsed.logo_url || ''
         });
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
-      // Check localStorage as fallback
+      // Fallback to localStorage
       const savedProfile = localStorage.getItem('ms_delivery_profile');
       if (savedProfile) {
         const parsed = JSON.parse(savedProfile);
@@ -103,38 +105,43 @@ const Profile: React.FC = () => {
 
     setUploading(true);
     try {
-      // Try to upload to Supabase Storage
-      const fileExt = file.name.split('.').pop();
-      const fileName = `company-logo-${Date.now()}.${fileExt}`;
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('company-logos')
-        .upload(fileName, file);
+      // Only try storage upload if Supabase is configured
+      if (isSupabaseConfigured()) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `company-logo-${Date.now()}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('company-logos')
+          .upload(fileName, file);
 
-      if (uploadError) {
-        console.error('Storage upload error:', uploadError);
-        // Fallback to local preview if storage fails
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const dataUrl = reader.result as string;
-          setProfile({ ...profile, logo_url: dataUrl });
+        if (uploadError) {
+          console.error('Storage upload error:', uploadError);
+        } else {
+          // Get public URL
+          const { data: { publicUrl } } = supabase.storage
+            .from('company-logos')
+            .getPublicUrl(fileName);
+
+          setProfile({ ...profile, logo_url: publicUrl });
           setUploading(false);
-          alert('Logo uploaded locally. Storage upload failed, but your logo is saved locally.');
-        };
-        reader.readAsDataURL(file);
-        return;
+          return;
+        }
       }
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('company-logos')
-        .getPublicUrl(fileName);
-
-      setProfile({ ...profile, logo_url: publicUrl });
-      setUploading(false);
+      // Fallback to local preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        setProfile({ ...profile, logo_url: dataUrl });
+        setUploading(false);
+        if (!isSupabaseConfigured()) {
+          alert('Logo uploaded locally. Configure Supabase to enable cloud storage.');
+        }
+      };
+      reader.readAsDataURL(file);
     } catch (error) {
       console.error('Error uploading logo:', error);
-      // Fallback to local preview if storage fails
+      // Fallback to local preview
       const reader = new FileReader();
       reader.onloadend = () => {
         const dataUrl = reader.result as string;
@@ -150,35 +157,46 @@ const Profile: React.FC = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      // Save to database
-      const { data, error } = await supabase
-        .from('profiles')
-        .upsert({
-          company_name: profile.company_name,
-          owner_name: profile.owner_name,
-          email: profile.email,
-          logo_url: profile.logo_url,
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
+      // Only try database save if Supabase is configured
+      if (isSupabaseConfigured()) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .upsert({
+            company_name: profile.company_name,
+            owner_name: profile.owner_name,
+            email: profile.email,
+            logo_url: profile.logo_url,
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single();
 
-      if (error) {
-        console.error('Database save error:', error);
-        // Fallback to localStorage if database fails
-        localStorage.setItem('ms_delivery_profile', JSON.stringify(profile));
-        alert('Profile saved locally. Database save failed, but your data is safe locally.');
-      } else {
-        // Also save to localStorage as backup
-        localStorage.setItem('ms_delivery_profile', JSON.stringify(profile));
+        if (error) {
+          console.error('Database save error:', error);
+        } else {
+          // Also save to localStorage as backup
+          localStorage.setItem('ms_delivery_profile', JSON.stringify(profile));
+          setShowSuccess(true);
+          setTimeout(() => setShowSuccess(false), 3000);
+          setSaving(false);
+          return;
+        }
       }
-      
+
+      // Fallback to localStorage
+      localStorage.setItem('ms_delivery_profile', JSON.stringify(profile));
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
+      
+      if (!isSupabaseConfigured()) {
+        alert('Profile saved locally. Configure Supabase to enable cloud storage.');
+      }
     } catch (error: any) {
       console.error('Save error:', error);
-      // Fallback to localStorage if database fails
+      // Fallback to localStorage
       localStorage.setItem('ms_delivery_profile', JSON.stringify(profile));
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
       alert('Profile saved locally. Database save failed, but your data is safe locally.');
     } finally {
       setSaving(false);

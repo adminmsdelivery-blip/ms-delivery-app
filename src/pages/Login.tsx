@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Truck, User, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 interface ProfileData {
   company_name: string;
@@ -30,31 +30,34 @@ const Login: React.FC = () => {
     // Load company profile from database with localStorage fallback
     const loadProfile = async () => {
       try {
-        // Try to fetch from database first
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .single();
+        // Only try database if Supabase is configured
+        if (isSupabaseConfigured()) {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .single();
 
-        if (data && !error) {
-          setProfile({
-            company_name: data.company_name || '',
-            owner_name: data.owner_name || '',
-            email: data.email || '',
-            logo_url: data.logo_url || ''
-          });
-        } else {
-          // Fallback to localStorage
-          const savedProfile = localStorage.getItem('ms_delivery_profile');
-          if (savedProfile) {
-            const parsed = JSON.parse(savedProfile);
+          if (data && !error) {
             setProfile({
-              company_name: parsed.company_name || '',
-              owner_name: parsed.owner_name || '',
-              email: parsed.email || '',
-              logo_url: parsed.logo_url || ''
+              company_name: data.company_name || '',
+              owner_name: data.owner_name || '',
+              email: data.email || '',
+              logo_url: data.logo_url || ''
             });
+            return;
           }
+        }
+
+        // Fallback to localStorage
+        const savedProfile = localStorage.getItem('ms_delivery_profile');
+        if (savedProfile) {
+          const parsed = JSON.parse(savedProfile);
+          setProfile({
+            company_name: parsed.company_name || '',
+            owner_name: parsed.owner_name || '',
+            email: parsed.email || '',
+            logo_url: parsed.logo_url || ''
+          });
         }
       } catch (error) {
         console.error('Error loading profile in Login:', error);
