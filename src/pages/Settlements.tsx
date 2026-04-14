@@ -519,11 +519,11 @@ const Settlements: React.FC = () => {
 
   return (
     <div className="w-full space-y-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="flex flex-col gap-4 mb-8">
+        <div className="flex flex-col gap-4 mb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Financial Settlements</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900">Financial Settlements</h1>
             <p className="text-gray-500 text-sm mt-1">Track cash flow between MS Delivery and Outsource Drivers</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -546,23 +546,26 @@ const Settlements: React.FC = () => {
         </div>
 
         {/* Time Tabs UI */}
-        <div className="flex justify-center mb-6">
-          <div className="bg-white border rounded-full p-1 shadow-sm inline-flex">
-            {(['week', 'month', 'year', 'all'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setTimeFilter(tab)}
-                className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${
-                  timeFilter === tab 
-                    ? 'bg-[#442DD8] text-white shadow' 
-                    : 'text-gray-500 hover:text-gray-900'
-                }`}
-              >
-                {tab === 'all' ? 'All Time' : tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
+        <div className="bg-white rounded-[20px] shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+          <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
+            <div className="flex bg-gray-50/80 p-1 rounded-xl border border-gray-100 overflow-x-auto">
+              {(['week', 'month', 'year', 'all'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setTimeFilter(tab)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all whitespace-nowrap ${
+                    timeFilter === tab 
+                      ? 'bg-white text-[#442DD8] shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-900'
+                  }`}
+                >
+                  {tab === 'all' ? 'All Time' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+          
+          <div className="p-6 space-y-6">
 
         {/* Live Cash Drawer Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
@@ -763,6 +766,8 @@ const Settlements: React.FC = () => {
             </div>
           </div>
         )}
+          </div>
+        </div>
       </div>
     </div>
   );
