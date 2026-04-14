@@ -119,6 +119,7 @@ export default function OrdersList() {
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Order ID</th>
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Customer</th>
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Location</th>
+                  <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Item Charges</th>
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Delivery Charges</th>
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Outsource Charges</th>
                   <th className="px-6 py-4 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">MS Profit</th>
@@ -144,6 +145,8 @@ export default function OrdersList() {
                     </td>
                     
                     <td className="px-6 py-4 text-sm text-gray-600">{order.delivery_location}</td>
+                    
+                    <td className="px-6 py-4 text-sm text-gray-600 text-right font-medium">AED {order.item_charge?.toFixed(2)}</td>
                     
                     <td className="px-6 py-4 text-sm text-gray-600 text-right font-medium">AED {order.deliveryCharge?.toFixed(2)}</td>
                     
