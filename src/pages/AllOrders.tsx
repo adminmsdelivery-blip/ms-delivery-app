@@ -14,6 +14,7 @@ export default function OrdersList() {
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [editingOrder, setEditingOrder] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
   // --- MATH ENGINE ---
   const processedOrders = useMemo(() => {
@@ -61,6 +62,9 @@ export default function OrdersList() {
         order.id === editingOrder.id ? editingOrder : order
       ));
       closeEditModal();
+      setShowSuccessPopup(true);
+      // Hide success popup after 3 seconds
+      setTimeout(() => setShowSuccessPopup(false), 3000);
     }
   };
 
@@ -243,31 +247,145 @@ export default function OrdersList() {
                 </div>
                 
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Customer Name
-                    </label>
-                    <input
-                      type="text"
-                      value={editingOrder.customer_name || ''}
-                      onChange={(e) => handleInputChange('customer_name', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Delivery Location
-                    </label>
-                    <input
-                      type="text"
-                      value={editingOrder.delivery_location || ''}
-                      onChange={(e) => handleInputChange('delivery_location', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
-                  
                   <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Order ID
+                      </label>
+                      <input
+                        type="text"
+                        value={editingOrder.id || ''}
+                        disabled
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Order Date
+                      </label>
+                      <input
+                        type="date"
+                        value={editingOrder.created_at ? new Date(editingOrder.created_at).toISOString().split('T')[0] : ''}
+                        onChange={(e) => handleInputChange('created_at', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Customer Name
+                      </label>
+                      <input
+                        type="text"
+                        value={editingOrder.customer_name || ''}
+                        onChange={(e) => handleInputChange('customer_name', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Enter customer name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Customer Contact
+                      </label>
+                      <input
+                        type="tel"
+                        value={editingOrder.customer_contact_number || ''}
+                        onChange={(e) => handleInputChange('customer_contact_number', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Enter contact number"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Client Name
+                      </label>
+                      <input
+                        type="text"
+                        value={editingOrder.clients?.name || ''}
+                        onChange={(e) => handleInputChange('clients', {...editingOrder.clients, name: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Enter client name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Outsource Name
+                      </label>
+                      <input
+                        type="text"
+                        value={editingOrder.outsources?.name || ''}
+                        onChange={(e) => handleInputChange('outsources', {...editingOrder.outsources, name: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Enter outsource name"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Pickup Location
+                      </label>
+                      <input
+                        type="text"
+                        value={editingOrder.pickup_location || ''}
+                        onChange={(e) => handleInputChange('pickup_location', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Enter pickup location"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Delivery Location
+                      </label>
+                      <input
+                        type="text"
+                        value={editingOrder.delivery_location || ''}
+                        onChange={(e) => handleInputChange('delivery_location', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Enter delivery location"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Payment Mode
+                      </label>
+                      <select
+                        value={editingOrder.payment_mode || ''}
+                        onChange={(e) => handleInputChange('payment_mode', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                      >
+                        <option value="">Select payment mode</option>
+                        <option value="Cash on Delivery (COD)">Cash on Delivery (COD)</option>
+                        <option value="Cash on Pickup (COP)">Cash on Pickup (COP)</option>
+                        <option value="Online Payment">Online Payment</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Payment Status
+                      </label>
+                      <select
+                        value={editingOrder.payment_status || ''}
+                        onChange={(e) => handleInputChange('payment_status', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                      >
+                        <option value="">Select status</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Settled">Settled</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Total Amount Received
@@ -279,6 +397,7 @@ export default function OrdersList() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                         min="0"
                         step="0.01"
+                        placeholder="0.00"
                       />
                     </div>
                     <div>
@@ -292,6 +411,7 @@ export default function OrdersList() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                         min="0"
                         step="0.01"
+                        placeholder="0.00"
                       />
                     </div>
                     <div>
@@ -305,22 +425,22 @@ export default function OrdersList() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                         min="0"
                         step="0.01"
+                        placeholder="0.00"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Payment Mode
-                      </label>
-                      <select
-                        value={editingOrder.payment_mode || ''}
-                        onChange={(e) => handleInputChange('payment_mode', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                      >
-                        <option value="Cash on Delivery (COD)">Cash on Delivery (COD)</option>
-                        <option value="Cash on Pickup (COP)">Cash on Pickup (COP)</option>
-                        <option value="Online Payment">Online Payment</option>
-                      </select>
-                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Remarks
+                    </label>
+                    <textarea
+                      value={editingOrder.remark || ''}
+                      onChange={(e) => handleInputChange('remark', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                      rows={3}
+                      placeholder="Enter any additional remarks..."
+                    />
                   </div>
                 </div>
               </div>
@@ -341,6 +461,47 @@ export default function OrdersList() {
                   Cancel
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Popup */}
+      {showSuccessPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+          <div className="relative bg-white rounded-2xl p-8 max-w-md w-full mx-4 transform transition-all duration-300 scale-100">
+            <div className="flex flex-col items-center text-center">
+              {/* Success Icon */}
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              
+              {/* Success Message */}
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Successfully Saved!
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Order changes have been saved successfully.
+              </p>
+              
+              {/* Auto-close indicator */}
+              <div className="flex items-center text-sm text-gray-500">
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Auto-closing in 3 seconds...
+              </div>
+            </div>
+            
+            {/* Progress bar */}
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200 rounded-b-2xl overflow-hidden">
+              <div 
+                className="h-full bg-green-500 transition-all duration-3000 ease-linear"
+                style={{ width: '100%', animation: 'shrink 3s linear forwards' }}
+              ></div>
             </div>
           </div>
         </div>
