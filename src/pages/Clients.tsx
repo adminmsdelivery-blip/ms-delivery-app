@@ -134,7 +134,7 @@ const Clients: React.FC = () => {
           {selectedIds.length > 0 && (
             <button
               onClick={() => handleDelete(selectedIds)}
-              className="bg-red-50 text-red-600 px-4 py-2 rounded-lg font-bold hover:bg-red-100 transition-all flex items-center gap-2 border border-red-100"
+              className="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-100 transition-all flex items-center gap-2 border border-red-100"
             >
               <Trash2 className="w-5 h-5" />
               Delete ({selectedIds.length})
