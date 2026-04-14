@@ -325,7 +325,7 @@ export default function OrdersList() {
                       <input type="checkbox" className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" checked={selectedOrders.includes(order.id)} onChange={(e) => handleSelectOne(e, order.id)} />
                     </td>
                     
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{getOrderNumber(order.id)}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{order.id ? order.id.split('-')[0].toUpperCase() : 'N/A'}</td>
                     
                     <td className="px-6 py-4 text-sm text-gray-600">
                       <div className="font-medium text-gray-900">{order.customer_name}</div>
@@ -413,7 +413,7 @@ export default function OrdersList() {
                       </label>
                       <input
                         type="text"
-                        value={getOrderNumber(editingOrder.id) || ''}
+                        value={editingOrder.id ? editingOrder.id.split('-')[0].toUpperCase() : ''}
                         onChange={(e) => handleInputChange('id', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                         placeholder="Enter order ID (text and numbers allowed)"
