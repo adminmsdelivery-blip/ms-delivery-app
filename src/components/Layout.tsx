@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -15,80 +15,19 @@ import {
 import { motion } from 'motion/react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { cn } from '../lib/utils';
+import { useCompanyProfile } from '../hooks/useCompanyProfile';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-interface ProfileData {
-  company_name: string;
-  owner_name: string;
-  email: string;
-  logo_url: string;
-}
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<ProfileData>({
-    company_name: '',
-    owner_name: '',
-    email: '',
-    logo_url: ''
-  });
+  const { profile, loading } = useCompanyProfile();
 
-  useEffect(() => {
-    // Load profile from database with localStorage fallback
-    const loadProfile = async () => {
-      try {
-        // Only try database if Supabase is configured
-        if (isSupabaseConfigured()) {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .single();
-
-          if (data && !error) {
-            setProfile({
-              company_name: data.company_name || '',
-              owner_name: data.owner_name || '',
-              email: data.email || '',
-              logo_url: data.logo_url || ''
-            });
-            return;
-          }
-        }
-
-        // Fallback to localStorage
-        const savedProfile = localStorage.getItem('ms_delivery_profile');
-        if (savedProfile) {
-          const parsed = JSON.parse(savedProfile);
-          setProfile({
-            company_name: parsed.company_name || '',
-            owner_name: parsed.owner_name || '',
-            email: parsed.email || '',
-            logo_url: parsed.logo_url || ''
-          });
-        }
-      } catch (error) {
-        console.error('Error loading profile in Layout:', error);
-        // Fallback to localStorage
-        const savedProfile = localStorage.getItem('ms_delivery_profile');
-        if (savedProfile) {
-          const parsed = JSON.parse(savedProfile);
-          setProfile({
-            company_name: parsed.company_name || '',
-            owner_name: parsed.owner_name || '',
-            email: parsed.email || '',
-            logo_url: parsed.logo_url || ''
-          });
-        }
-      }
-    };
-
-    loadProfile();
-  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('ms_admin_session');
@@ -122,13 +61,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
           <div className="flex flex-col">
             <span className="font-bold text-neutral-900 text-lg tracking-tight">
-              {profile.company_name || profile.owner_name || 'MS Delivery'}
+              {profile.company_name || 'MS Delivery'}
             </span>
-            {profile.owner_name && (
-              <span className="text-sm text-neutral-500 animate-fade-in">
-                {profile.owner_name}
-              </span>
-            )}
           </div>
         </div>
         <button 
@@ -160,11 +94,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <aside className="hidden md:flex md:w-64 md:flex-shrink-0 bg-white border-r border-neutral-200 overflow-y-auto">
         <div className="h-full flex flex-col">
           <div className="p-6 hidden md:flex items-center gap-4">
-            <div 
-              className="w-10 h-10 rounded-full flex items-center justify-center shadow-md font-bold"
-              style={{ backgroundColor: '#533AFD', color: 'white', zIndex: 1 }}
-            >
-              MS
+            <div className="bg-gradient-to-r from-primary-600 to-primary-500 p-2 rounded-xl shadow-lg hover-lift">
+              {profile.logo_url ? (
+                <img src={profile.logo_url} alt="Company Logo" className="w-6 h-6 object-cover rounded-lg animate-fade-in" />
+              ) : (
+                <Truck className="w-6 h-6 text-white animate-pulse" />
+              )}
             </div>
             <div className="flex flex-col">
               <motion.span 
@@ -173,18 +108,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 transition={{ duration: 0.5, delay: 0.1 }}
                 className="!text-gray-900 !font-bold text-xl tracking-tight"
               >
-                Delivery
+                {profile.company_name || 'MS Delivery'}
               </motion.span>
-              {profile.owner_name && (
-                <motion.span 
-                  initial={{ y: 10, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                  className="text-sm text-neutral-500"
-                >
-                  {profile.owner_name}
-                </motion.span>
-              )}
             </div>
           </div>
 
@@ -278,11 +203,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <span className="font-bold text-2xl text-neutral-900 tracking-tight">
                 {profile.company_name || 'MS Delivery'}
               </span>
-              {profile.owner_name && (
-                <span className="text-sm text-neutral-500">
-                  {profile.owner_name}
-                </span>
-              )}
             </div>
           </div>
 

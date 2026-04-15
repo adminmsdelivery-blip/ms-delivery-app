@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { 
-  User, 
-  Mail, 
   Building, 
+  Mail, 
+  Phone, 
   Save, 
   Camera,
   CheckCircle2,
   Upload,
-  X
+  X,
+  Image as ImageIcon
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { format } from 'date-fns';
 
-interface ProfileData {
+interface CompanyProfileData {
   company_name: string;
-  owner_name: string;
+  contact_number: string;
   email: string;
   logo_url: string;
 }
@@ -23,9 +23,9 @@ interface ProfileData {
 const Profile: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [profile, setProfile] = useState<ProfileData>({
+  const [profile, setProfile] = useState<CompanyProfileData>({
     company_name: '',
-    owner_name: '',
+    contact_number: '',
     email: '',
     logo_url: ''
   });
@@ -38,19 +38,19 @@ const Profile: React.FC = () => {
 
   const fetchProfile = async () => {
     try {
-      // Only try database if Supabase is configured
       if (isSupabaseConfigured()) {
         const { data, error } = await supabase
-          .from('profiles')
+          .from('company_profile')
           .select('*')
+          .eq('id', 1)
           .single();
 
-        if (error && error.code !== 'PGRST116') { // Not found error
+        if (error && error.code !== 'PGRST116') {
           console.error('Database error:', error);
         } else if (data) {
           setProfile({
             company_name: data.company_name || '',
-            owner_name: data.owner_name || '',
+            contact_number: data.contact_number || '',
             email: data.email || '',
             logo_url: data.logo_url || ''
           });
@@ -60,25 +60,24 @@ const Profile: React.FC = () => {
       }
 
       // Fallback to localStorage
-      const savedProfile = localStorage.getItem('ms_delivery_profile');
+      const savedProfile = localStorage.getItem('ms_delivery_company_profile');
       if (savedProfile) {
         const parsed = JSON.parse(savedProfile);
         setProfile({
           company_name: parsed.company_name || '',
-          owner_name: parsed.owner_name || '',
+          contact_number: parsed.contact_number || '',
           email: parsed.email || '',
           logo_url: parsed.logo_url || ''
         });
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
-      // Fallback to localStorage
-      const savedProfile = localStorage.getItem('ms_delivery_profile');
+      const savedProfile = localStorage.getItem('ms_delivery_company_profile');
       if (savedProfile) {
         const parsed = JSON.parse(savedProfile);
         setProfile({
           company_name: parsed.company_name || '',
-          owner_name: parsed.owner_name || '',
+          contact_number: parsed.contact_number || '',
           email: parsed.email || '',
           logo_url: parsed.logo_url || ''
         });
@@ -92,40 +91,38 @@ const Profile: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type and size
     if (!file.type.startsWith('image/')) {
       alert('Please upload an image file (PNG, JPG, etc.)');
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) { // 2MB
-      alert('File size must be less than 2MB');
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB');
       return;
     }
 
     setUploading(true);
     try {
-      // Only try storage upload if Supabase is configured
       if (isSupabaseConfigured()) {
         const fileExt = file.name.split('.').pop();
         const fileName = `company-logo-${Date.now()}.${fileExt}`;
         
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('company-logos')
+          .from('brand-assets')
           .upload(fileName, file);
 
         if (uploadError) {
           console.error('Storage upload error:', uploadError);
-        } else {
-          // Get public URL
-          const { data: { publicUrl } } = supabase.storage
-            .from('company-logos')
-            .getPublicUrl(fileName);
-
-          setProfile({ ...profile, logo_url: publicUrl });
-          setUploading(false);
-          return;
+          throw uploadError;
         }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('brand-assets')
+          .getPublicUrl(fileName);
+
+        setProfile({ ...profile, logo_url: publicUrl });
+        setUploading(false);
+        return;
       }
 
       // Fallback to local preview
@@ -141,7 +138,6 @@ const Profile: React.FC = () => {
       reader.readAsDataURL(file);
     } catch (error) {
       console.error('Error uploading logo:', error);
-      // Fallback to local preview
       const reader = new FileReader();
       reader.onloadend = () => {
         const dataUrl = reader.result as string;
@@ -157,13 +153,13 @@ const Profile: React.FC = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      // Only try database save if Supabase is configured
       if (isSupabaseConfigured()) {
         const { data, error } = await supabase
-          .from('profiles')
+          .from('company_profile')
           .upsert({
+            id: 1,
             company_name: profile.company_name,
-            owner_name: profile.owner_name,
+            contact_number: profile.contact_number,
             email: profile.email,
             logo_url: profile.logo_url,
             updated_at: new Date().toISOString()
@@ -173,18 +169,18 @@ const Profile: React.FC = () => {
 
         if (error) {
           console.error('Database save error:', error);
-        } else {
-          // Also save to localStorage as backup
-          localStorage.setItem('ms_delivery_profile', JSON.stringify(profile));
-          setShowSuccess(true);
-          setTimeout(() => setShowSuccess(false), 3000);
-          setSaving(false);
-          return;
+          throw error;
         }
+
+        localStorage.setItem('ms_delivery_company_profile', JSON.stringify(profile));
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+        setSaving(false);
+        return;
       }
 
       // Fallback to localStorage
-      localStorage.setItem('ms_delivery_profile', JSON.stringify(profile));
+      localStorage.setItem('ms_delivery_company_profile', JSON.stringify(profile));
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
       
@@ -193,8 +189,7 @@ const Profile: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Save error:', error);
-      // Fallback to localStorage
-      localStorage.setItem('ms_delivery_profile', JSON.stringify(profile));
+      localStorage.setItem('ms_delivery_company_profile', JSON.stringify(profile));
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
       alert('Profile saved locally. Database save failed, but your data is safe locally.');
@@ -205,125 +200,162 @@ const Profile: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading profile...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Business Profile</h1>
-        <p className="text-gray-500">Manage your company information and preferences.</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Company Profile</h1>
+          <p className="text-gray-600">Manage your company's brand information and contact details</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left Column - Logo Upload */}
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-xl p-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-indigo-600" />
+                Brand Assets
+              </h2>
+              
+              <div className="flex flex-col items-center space-y-6">
+                <div className="relative group">
+                  <div className="w-48 h-48 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden transition-all hover:border-indigo-400">
+                    {profile.logo_url ? (
+                      <img 
+                        src={profile.logo_url} 
+                        alt="Company Logo" 
+                        className="w-full h-full object-cover rounded-2xl"
+                      />
+                    ) : (
+                      <div className="text-center">
+                        <Building className="w-16 h-16 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500">No logo uploaded</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                    id="logo-upload"
+                  />
+                  
+                  <label 
+                    htmlFor="logo-upload"
+                    className="absolute bottom-4 right-4 bg-indigo-600 p-3 rounded-xl text-white shadow-lg hover:bg-indigo-700 transition-all cursor-pointer hover:scale-105"
+                  >
+                    {uploading ? (
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                    ) : (
+                      <Camera className="w-6 h-6" />
+                    )}
+                  </label>
+                </div>
+                
+                <div className="text-center">
+                  <h3 className="font-semibold text-gray-900 mb-1">Company Logo</h3>
+                  <p className="text-sm text-gray-500">Upload your company logo</p>
+                  <p className="text-xs text-gray-400 mt-1">Recommended: Square PNG or JPG, max 5MB</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Company Information */}
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-xl p-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">Company Information</h2>
+              
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <Building className="w-4 h-4 text-indigo-600" />
+                    Company Name
+                  </label>
+                  <input
+                    type="text"
+                    value={profile.company_name}
+                    onChange={(e) => setProfile({ ...profile, company_name: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                    placeholder="e.g. MS Delivery Services"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-indigo-600" />
+                    Contact Number
+                  </label>
+                  <input
+                    type="tel"
+                    value={profile.contact_number}
+                    onChange={(e) => setProfile({ ...profile, contact_number: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                    placeholder="+1 (555) 123-4567"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-indigo-600" />
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={profile.email}
+                    onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                    placeholder="contact@company.com"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-8">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-2xl font-semibold text-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                >
+                  {saving ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      Saving Changes...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-5 h-5" />
+                      Save Profile
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
       </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Logo Upload */}
-        <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center text-center space-y-4">
-          <div className="relative group">
-            <div className="w-32 h-32 bg-gray-50 rounded-full border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden">
-              {profile.logo_url ? (
-                <img src={profile.logo_url} alt="Logo" className="w-full h-full object-cover" />
-              ) : (
-                <Building className="w-12 h-12 text-gray-300" />
-              )}
-            </div>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleLogoUpload}
-              className="hidden"
-              id="logo-upload"
-            />
-            <label 
-              htmlFor="logo-upload"
-              className="absolute bottom-0 right-0 bg-indigo-600 p-2.5 rounded-full text-white shadow-lg hover:bg-indigo-700 transition-all cursor-pointer"
-            >
-              {uploading ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-              ) : (
-                <Camera className="w-5 h-5" />
-              )}
-            </label>
-          </div>
-          <div>
-            <h3 className="font-bold text-gray-900">Company Logo</h3>
-            <p className="text-xs text-gray-400 mt-1">Recommended: Square PNG or JPG, max 2MB</p>
-          </div>
-        </div>
-
-        {/* Profile Details */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-6">
-          <div className="grid grid-cols-1 gap-6">
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                <Building className="w-4 h-4 text-gray-400" />
-                Company Name
-              </label>
-              <input
-                type="text"
-                value={profile.company_name}
-                onChange={(e) => setProfile({ ...profile, company_name: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                placeholder="e.g. MS Delivery Services"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                <User className="w-4 h-4 text-gray-400" />
-                Owner Name
-              </label>
-              <input
-                type="text"
-                value={profile.owner_name}
-                onChange={(e) => setProfile({ ...profile, owner_name: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                placeholder="e.g. John Smith"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-gray-400" />
-                Contact Email
-              </label>
-              <input
-                type="email"
-                value={profile.email}
-                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                placeholder="contact@company.com"
-              />
-            </div>
-          </div>
-
-          <div className="pt-4">
-            <button
-              type="submit"
-              disabled={saving}
-              className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {saving ? 'Saving...' : (
-                <>
-                  <Save className="w-5 h-5" />
-                  Save Changes
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </form>
 
       {/* Success Toast */}
       <motion.div
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: showSuccess ? 1 : 0, y: showSuccess ? 0 : 50 }}
-        className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-2xl flex items-center gap-3 shadow-2xl z-[100] pointer-events-none"
+        className="fixed bottom-8 right-8 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-4 rounded-2xl flex items-center gap-3 shadow-2xl z-[100] pointer-events-none"
       >
-        <CheckCircle2 className="w-5 h-5 text-green-400" />
-        Profile updated successfully!
+        <CheckCircle2 className="w-6 h-6" />
+        <div>
+          <p className="font-semibold">Profile Updated!</p>
+          <p className="text-sm opacity-90">Your company profile has been saved successfully.</p>
+        </div>
       </motion.div>
     </div>
   );
