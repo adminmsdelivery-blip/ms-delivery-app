@@ -12,7 +12,7 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { profile } = useCompanyProfile();
+  const { profile, loading: profileLoading } = useCompanyProfile();
   const navigate = useNavigate();
 
 
@@ -54,7 +54,11 @@ const Login: React.FC = () => {
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
             className="inline-block bg-indigo-600 w-20 h-20 rounded-[10px] border-2 border-white shadow-lg overflow-hidden"
           >
-            {profile.logo_url ? (
+            {profileLoading ? (
+              <div className="w-full h-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-indigo-500 rounded-lg animate-pulse"></div>
+              </div>
+            ) : profile.logo_url ? (
               <img src={profile.logo_url} alt="Company Logo" className="w-full h-full object-cover" />
             ) : (
               <Truck className="w-10 h-10 text-white" />
