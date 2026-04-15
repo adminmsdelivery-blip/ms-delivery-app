@@ -518,57 +518,53 @@ const Settlements: React.FC = () => {
   }
 
   return (
-    <div className="w-full space-y-6">
-      <div className="max-w-[1600px] mx-auto">
-        {/* Header */}
-        <div className="flex flex-col gap-4 mb-6">
-          <div>
-            <h1 className="heading-primary">Financial Settlements</h1>
-            <p className="heading-sub">Track cash flow between MS Delivery and Outsource Drivers</p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search drivers..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <button
-              onClick={exportMasterReport}
-              className="bg-[#442DD8] hover:bg-[#3925b8] text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm shadow-indigo-500/30 transition-all flex items-center gap-2 whitespace-nowrap"
-            >
-              <Download className="w-5 h-5" />
-              Export CSV
-            </button>
-          </div>
+    <div className="px-4 sm:px-6 lg:px-8 w-full max-w-7xl mx-auto flex flex-col gap-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 mb-6">
+        <div>
+          <h1 className="heading-primary">Financial Settlements</h1>
+          <p className="heading-sub">Track cash flow between MS Delivery and Outsource Drivers</p>
         </div>
-
-        {/* Time Tabs UI */}
-        <div className="bg-white rounded-[20px] shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-          <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
-            <div className="flex bg-gray-50/80 p-1 rounded-xl border border-gray-100 overflow-x-auto">
-              {(['week', 'month', 'year', 'all'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setTimeFilter(tab)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all whitespace-nowrap ${
-                    timeFilter === tab 
-                      ? 'bg-white text-[#442DD8] shadow-sm' 
-                      : 'text-gray-500 hover:text-gray-900'
-                  }`}
-                >
-                  {tab === 'all' ? 'All Time' : tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-              ))}
-            </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search drivers..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
-          
-          <div className="p-6 space-y-6">
+          <button
+            onClick={exportMasterReport}
+            className="bg-[#442DD8] hover:bg-[#3925b8] text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm shadow-indigo-500/30 transition-all flex items-center gap-2 whitespace-nowrap"
+          >
+            <Download className="w-5 h-5" />
+            Export CSV
+          </button>
+        </div>
+      </div>
+
+      {/* Modern Tab System */}
+      <div className="flex overflow-x-auto whitespace-nowrap hide-scrollbar border-b border-gray-200">
+        {(['week', 'month', 'year', 'all'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setTimeFilter(tab)}
+            className={`px-4 py-3 text-sm font-medium transition-all whitespace-nowrap border-b-2 ${
+              timeFilter === tab 
+                ? 'text-[#442DD8] border-[#442DD8]' 
+                : 'text-gray-500 border-transparent hover:text-gray-900'
+            }`}
+          >
+            {tab === 'all' ? 'All Time' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+          </button>
+        ))}
+      </div>
+      
+      <div className="space-y-6">
 
         {/* Live Cash Drawer Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-blue-50 rounded-lg">
@@ -623,15 +619,16 @@ const Settlements: React.FC = () => {
         </div>
 
         {/* Outsource Ledger Table */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="w-full">
+          <div className="px-6 py-4 bg-white rounded-xl border border-gray-200 shadow-sm mb-4">
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <Scale className="w-6 h-6 text-blue-600" />
               Outsource Ledger
             </h2>
           </div>
           
-          <div className="overflow-x-auto w-full">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto w-full">
             <table className="w-full text-left border-collapse whitespace-nowrap">
               <thead className="bg-white">
                 <tr>
@@ -766,10 +763,9 @@ const Settlements: React.FC = () => {
             </div>
           </div>
         )}
-          </div>
-        </div>
       </div>
     </div>
+  </div>
   );
 };
 
