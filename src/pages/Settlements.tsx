@@ -518,7 +518,8 @@ const Settlements: React.FC = () => {
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 w-full max-w-7xl mx-auto flex flex-col gap-6">
+    <div className="w-full space-y-6">
+      <div className="max-w-[1600px] mx-auto">
       {/* Header */}
       <div className="flex flex-col gap-4 mb-6">
         <div>
@@ -765,6 +766,7 @@ const Settlements: React.FC = () => {
         )}
       </div>
     </div>
+  </div>
   </div>
   );
 };
