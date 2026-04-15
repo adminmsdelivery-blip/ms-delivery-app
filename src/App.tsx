@@ -26,7 +26,7 @@ const FloatingActionButton = ({ isAuthenticated }: { isAuthenticated: boolean })
         bottom: '2rem', 
         right: '2rem', 
         zIndex: 9999,
-        backgroundColor: '#2563eb', /* Tailwind blue-600 */
+        backgroundColor: '#442DD8', /* RGB(68, 45, 216) */
         color: '#ffffff', 
         borderRadius: '50%', 
         width: '3.5rem', 
