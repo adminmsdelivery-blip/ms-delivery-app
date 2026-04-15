@@ -285,7 +285,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 20 }}
         onClick={() => navigate('/register')}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-primary-600 to-primary-500 rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 flex items-center justify-center z-50 border-2 border-white"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 rounded-full shadow-2xl hover:shadow-3xl hover:scale-110 transition-all duration-300 flex items-center justify-center z-[99999] border-2 border-white"
       >
         <Plus className="w-6 h-6 text-white" />
       </motion.button>
