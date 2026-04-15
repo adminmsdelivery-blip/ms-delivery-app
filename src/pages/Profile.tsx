@@ -152,8 +152,10 @@ const Profile: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    
     try {
       if (isSupabaseConfigured()) {
+        console.log('Attempting database save...');
         const { data, error } = await supabase
           .from('company_profile')
           .upsert({
@@ -167,33 +169,43 @@ const Profile: React.FC = () => {
           .select()
           .single();
 
+        console.log('Database operation result:', { data, error });
+
         if (error) {
           console.error('Database save error:', error);
           throw error;
         }
 
+        // Success - save to localStorage and show success
         localStorage.setItem('ms_delivery_company_profile', JSON.stringify(profile));
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
-        setSaving(false);
+        console.log('Profile saved successfully to database');
         return;
       }
 
+      // Supabase not configured - fallback to localStorage
+      console.log('Supabase not configured, saving locally only');
+      localStorage.setItem('ms_delivery_company_profile', JSON.stringify(profile));
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+      alert('Profile saved locally. Configure Supabase to enable cloud storage.');
+      
+    } catch (error: any) {
+      console.error('Save error:', error);
+      console.error('DB ERROR:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      
       // Fallback to localStorage
       localStorage.setItem('ms_delivery_company_profile', JSON.stringify(profile));
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
-      
-      if (!isSupabaseConfigured()) {
-        alert('Profile saved locally. Configure Supabase to enable cloud storage.');
-      }
-    } catch (error: any) {
-      console.error('Save error:', error);
-      console.error('DB ERROR:', error);
-      localStorage.setItem('ms_delivery_company_profile', JSON.stringify(profile));
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
-      alert(`Profile saved locally. Database error: ${error.message}`);
+      alert(`Database error: ${error.message}`);
     } finally {
       setSaving(false);
     }
