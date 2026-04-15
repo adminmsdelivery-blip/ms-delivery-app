@@ -189,10 +189,11 @@ const Profile: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Save error:', error);
+      console.error('DB ERROR:', error);
       localStorage.setItem('ms_delivery_company_profile', JSON.stringify(profile));
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
-      alert('Profile saved locally. Database save failed, but your data is safe locally.');
+      alert(`Profile saved locally. Database error: ${error.message}`);
     } finally {
       setSaving(false);
     }
