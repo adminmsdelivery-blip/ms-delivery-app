@@ -20,7 +20,7 @@ const FloatingActionButton = ({ isAuthenticated }: { isAuthenticated: boolean })
   return (
     <button
       onClick={() => navigate('/register')}
-      className="fixed bottom-8 right-8 z-[99999] flex items-center justify-center w-14 h-14 bg-blue-600 text-white rounded-full shadow-2xl hover:bg-blue-700 hover:scale-110 transition-all cursor-pointer border-2 border-white"
+      className="fixed bottom-8 right-8 z-[99999] flex items-center justify-center w-14 h-14 bg-primary-600 text-white rounded-full shadow-2xl hover:bg-primary-700 hover:scale-110 transition-all cursor-pointer border-2 border-white"
     >
       <Plus className="w-6 h-6" />
     </button>
