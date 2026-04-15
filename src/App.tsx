@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import RegisterOrder from './pages/RegisterOrder';
@@ -9,6 +9,23 @@ import OutsourceManagement from './pages/OutsourceManagement';
 import Settlements from './pages/Settlements';
 import Profile from './pages/Profile';
 import Login from './pages/Login';
+import { Plus } from 'lucide-react';
+
+// Floating Action Button Component
+const FloatingActionButton = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
+  const navigate = useNavigate();
+  
+  if (!isAuthenticated) return null;
+  
+  return (
+    <button
+      onClick={() => navigate('/register')}
+      className="fixed bottom-8 right-8 z-[99999] flex items-center justify-center w-14 h-14 bg-blue-600 text-white rounded-full shadow-2xl hover:bg-blue-700 hover:scale-110 transition-all cursor-pointer border-2 border-white"
+    >
+      <Plus className="w-6 h-6" />
+    </button>
+  );
+};
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
@@ -50,6 +67,7 @@ return () => window.removeEventListener('storage', checkAuth);
         
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+      <FloatingActionButton isAuthenticated={isAuthenticated} />
     </Router>
   );
 }
