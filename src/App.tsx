@@ -18,12 +18,27 @@ const FloatingActionButton = ({ isAuthenticated }: { isAuthenticated: boolean })
   if (!isAuthenticated) return null;
   
   return (
-    <button
-      onClick={() => navigate('/register')}
-      className="fixed bottom-8 right-8 z-[99999] flex items-center justify-center w-14 h-14 bg-primary-600 text-white rounded-full shadow-2xl hover:bg-primary-700 hover:scale-110 transition-all cursor-pointer border-2 border-white"
+    <a 
+      href="/register" 
+      className="hover:scale-110 transition-transform cursor-pointer"
+      style={{ 
+        position: 'fixed', 
+        bottom: '2rem', 
+        right: '2rem', 
+        zIndex: 9999,
+        backgroundColor: '#2563eb', /* Tailwind blue-600 */
+        color: '#ffffff', 
+        borderRadius: '50%', 
+        width: '3.5rem', 
+        height: '3.5rem', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2), 0 10px 10px -5px rgba(0,0,0,0.1)'
+      }}
     >
-      <Plus className="w-6 h-6" />
-    </button>
+      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    </a>
   );
 };
 
