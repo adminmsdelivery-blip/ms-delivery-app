@@ -126,7 +126,7 @@ const Login: React.FC = () => {
                 </>
               ) : (
                 <>
-                  Secure Sign In
+                  Sign In
                   <ArrowRight className="w-5 h-5" />
                 </>
               )}
