@@ -1,20 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
-  PlusCircle, 
-  ClipboardList, 
+  Package, 
   Users, 
+  FileText, 
+  Settings, 
   UserCircle, 
-  LogOut, 
   Menu, 
   X,
   Truck,
+  LogOut,
+  Plus,
+  PlusCircle,
+  Clipboard,
   Wallet
 } from 'lucide-react';
-import { motion } from 'motion/react';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useCompanyProfile } from '../hooks/useCompanyProfile';
 
 interface LayoutProps {
@@ -38,7 +42,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Register Order', path: '/register', icon: PlusCircle },
-    { name: 'All Orders', path: '/orders', icon: ClipboardList },
+    { name: 'All Orders', path: '/orders', icon: Clipboard },
     { name: 'Settlements', path: '/settlements', icon: Wallet },
     { name: 'Clients', path: '/clients', icon: Users },
     { name: 'Outsource', path: '/outsource', icon: Truck },
@@ -274,6 +278,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {children}
         </div>
       </main>
+
+      {/* Floating Action Button */}
+      <motion.button
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 260, damping: 20 }}
+        onClick={() => navigate('/register')}
+        className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-primary-600 to-primary-500 rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 flex items-center justify-center z-50 border-2 border-white"
+      >
+        <Plus className="w-6 h-6 text-white" />
+      </motion.button>
     </div>
   );
 };
