@@ -131,7 +131,7 @@ const RegisterOrder: React.FC = () => {
       {/* Form Section */}
       <div className="lg:col-span-2 space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Register New Order</h1>
+          <h1 className="heading-primary">Register New Order</h1>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

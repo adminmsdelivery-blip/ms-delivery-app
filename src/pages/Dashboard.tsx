@@ -362,10 +362,10 @@ const Dashboard: React.FC = () => {
         transition={{ duration: 0.6 }}
         className="mb-8"
       >
-        <h1 className="text-4xl font-bold text-neutral-900 tracking-tight mb-2">
+        <h1 className="heading-primary">
           Delivery Dashboard
         </h1>
-        <p className="text-neutral-600 text-lg">
+        <p className="heading-sub">
           Manage your delivery operations efficiently
         </p>
       </motion.div>

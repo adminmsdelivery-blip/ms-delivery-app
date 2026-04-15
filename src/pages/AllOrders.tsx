@@ -216,7 +216,7 @@ export default function OrdersList() {
         
         {/* 2. TOP HEADER SECTION */}
         <div className="flex flex-col gap-4 mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900">Orders Listing</h1>
+          <h1 className="heading-primary">Orders Listing</h1>
           
           <div className="flex flex-col sm:flex-row gap-3">
             {/* Soft Search Bar */}

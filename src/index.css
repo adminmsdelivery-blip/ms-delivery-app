@@ -125,6 +125,15 @@
   --radius-full: 9999px;
 }
 
+@layer components {
+  .heading-primary {
+    @apply text-[24px] font-bold tracking-tight text-gray-900 md:text-3xl lg:text-4xl;
+  }
+  .heading-sub {
+    @apply text-[18px] font-medium text-gray-500 md:text-[20px] mt-1 mb-6;
+  }
+}
+
 @layer base {
   * {
     border-color: var(--border, currentColor);

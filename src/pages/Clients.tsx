@@ -126,8 +126,8 @@ const Clients: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Clients</h1>
-          <p className="text-gray-500 text-sm">{clients.length} Registered Business Partners</p>
+          <h1 className="heading-primary">Clients</h1>
+          <p className="heading-sub">{clients.length} Registered Business Partners</p>
         </div>
         
         <div className="flex flex-col sm:flex-row gap-2">

@@ -226,8 +226,8 @@ const Profile: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Company Profile</h1>
-          <p className="text-gray-600">Manage your company's brand information and contact details</p>
+          <h1 className="heading-primary">Company Profile</h1>
+          <p className="heading-sub">Manage your company's brand information and contact details</p>
         </div>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-8">

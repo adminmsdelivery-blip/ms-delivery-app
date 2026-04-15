@@ -523,8 +523,8 @@ const Settlements: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col gap-4 mb-6">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900">Financial Settlements</h1>
-            <p className="text-gray-500 text-sm mt-1">Track cash flow between MS Delivery and Outsource Drivers</p>
+            <h1 className="heading-primary">Financial Settlements</h1>
+            <p className="heading-sub">Track cash flow between MS Delivery and Outsource Drivers</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
