@@ -52,7 +52,7 @@ const Login: React.FC = () => {
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
-            className="inline-block bg-indigo-600 w-20 h-20 rounded-[10px] border-2 border-white shadow-lg overflow-hidden"
+            className={`inline-block w-20 h-20 rounded-[10px] border-2 border-white shadow-lg overflow-hidden ${profileLoading || !profile.logo_url ? 'bg-indigo-600' : 'bg-white'}`}
           >
             {profileLoading ? (
               <div className="w-full h-full flex items-center justify-center">

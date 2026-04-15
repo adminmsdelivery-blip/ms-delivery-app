@@ -52,7 +52,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Mobile Header */}
       <header className="md:hidden bg-white/95 backdrop-blur-lg border-b border-neutral-200 px-4 py-3 flex items-center justify-between sticky top-0 z-50 shadow-sm animate-slide-in">
         <div className="flex items-center gap-3">
-          <div className="bg-gradient-to-r from-primary-600 to-primary-500 w-10 h-10 rounded-[10px] border-2 border-white shadow-lg hover-lift overflow-hidden">
+          <div className={`w-10 h-10 rounded-[10px] border-2 border-white shadow-lg hover-lift overflow-hidden ${profileLoading || !profile.logo_url ? 'bg-gradient-to-r from-primary-600 to-primary-500' : 'bg-white'}`}>
             {profileLoading ? (
               <div className="w-full h-full flex items-center justify-center">
                 <div className="w-6 h-6 bg-indigo-500 rounded-lg animate-pulse"></div>
@@ -98,7 +98,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <aside className="hidden md:flex md:w-64 md:flex-shrink-0 bg-white border-r border-neutral-200 overflow-y-auto">
         <div className="h-full flex flex-col">
           <div className="p-6 hidden md:flex items-center gap-4">
-            <div className="bg-gradient-to-r from-primary-600 to-primary-500 w-10 h-10 rounded-[10px] border-2 border-white shadow-lg hover-lift overflow-hidden">
+            <div className={`w-10 h-10 rounded-[10px] border-2 border-white shadow-lg hover-lift overflow-hidden ${profileLoading || !profile.logo_url ? 'bg-gradient-to-r from-primary-600 to-primary-500' : 'bg-white'}`}>
               {profileLoading ? (
                 <div className="w-full h-full flex items-center justify-center">
                   <div className="w-6 h-6 bg-indigo-500 rounded-lg animate-pulse"></div>
@@ -200,7 +200,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       >
         <div className="h-full flex flex-col">
           <div className="p-6 flex items-center gap-4">
-            <div className="bg-gradient-to-r from-primary-600 to-primary-500 w-14 h-14 rounded-[10px] border-2 border-white shadow-lg overflow-hidden">
+            <div className={`w-14 h-14 rounded-[10px] border-2 border-white shadow-lg overflow-hidden ${profileLoading || !profile.logo_url ? 'bg-gradient-to-r from-primary-600 to-primary-500' : 'bg-white'}`}>
               {profileLoading ? (
                 <div className="w-full h-full flex items-center justify-center">
                   <div className="w-8 h-8 bg-indigo-500 rounded-lg animate-pulse"></div>
