@@ -130,6 +130,11 @@
     border-color: var(--border, currentColor);
     box-sizing: border-box;
   }
+
+  html {
+    /* Minimum 14px on mobile, scales dynamically, maximum 16px on desktop */
+    font-size: clamp(14px, 0.875rem + 0.25vw, 16px);
+  }
   
   html {
     scroll-behavior: smooth;
